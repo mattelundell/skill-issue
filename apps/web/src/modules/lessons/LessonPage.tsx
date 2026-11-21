@@ -11,16 +11,43 @@ import { useFetched } from '../../shell/useFetched.js';
 import { fetchLesson, savePosition } from './api.js';
 import { useMessages } from './messages.js';
 
-/** One lesson at `/subjects/<subject>/lessons/<lesson>`: nothing above or below that address is a place of its own. */
+/** A step in a lesson's address, counted from 1 as the learner sees it. */
+const STEP_SEGMENT = /^[1-9][0-9]{0,5}$/;
+
+/**
+ * One lesson at `/subjects/<subject>/lessons/<lesson>`, taken up where the
+ * learner left it; `/<step>` below that, counted from 1, opens it at that step,
+ * as a note links back to where it was written.
+ */
 export function LessonPage({ subject, language, path }: PageProps) {
-  const [lessonId, ...beyond] = path;
-  if (lessonId === undefined || beyond.length > 0) {
+  const [lessonId, stepSegment, ...beyond] = path;
+  if (lessonId === undefined || beyond.length > 0 || (stepSegment !== undefined && !STEP_SEGMENT.test(stepSegment))) {
     return <Missing subject={subject} lessonId={path.join('/')} />;
   }
-  return <Lesson key={`${lessonId}:${subject.language}`} subject={subject} language={language} lessonId={lessonId} />;
+  const openAt = stepSegment === undefined ? undefined : Number(stepSegment) - 1;
+  return (
+    <Lesson
+      key={`${lessonId}:${subject.language}:${stepSegment ?? ''}`}
+      subject={subject}
+      language={language}
+      lessonId={lessonId}
+      {...(openAt === undefined ? {} : { openAt })}
+    />
+  );
 }
 
-function Lesson({ subject, language, lessonId }: { readonly subject: SubjectOutline; readonly language: Language; readonly lessonId: string }) {
+function Lesson({
+  subject,
+  language,
+  lessonId,
+  openAt,
+}: {
+  readonly subject: SubjectOutline;
+  readonly language: Language;
+  readonly lessonId: string;
+  /** The step the address asks for, counted from 0; undefined to take the lesson up where the learner left it. */
+  readonly openAt?: number;
+}) {
   const { t } = useMessages();
   // Content is read in the language the subject is shown in, which is not the interface's: choosing it is its own setting.
   const load = useMemo(() => async (signal: AbortSignal) => fetchLesson(subject.id, lessonId, subject.language, signal), [subject.id, lessonId, subject.language]);
@@ -69,29 +96,45 @@ function Lesson({ subject, language, lessonId }: { readonly subject: SubjectOutl
       </div>
     );
   }
-  return <Taking key={`${fetched.value.lesson.revision}`} subject={subject} language={language} view={fetched.value} refetchFor={refetchFor} />;
+  return (
+    <Taking
+      key={`${fetched.value.lesson.revision}`}
+      subject={subject}
+      language={language}
+      view={fetched.value}
+      refetchFor={refetchFor}
+      {...(openAt === undefined ? {} : { openAt })}
+    />
+  );
 }
 
 /** Whether to say where the learner is taken up, and why. Said once, on opening. */
-type Welcome = 'resumed' | 'changed' | undefined;
+type Welcome = 'resumed' | 'changed' | 'shortened' | undefined;
 
 function Taking({
   subject,
   language,
   view,
   refetchFor,
+  openAt,
 }: {
   readonly subject: SubjectOutline;
   readonly language: Language;
   readonly view: LessonView;
   /** Fetches the lesson again after a save was refused as stale; false when that was already done for this revision. */
   readonly refetchFor: (revision: number) => boolean;
+  /** The step the address asks for, counted from 0. */
+  readonly openAt?: number;
 }) {
   const { t } = useMessages();
   const { lesson } = view;
   const total = lesson.steps.length;
-  const [step, setStep] = useState(view.resumeAt);
-  const [welcome, setWelcome] = useState<Welcome>(view.changedSince ? 'changed' : view.position !== null && view.resumeAt > 0 ? 'resumed' : undefined);
+  // A step asked for by address that a reload has removed opens the last step, and says so.
+  const opensAt = openAt === undefined ? view.resumeAt : Math.min(openAt, total - 1);
+  const [step, setStep] = useState(opensAt);
+  const [welcome, setWelcome] = useState<Welcome>(
+    openAt !== undefined ? (openAt >= total ? 'shortened' : undefined) : view.changedSince ? 'changed' : view.position !== null && view.resumeAt > 0 ? 'resumed' : undefined,
+  );
   const [saveFailed, setSaveFailed] = useState(false);
   // A check drawn by another module holds the learner until its questions are answered, per step.
   const [settled, setSettled] = useState<ReadonlySet<number>>(new Set());
@@ -117,6 +160,30 @@ function Taking({
   const lessonEnds = useLessonEnds();
   const sides = useLessonSides();
   const home = subjectPath(subject.id);
+  // What is beside the lesson is closed until the learner opens it.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const toggleSide = useCallback((module: string) => {
+    setOpened((before) => {
+      const after = new Set(before);
+      if (!after.delete(module)) {
+        after.add(module);
+      }
+      return after;
+    });
+  }, []);
+  const closeSide = useCallback((module: string) => {
+    setOpened((before) => (before.has(module) ? new Set([...before].filter((each) => each !== module)) : before));
+  }, []);
+  const stepHolder = useRef<HTMLDivElement>(null);
+  const selection = useCallback((): string | undefined => {
+    const selected = window.getSelection();
+    const holder = stepHolder.current;
+    if (selected === null || holder === null || selected.isCollapsed || !holder.contains(selected.anchorNode) || !holder.contains(selected.focusNode)) {
+      return undefined;
+    }
+    const text = selected.toString().trim();
+    return text === '' ? undefined : text;
+  }, []);
 
   const moveTo = useCallback(
     (next: number) => {
@@ -135,19 +202,23 @@ function Taking({
   );
 
   // Opening the lesson records it as begun, at the step it opens on.
-  const opened = useRef(false);
+  const begun = useRef(false);
   useEffect(() => {
-    if (!opened.current) {
-      opened.current = true;
+    if (!begun.current) {
+      begun.current = true;
+      if (openAt !== undefined) {
+        // The step was asked for once; reloading the page takes the lesson up where the learner then is.
+        window.history.replaceState(window.history.state, '', subjectPath(lesson.subjectId, 'lessons', [lesson.id]));
+      }
       const begin = async (): Promise<void> => {
-        const saved = await savePosition(lesson.subjectId, lesson.id, view.resumeAt, lesson.revision);
+        const saved = await savePosition(lesson.subjectId, lesson.id, opensAt, lesson.revision);
         if (saved === 'changed' && !refetchFor(lesson.revision)) {
           setSaveFailed(true);
         }
       };
       void begin();
     }
-  }, [lesson.subjectId, lesson.id, lesson.revision, view.resumeAt, refetchFor]);
+  }, [lesson.subjectId, lesson.id, lesson.revision, opensAt, openAt, refetchFor]);
 
   const current = lesson.steps[step];
   const holding = again === undefined ? current?.type === 'check' && CheckStep !== undefined && !settled.has(step) : !again.settled;
@@ -170,14 +241,26 @@ function Taking({
     const onKey = (event: KeyboardEvent): void => {
       const target = event.target;
       const inField = target instanceof HTMLElement && target.closest('input, textarea, select, button, a, [contenteditable="true"]') !== null;
-      if (event.key === 'Enter' && !inField && !event.metaKey && !event.ctrlKey && !event.altKey && step < total) {
+      const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
+      if (event.key === 'Enter' && !inField && plain && step < total) {
         event.preventDefault();
         forward();
+        return;
+      }
+      if (event.key === 'Escape' && opened.size > 0) {
+        // Escape closes what is open beside the lesson, even from inside it, where its own key would be typed.
+        setOpened(new Set());
+        return;
+      }
+      const side = !inField && plain && step < total ? sides.find(({ key }) => key === event.key.toLowerCase()) : undefined;
+      if (side !== undefined) {
+        event.preventDefault();
+        toggleSide(side.module);
       }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [forward, step, total]);
+  }, [forward, step, total, opened, sides, toggleSide]);
 
   const sourceLink = useSourceLink();
   const sourcesLine = lesson.sources.length === 0 ? null : (
@@ -237,19 +320,27 @@ function Taking({
     );
   }
 
-  const sideBlocks = sides.map(({ module, Side }) => (
-    <div key={module} className="lesson-side" data-module={module}>
-      <Side subject={subject} language={language} lessonId={lesson.id} step={step} />
-    </div>
-  ));
+  const sideBlocks = sides
+    .filter(({ module }) => opened.has(module))
+    .map(({ module, Side }) => (
+      <div key={module} className="lesson-side" data-module={module}>
+        <Side subject={subject} language={language} lessonId={lesson.id} step={step} selection={selection} close={() => closeSide(module)} />
+      </div>
+    ));
   return (
     <div className="lesson">
       {head}
       <div className={sideBlocks.length > 0 ? 'lesson-grid with-side' : 'lesson-grid'}>
         <div>
           {welcome === undefined ? null : (
-            <div className={welcome === 'changed' ? 'banner warn' : 'banner info'} role="note">
-              <span>{welcome === 'changed' ? t('changed', { step: String(step + 1) }) : t('resumed', { step: String(step + 1), steps: String(total) })}</span>
+            <div className={welcome === 'resumed' ? 'banner info' : 'banner warn'} role="note">
+              <span>
+                {welcome === 'changed'
+                  ? t('changed', { step: String(step + 1) })
+                  : welcome === 'shortened'
+                    ? t('shortened', { steps: String(total) })
+                    : t('resumed', { step: String(step + 1), steps: String(total) })}
+              </span>
               <button type="button" className="link-button" onClick={() => moveTo(0)}>
                 {t('from-start')}
               </button>
@@ -258,6 +349,7 @@ function Taking({
           {saveFailed ? (
             <output className="banner warn">{t('save.failed')}</output>
           ) : null}
+          <div ref={stepHolder}>
           {again !== undefined && CheckStep !== undefined ? (
             <AgainCard
               subject={subject}
@@ -281,6 +373,7 @@ function Taking({
               onAnswered={onAnswered}
             />
           )}
+          </div>
           <div className="nav">
             <span>
               {step > 0 ? (
@@ -290,11 +383,25 @@ function Taking({
               ) : null}
             </span>
             <span className="keys">
-              <kbd>Enter</kbd> {t('keys.enter')}
+              <span>
+                <kbd>Enter</kbd> {t('keys.enter')}
+              </span>
+              {sides.map(({ module, key, label }) => (
+                <span key={module}>
+                  <kbd>{key.toUpperCase()}</kbd> {label[language].hint}
+                </span>
+              ))}
             </span>
-            <button type="button" className="btn" onClick={forward} disabled={holding} title={holding ? t('check.answer-first') : undefined}>
-              {step === total - 1 || again !== undefined ? t('finish') : t('continue')}
-            </button>
+            <span className="go">
+              {sides.map(({ module, label }) => (
+                <button key={module} type="button" className="side-toggle" aria-expanded={opened.has(module)} onClick={() => toggleSide(module)}>
+                  {opened.has(module) ? label[language].close : label[language].open}
+                </button>
+              ))}
+              <button type="button" className="btn" onClick={forward} disabled={holding} title={holding ? t('check.answer-first') : undefined}>
+                {step === total - 1 || again !== undefined ? t('finish') : t('continue')}
+              </button>
+            </span>
           </div>
           {sourcesLine}
         </div>

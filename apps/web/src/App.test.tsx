@@ -589,9 +589,10 @@ describe('the module contract for lessons', () => {
           <div>
             {Check === undefined ? <p>Ingen ritar kontroller</p> : <Check subject={subject} language={language} lessonId="energi-och-effekt" questions={['kwh-eller-kw']} onSettled={() => undefined} onAnswered={() => undefined} />}
             {sides.map(({ module, Side }) => (
-              <Side key={module} subject={subject} language={language} lessonId="energi-och-effekt" step={2} />
+              <Side key={module} subject={subject} language={language} lessonId="energi-och-effekt" step={2} selection={() => undefined} close={() => undefined} />
             ))}
             <p>Länk: {link?.(subject.id, 'energibalans') ?? 'ingen'}</p>
+            <p>Länk till steg: {link?.(subject.id, 'energibalans', 1) ?? 'ingen'}</p>
             <p>Markering: {marks === undefined ? 'ingen markerar' : (marks.get('energibalans')?.state ?? 'okänd')}</p>
           </div>
         );
@@ -601,8 +602,12 @@ describe('the module contract for lessons', () => {
   const answering: WebModule = {
     id: 'answering',
     steps: { check: ({ questions }) => <p>Kontroll med {questions.join(', ')}</p> },
-    LessonSide: ({ lessonId, step }) => <aside aria-label="Fixturanteckning">Anteckning i {lessonId} vid steg {step}</aside>,
-    lessonLink: (subjectId, lessonId) => `/subjects/${subjectId}/answering/${lessonId}`,
+    lessonSide: {
+      label: { sv: { open: 'Öppna', close: 'Stäng', hint: 'fixtur' }, en: { open: 'Open', close: 'Close', hint: 'fixture' } },
+      key: 'f',
+      Side: ({ lessonId, step }) => <aside aria-label="Fixturanteckning">Anteckning i {lessonId} vid steg {step}</aside>,
+    },
+    lessonLink: (subjectId, lessonId, step) => `/subjects/${subjectId}/answering/${lessonId}${step === undefined ? '' : `/${step + 1}`}`,
     lessonMarks: async () => new Map([['energibalans', { state: 'in-progress' as const }]]),
   };
 
@@ -612,6 +617,7 @@ describe('the module contract for lessons', () => {
     expect(await screen.findByText('Kontroll med kwh-eller-kw')).toBeTruthy();
     expect(screen.getByRole('complementary', { name: 'Fixturanteckning' }).textContent).toBe('Anteckning i energi-och-effekt vid steg 2');
     expect(screen.getByText('Länk: /subjects/example-subject/answering/energibalans')).toBeTruthy();
+    expect(screen.getByText('Länk till steg: /subjects/example-subject/answering/energibalans/2')).toBeTruthy();
     expect(await screen.findByText('Markering: in-progress')).toBeTruthy();
   });
 

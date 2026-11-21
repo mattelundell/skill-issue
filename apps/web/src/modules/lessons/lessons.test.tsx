@@ -1,5 +1,5 @@
 import type { LessonPosition, LessonView, Resume, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App.js';
@@ -360,6 +360,150 @@ describe('a lesson', () => {
     open('/subjects/example-subject/lessons/finns-inte');
 
     expect(await screen.findByRole('heading', { name: 'Lektionen finns inte' })).toBeTruthy();
+  });
+
+  it('opens at the step its address names, counted from 1, saves that as where the learner is, and leaves the lesson’s own address', async () => {
+    api.views = [view(1)];
+    open(`${LESSON_PAGE}/3`);
+
+    expect(await screen.findByText('Steg 3 av 3')).toBeTruthy();
+    // Asked for by address, the step is where the learner meant to go: no welcome back to step 2.
+    expect(screen.queryByRole('note')).toBeNull();
+    await vi.waitFor(() => expect(api.saved).toEqual([{ path: POSITION, body: { step: 2, revision: 1, timeZone: 'Europe/Stockholm' } }]));
+    expect(window.location.pathname).toBe(LESSON_PAGE);
+  });
+
+  it('opens the last step when the address names one a reload has removed, and says so', async () => {
+    open(`${LESSON_PAGE}/7`);
+
+    expect(await screen.findByText('Steg 3 av 3')).toBeTruthy();
+    expect(screen.getByRole('note').textContent).toBe('Lektionen har bara 3 steg nu, så du är på det sista.Börja från början');
+  });
+
+  it('answers a step that is not a whole number from 1 with “no such lesson”', async () => {
+    for (const step of ['0', 'tre', '01']) {
+      open(`${LESSON_PAGE}/${step}`);
+      expect(await screen.findByRole('heading', { name: 'Lektionen finns inte' })).toBeTruthy();
+      cleanup();
+    }
+  });
+});
+
+describe('a lesson’s address', () => {
+  it('is the lesson’s own, and with a step counted from 0 names that step counted from 1, as the learner sees it', () => {
+    expect(lessonsModule.lessonLink?.('example-subject', 'energi-och-effekt')).toBe(LESSON_PAGE);
+    expect(lessonsModule.lessonLink?.('example-subject', 'energi-och-effekt', 0)).toBe(`${LESSON_PAGE}/1`);
+    expect(lessonsModule.lessonLink?.('example-subject', 'energi-och-effekt', 2)).toBe(`${LESSON_PAGE}/3`);
+  });
+});
+
+const toggle = (name: string): HTMLElement => screen.getByRole('button', { name });
+
+describe('what a module puts beside a lesson', () => {
+  const seen: { step: number; selection: string | undefined }[] = [];
+  const beside: WebModule = {
+    id: 'beside',
+    lessonSide: {
+      label: { sv: { open: 'Anteckna', close: 'Stäng anteckningen', hint: 'anteckning' }, en: { open: 'Take a note', close: 'Close the note', hint: 'note' } },
+      key: 'n',
+      Side: ({ lessonId, step, selection, close }) => (
+        <aside aria-label="Bredvid">
+          <p>
+            {lessonId} vid steg {step}
+          </p>
+          <button type="button" onClick={() => seen.push({ step, selection: selection() })}>
+            Ta markeringen
+          </button>
+          <button type="button" onClick={close}>
+            Stäng härifrån
+          </button>
+          <textarea aria-label="Skriv" />
+        </aside>
+      ),
+    },
+  };
+  beforeEach(() => {
+    seen.length = 0;
+  });
+
+  it('is closed until its button opens it, given the lesson and the step on screen, and its button closes it', async () => {
+    open(LESSON_PAGE, [lessonsModule, beside]);
+    await screen.findByText('Steg 1 av 3');
+
+    expect(screen.queryByRole('complementary', { name: 'Bredvid' })).toBeNull();
+    expect(toggle('Anteckna').getAttribute('aria-expanded')).toBe('false');
+
+    await userEvent.click(toggle('Anteckna'));
+    expect(screen.getByRole('complementary', { name: 'Bredvid' }).querySelector('p')?.textContent).toBe('energi-och-effekt vid steg 0');
+    expect(toggle('Stäng anteckningen').getAttribute('aria-expanded')).toBe('true');
+
+    await userEvent.click(continueButton());
+    expect(screen.getByRole('complementary', { name: 'Bredvid' }).querySelector('p')?.textContent).toBe('energi-och-effekt vid steg 1');
+
+    await userEvent.click(toggle('Stäng anteckningen'));
+    expect(screen.queryByRole('complementary', { name: 'Bredvid' })).toBeNull();
+  });
+
+  it('opens and closes with its key, names the key among the lesson’s, and does not take the key typed into a field', async () => {
+    open(LESSON_PAGE, [lessonsModule, beside]);
+    await screen.findByText('Steg 1 av 3');
+    expect(screen.getByText('N').parentElement?.textContent).toBe('N anteckning');
+
+    await userEvent.keyboard('n');
+    const side = screen.getByRole('complementary', { name: 'Bredvid' });
+
+    await userEvent.type(within(side).getByRole('textbox', { name: 'Skriv' }), 'nn');
+    expect(screen.getByRole('complementary', { name: 'Bredvid' })).toBeTruthy();
+    expect(within(side).getByRole('textbox', { name: 'Skriv' })).toHaveProperty('value', 'nn');
+
+    await userEvent.click(screen.getByText('Effekt'));
+    await userEvent.keyboard('N');
+    expect(screen.queryByRole('complementary', { name: 'Bredvid' })).toBeNull();
+  });
+
+  it('closes with Escape, even from a field inside it, and closes itself when it asks', async () => {
+    open(LESSON_PAGE, [lessonsModule, beside]);
+    await screen.findByText('Steg 1 av 3');
+    await userEvent.click(toggle('Anteckna'));
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Skriv' }), 'x{Escape}');
+    expect(screen.queryByRole('complementary', { name: 'Bredvid' })).toBeNull();
+
+    await userEvent.click(toggle('Anteckna'));
+    await userEvent.click(screen.getByRole('button', { name: 'Stäng härifrån' }));
+    expect(screen.queryByRole('complementary', { name: 'Bredvid' })).toBeNull();
+  });
+
+  it('is given the text selected in the step on screen, and nothing for a selection elsewhere', async () => {
+    open(LESSON_PAGE, [lessonsModule, beside]);
+    const word = await screen.findByText('Effekt');
+    await userEvent.click(toggle('Anteckna'));
+
+    // Pressed without a pointer, which would move the selection: the note pane reads it on a key.
+    const selected = window.getSelection();
+    selected?.selectAllChildren(word);
+    fireEvent.click(screen.getByRole('button', { name: 'Ta markeringen' }));
+    selected?.selectAllChildren(screen.getByText(/Lektionen bygger på/));
+    fireEvent.click(screen.getByRole('button', { name: 'Ta markeringen' }));
+    selected?.removeAllRanges();
+    fireEvent.click(screen.getByRole('button', { name: 'Ta markeringen' }));
+
+    expect(seen).toEqual([
+      { step: 0, selection: 'Effekt' },
+      { step: 0, selection: undefined },
+      { step: 0, selection: undefined },
+    ]);
+  });
+
+  it('without such a module, the lesson has no button for it and its key does nothing', async () => {
+    open(LESSON_PAGE);
+    await screen.findByText('Steg 1 av 3');
+
+    await userEvent.keyboard('n');
+
+    expect(screen.queryByRole('button', { name: 'Anteckna' })).toBeNull();
+    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(screen.queryByText('N')).toBeNull();
   });
 });
 
