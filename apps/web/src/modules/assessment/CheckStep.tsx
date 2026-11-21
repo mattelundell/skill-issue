@@ -9,8 +9,8 @@ import { fetchEarlierAnswers, fetchQuestions, postAnswer } from './api.js';
 import { AnswerInput, useWords } from './inputs.js';
 import { useMessages } from './messages.js';
 
-/** A check inside a lesson: each question answered and graded at once, with why, and where that comes from. */
-export function CheckStep({ subject, questions: ids, answeredAfter, onSettled, onAnswered }: CheckStepProps) {
+/** A check inside a lesson, or a question in a review: each question answered and graded at once, with why, and where that comes from. */
+export function CheckStep({ subject, questions: ids, setting = 'lesson-check', answeredAfter, onSettled, onAnswered }: CheckStepProps) {
   const { t } = useMessages();
   // Questions are read in the language the subject is shown in, as the lesson around them is; a step taken up again also reads what was answered in it.
   const load = useMemo(
@@ -70,6 +70,7 @@ export function CheckStep({ subject, questions: ids, answeredAfter, onSettled, o
           question={question}
           n={index + 1}
           total={questions.length}
+          setting={setting}
           graded={graded.get(question.id)}
           earlier={graded.has(question.id) ? undefined : earlier.get(question.id)}
           onGraded={record}
@@ -84,6 +85,7 @@ function AskedOne({
   question,
   n,
   total,
+  setting,
   graded,
   earlier,
   onGraded,
@@ -92,6 +94,7 @@ function AskedOne({
   readonly question: AskedQuestion;
   readonly n: number;
   readonly total: number;
+  readonly setting: 'lesson-check' | 'review';
   readonly graded: Graded | undefined;
   /** Answered before the learner left the step: shown with that answer, not asked again. */
   readonly earlier: EarlierAnswer | undefined;
@@ -110,7 +113,7 @@ function AskedOne({
       return;
     }
     setSending(true);
-    const result = await postAnswer(subject.id, question.id, answer, subject.language, Math.min(86_400_000, Math.max(0, Math.round(Date.now() - shownAt))));
+    const result = await postAnswer(subject.id, question.id, answer, subject.language, Math.min(86_400_000, Math.max(0, Math.round(Date.now() - shownAt))), setting);
     setSending(false);
     setFailed(result === undefined);
     if (result !== undefined) {

@@ -43,9 +43,9 @@ async function postJson<T>(path: string, body: unknown, parser: { safeParse(inpu
   }
 }
 
-/** One answer to a check, with how long it took from the question being shown. */
-export const postAnswer = async (subjectId: string, questionId: string, answer: GivenAnswer, language: string, durationMs: number): Promise<Graded | undefined> =>
-  postJson(`${base(subjectId)}/questions/${encodeURIComponent(questionId)}/answers?language=${encodeURIComponent(language)}`, { answer, durationMs, timeZone: learnerTimeZone() }, GradedSchema);
+/** One answer to a question asked on its own, with how long it took from the question being shown, and where it was asked. */
+export const postAnswer = async (subjectId: string, questionId: string, answer: GivenAnswer, language: string, durationMs: number, setting: 'lesson-check' | 'review'): Promise<Graded | undefined> =>
+  postJson(`${base(subjectId)}/questions/${encodeURIComponent(questionId)}/answers?language=${encodeURIComponent(language)}`, { answer, durationMs, timeZone: learnerTimeZone(), setting }, GradedSchema);
 
 export const startExam = async (subjectId: string, scope: ExamScope, language: string): Promise<Sitting | undefined> =>
   postJson(`${base(subjectId)}/exams?language=${encodeURIComponent(language)}`, { scope }, SittingSchema);

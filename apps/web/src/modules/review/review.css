@@ -1,0 +1,12 @@
+/* The review session: one question at a time on the sheet, in the lesson's visual language. */
+.review { max-width: 46rem; }
+.review-count { color: var(--graphite); font-size: 0.9rem; margin: 0 0 10px; }
+.review-step { padding: 26px 30px 22px; border-left: 6px solid var(--royal); }
+.review-kind { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--royal); font-weight: 600; margin: 0 0 6px; }
+.review-again { color: var(--warn); margin: 14px 0 0; font-weight: 600; }
+.review-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.review-hint { color: var(--graphite); font-size: 0.85rem; }
+.review-done .btn { margin-top: 12px; }
+@media (max-width: 40rem) {
+  .review-step { padding: 18px 16px 16px; }
+}
