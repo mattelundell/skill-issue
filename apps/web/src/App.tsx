@@ -38,11 +38,13 @@ export function App() {
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetchStatus(controller.signal).then((result) => {
+    const load = async (): Promise<void> => {
+      const result = await fetchStatus(controller.signal);
       if (!controller.signal.aborted) {
         setStatus(result);
       }
-    });
+    };
+    void load();
     return () => controller.abort();
   }, []);
 
@@ -83,7 +85,9 @@ export function App() {
         <p>{t('start.empty.body')}</p>
       </section>
 
-      <footer role="status">{statusMessage(status, t)}</footer>
+      <footer>
+        <output>{statusMessage(status, t)}</output>
+      </footer>
     </main>
   );
 }
