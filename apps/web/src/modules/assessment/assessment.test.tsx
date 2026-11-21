@@ -116,9 +116,21 @@ beforeEach(() => {
   });
 });
 
+/** The page's clock, which a test moves on by hand, so a time it reports is exact. */
+let clock = 1_800_000_000_000;
+
+beforeEach(() => {
+  clock = 1_800_000_000_000;
+  vi.spyOn(Date, 'now').mockImplementation(() => clock);
+});
+
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
+
+/** What the learning record keeps beside every answer sent: how long it took, and the learner's time zone. */
+const recorded = (answer: unknown, durationMs = 0) => ({ answer, durationMs, timeZone: 'Europe/Stockholm' });
 
 function open(path: string): void {
   window.history.replaceState(null, '', path);
@@ -141,9 +153,22 @@ describe('a check inside a lesson', () => {
 
     const feedback = await within(question).findByRole('status');
     expect(feedback.textContent?.replace(/\s*\n\s*/g, '')).toBe('Inte rätt.Rätt svar: kWEffekt mäts i watt.Källa: Exempelkälla (Exempelförlaget)');
-    expect(answersPosted()).toEqual([{ answer: { type: 'single-choice', option: 'a' } }]);
+    expect(answersPosted()).toEqual([recorded({ type: 'single-choice', option: 'a' })]);
     // Locked once graded: the fieldset disables every option in it.
     expect(within(question).getByRole('radio', { name: /kWh/ }).matches(':disabled')).toBe(true);
+  });
+
+  it('sends how long the question was on screen before the answer was sent', async () => {
+    api.questions = [ASKED['single-choice']];
+    api.graded = (questionId) => ({ questionId, correct: true, expected: { type: 'single-choice', option: 'b' }, explanation: 'Watt.', sources: [] });
+    open(LESSON);
+
+    const question = await screen.findByRole('region', { name: 'Vilken enhet anger effekt?' });
+    clock += 4200;
+    await userEvent.click(within(question).getByRole('radio', { name: /kW$/ }));
+    await userEvent.click(within(question).getByRole('button', { name: 'Svara' }));
+
+    await vi.waitFor(() => expect(answersPosted()).toEqual([recorded({ type: 'single-choice', option: 'b' }, 4200)]));
   });
 
   it('brings a wrong answer back once, after the last step, and then ends', async () => {
@@ -187,7 +212,7 @@ async function answered(type: AskedQuestion['type'], act: (question: HTMLElement
 
 describe('every question type’s input', () => {
   it('single choice sends the option chosen', async () => {
-    expect(await answered('single-choice', async (q) => userEvent.click(within(q).getByRole('radio', { name: /kW$/ })))).toEqual({ answer: { type: 'single-choice', option: 'b' } });
+    expect(await answered('single-choice', async (q) => userEvent.click(within(q).getByRole('radio', { name: /kW$/ })))).toEqual(recorded({ type: 'single-choice', option: 'b' }));
   });
 
   it('multiple choice sends every option ticked, and not one unticked again', async () => {
@@ -197,28 +222,28 @@ describe('every question type’s input', () => {
       await userEvent.click(within(q).getByRole('checkbox', { name: /Ventilation/ }));
       await userEvent.click(within(q).getByRole('checkbox', { name: /Elmätaren/ }));
     });
-    expect(sent).toEqual({ answer: { type: 'multiple-choice', options: ['a', 'b'] } });
+    expect(sent).toEqual(recorded({ type: 'multiple-choice', options: ['a', 'b'] }));
   });
 
   it('true or false sends the value chosen', async () => {
-    expect(await answered('true-false', async (q) => userEvent.click(within(q).getByRole('radio', { name: /Sant/ })))).toEqual({ answer: { type: 'true-false', value: true } });
+    expect(await answered('true-false', async (q) => userEvent.click(within(q).getByRole('radio', { name: /Sant/ })))).toEqual(recorded({ type: 'true-false', value: true }));
   });
 
   it('numeric sends the number typed, with a decimal comma', async () => {
-    expect(await answered('numeric', async (q) => userEvent.type(within(q).getByRole('textbox', { name: 'Svar i kWh' }), '6,5'))).toEqual({ answer: { type: 'numeric', value: 6.5 } });
+    expect(await answered('numeric', async (q) => userEvent.type(within(q).getByRole('textbox', { name: 'Svar i kWh' }), '6,5'))).toEqual(recorded({ type: 'numeric', value: 6.5 }));
   });
 
   it('short text sends the words typed', async () => {
-    expect(await answered('short-text', async (q) => userEvent.type(within(q).getByRole('textbox', { name: 'Ditt svar' }), 'k'))).toEqual({ answer: { type: 'short-text', text: 'k' } });
+    expect(await answered('short-text', async (q) => userEvent.type(within(q).getByRole('textbox', { name: 'Ditt svar' }), 'k'))).toEqual(recorded({ type: 'short-text', text: 'k' }));
   });
 
   it('ordering sends the order the learner made', async () => {
     const sent = await answered('ordering', async (q) => userEvent.click(within(q).getByRole('button', { name: 'Flytta upp: kWh' })));
-    expect(sent).toEqual({ answer: { type: 'ordering', items: ['kWh', 'MWh', 'GWh'] } });
+    expect(sent).toEqual(recorded({ type: 'ordering', items: ['kWh', 'MWh', 'GWh'] }));
   });
 
   it('ordering can be answered as shown, since every order is a whole answer', async () => {
-    expect(await answered('ordering', async () => undefined)).toEqual({ answer: { type: 'ordering', items: ['MWh', 'kWh', 'GWh'] } });
+    expect(await answered('ordering', async () => undefined)).toEqual(recorded({ type: 'ordering', items: ['MWh', 'kWh', 'GWh'] }));
   });
 
   it('matching waits for every pair, then sends them', async () => {
@@ -227,7 +252,7 @@ describe('every question type’s input', () => {
       expect(within(q).getByRole('button', { name: 'Svara' })).toHaveProperty('disabled', true);
       await userEvent.selectOptions(within(q).getByRole('combobox', { name: 'kilo' }), 'tusen');
     });
-    expect(sent).toEqual({ answer: { type: 'matching', pairs: [{ left: 'mega', right: 'miljon' }, { left: 'kilo', right: 'tusen' }] } });
+    expect(sent).toEqual(recorded({ type: 'matching', pairs: [{ left: 'mega', right: 'miljon' }, { left: 'kilo', right: 'tusen' }] }));
   });
 
   it('free recall shows the answer on request, and sends whether the learner knew it', async () => {
@@ -237,7 +262,7 @@ describe('every question type’s input', () => {
       expect(within(q).getByText('Tillförd energi är lika med bortförd.')).toBeTruthy();
       await userEvent.click(within(q).getByRole('radio', { name: 'Jag kunde det inte' }));
     });
-    expect(sent).toEqual({ answer: { type: 'free-recall', knew: false } });
+    expect(sent).toEqual(recorded({ type: 'free-recall', knew: false }));
   });
 
   it('reads numbers as a Swede or an Englishman types them, and nothing else', () => {
@@ -284,9 +309,37 @@ describe('an exam', () => {
 
     expect(await screen.findByRole('heading', { name: 'Godkänt' })).toBeTruthy();
     expect(screen.getByText('1 av 2 rätt. Godkänt vid 50 %.')).toBeTruthy();
-    expect(api.posted.find(({ path }) => path.endsWith(sitting.id))?.body).toEqual({ answers: [{ questionId: 'kwh-eller-kw', answer: { type: 'single-choice', option: 'b' } }] });
+    expect(api.posted.find(({ path }) => path.endsWith(sitting.id))?.body).toEqual({ answers: [{ questionId: 'kwh-eller-kw', answer: { type: 'single-choice', option: 'b' }, durationMs: 0 }], timeZone: 'Europe/Stockholm' });
     const review = [...document.querySelectorAll('.review li')].map((item) => item.querySelector('.given')?.textContent);
     expect(review).toEqual(['Ditt svar: kW', 'Inget svar']);
+  });
+
+  it('sends each answer with the time its question was on screen, over every visit to it', async () => {
+    api.sitting = sitting;
+    api.result = { sittingId: sitting.id, scope: sitting.scope, title: sitting.title, correct: 2, total: 2, passMark: 0.5, passed: true, review: [] };
+    open('/subjects/example-subject/assessment/lesson/energi-och-effekt');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Börja provet' }));
+    await screen.findByText('Fråga 1 av 2', { selector: '.stepcount' });
+    clock += 3000;
+    await userEvent.click(screen.getByRole('radio', { name: /kW$/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Nästa fråga' }));
+    clock += 5000;
+    await userEvent.click(screen.getByRole('radio', { name: /Sant/ }));
+    await userEvent.click(screen.getByRole('button', { name: /Föregående/ }));
+    clock += 1000;
+    await userEvent.click(screen.getByRole('button', { name: 'Nästa fråga' }));
+    clock += 500;
+    await userEvent.click(screen.getByRole('button', { name: 'Lämna in' }));
+
+    await screen.findByRole('heading', { name: 'Godkänt' });
+    expect(api.posted.find(({ path }) => path.endsWith(sitting.id))?.body).toEqual({
+      answers: [
+        { questionId: 'kwh-eller-kw', answer: { type: 'single-choice', option: 'b' }, durationMs: 4000 },
+        { questionId: 'effekt-ar-takt', answer: { type: 'true-false', value: true }, durationMs: 5500 },
+      ],
+      timeZone: 'Europe/Stockholm',
+    });
   });
 
   it('takes an ordering question as shown, without asking the page to draw itself over and over', async () => {

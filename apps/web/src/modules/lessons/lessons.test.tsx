@@ -124,13 +124,13 @@ describe('a lesson', () => {
     expect(await screen.findByText('Effekt')).toBeTruthy();
     expect(screen.getByText('Steg 1 av 3')).toBeTruthy();
     expect(screen.queryByRole('note')).toBeNull();
-    await vi.waitFor(() => expect(api.saved).toEqual([{ path: POSITION, body: { step: 0, revision: 1 } }]));
+    await vi.waitFor(() => expect(api.saved).toEqual([{ path: POSITION, body: { step: 0, revision: 1, timeZone: 'Europe/Stockholm' } }]));
 
     await userEvent.click(continueButton());
 
     expect(screen.getByText('Steg 2 av 3')).toBeTruthy();
     expect(screen.getByText('Exempel')).toBeTruthy();
-    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 1, revision: 1 } }));
+    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 1, revision: 1, timeZone: 'Europe/Stockholm' } }));
   });
 
   it('opens a lesson left midway at that step and says so once', async () => {
@@ -155,7 +155,7 @@ describe('a lesson', () => {
 
     await userEvent.click(within(bar).getByRole('button', { name: 'Gå tillbaka till steg 1' }));
     expect(screen.getByText('Steg 1 av 3')).toBeTruthy();
-    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 0, revision: 1 } }));
+    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 0, revision: 1, timeZone: 'Europe/Stockholm' } }));
   });
 
   it('draws an example’s image from the subject’s files', async () => {
@@ -234,7 +234,7 @@ describe('a lesson', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Avsluta lektionen' }));
 
     expect(screen.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeTruthy();
-    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1 } }));
+    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1, timeZone: 'Europe/Stockholm' } }));
   });
 
   it('goes straight to the end when every question was answered right', async () => {
@@ -273,7 +273,7 @@ describe('a lesson', () => {
 
     expect(screen.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Nästa lektion: Enhetsprefix' }).getAttribute('href')).toBe('/subjects/example-subject/lessons/enhetsprefix');
-    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1 } }));
+    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1, timeZone: 'Europe/Stockholm' } }));
   });
 
   it('goes on with Enter', async () => {
@@ -292,7 +292,7 @@ describe('a lesson', () => {
 
     await vi.waitFor(() => expect(screen.getByRole('note').textContent).toContain('Lektionen har ändrats sedan du var här. Du fortsätter på steg 2'));
     expect(api.requested.filter((path) => path.startsWith('/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt?'))).toHaveLength(2);
-    await vi.waitFor(() => expect(api.saved.map(({ body }) => body)).toEqual([{ step: 0, revision: 1 }, { step: 1, revision: 2 }]));
+    await vi.waitFor(() => expect(api.saved.map(({ body }) => body)).toEqual([{ step: 0, revision: 1, timeZone: 'Europe/Stockholm' }, { step: 1, revision: 2, timeZone: 'Europe/Stockholm' }]));
   });
 
   it('when the server keeps refusing a save as stale, fetches the lesson again only once and says the save failed', async () => {

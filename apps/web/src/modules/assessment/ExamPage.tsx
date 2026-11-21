@@ -1,5 +1,5 @@
 import type { ExamResult, ExamScope, GivenAnswer, Sitting, SubjectOutline } from '@skill-issue/contract';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { AreaFooterProps, LessonEndProps, PageProps } from '../../shell/contract.js';
 import { Markdown } from '../../shell/markdown.js';
 import { Link, subjectPath } from '../../shell/router.js';
@@ -26,6 +26,35 @@ export function ExamPage({ subject, path }: PageProps) {
   return <Exam key={path.join('/')} subject={subject} scope={found.scope} title={found.title} areaTitle={found.area} />;
 }
 
+/**
+ * How long each question has been on screen, over every visit to it: the
+ * learning record's "how long it took" for an exam answer, since the learner
+ * moves back and forth. Keyed by sitting and question, so a retake starts at nothing.
+ */
+function useTimeOnScreen(showing: string | undefined): (key: string) => number {
+  const spent = useRef(new Map<string, number>());
+  const since = useRef<{ readonly key: string; readonly at: number } | undefined>(undefined);
+  useEffect(() => {
+    if (showing === undefined) {
+      return undefined;
+    }
+    const totals = spent.current;
+    const shownAt = Date.now();
+    since.current = { key: showing, at: shownAt };
+    return () => {
+      totals.set(showing, (totals.get(showing) ?? 0) + Date.now() - shownAt);
+      since.current = undefined;
+    };
+  }, [showing]);
+  return useCallback((key: string) => {
+    const now = since.current;
+    const total = (spent.current.get(key) ?? 0) + (now?.key === key ? Date.now() - now.at : 0);
+    return Math.min(86_400_000, Math.max(0, Math.round(total)));
+  }, []);
+}
+
+const timeKey = (sittingId: string, questionId: string): string => `${sittingId}/${questionId}`;
+
 type Stage =
   | { readonly kind: 'intro'; readonly failed: boolean }
   | { readonly kind: 'starting' }
@@ -35,6 +64,8 @@ type Stage =
 function Exam({ subject, scope, title, areaTitle }: { readonly subject: SubjectOutline; readonly scope: ExamScope; readonly title: string; readonly areaTitle: string }) {
   const { t, tc } = useMessages();
   const [stage, setStage] = useState<Stage>({ kind: 'intro', failed: false });
+  const shown = stage.kind === 'sitting' ? stage.sitting.questions[stage.at] : undefined;
+  const timeOnScreen = useTimeOnScreen(stage.kind === 'sitting' && shown !== undefined ? timeKey(stage.sitting.id, shown.id) : undefined);
   const home = subjectPath(subject.id);
   const label = scope.kind === 'lesson' ? t('exam.lesson') : t('exam.area');
   useEffect(() => {
@@ -89,7 +120,7 @@ function Exam({ subject, scope, title, areaTitle }: { readonly subject: SubjectO
   const unanswered = sitting.questions.filter((each) => !answers.has(each.id)).length;
   const submit = async (): Promise<void> => {
     setStage({ ...stage, handing: true, failed: false });
-    const result = await handIn(subject.id, sitting.id, [...answers].map(([questionId, answer]) => ({ questionId, answer })));
+    const result = await handIn(subject.id, sitting.id, [...answers].map(([questionId, answer]) => ({ questionId, answer, durationMs: timeOnScreen(timeKey(sitting.id, questionId)) })));
     setStage(result === undefined ? { ...stage, handing: false, failed: true } : { kind: 'result', result });
   };
   return (
