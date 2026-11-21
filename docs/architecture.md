@@ -65,7 +65,7 @@ A module is a folder. It declares itself through one manifest and may contribute
 
 - API routes, mounted under its own prefix
 - database migrations for tables it owns
-- pages and navigation entries in the browser app
+- what it shows in the browser app — see "The browser side" below
 - commands in the command-line tool
 - handlers for events in the learning record
 - message catalogues for its interface text
@@ -76,6 +76,22 @@ Rules for modules:
 - A module owns its tables. No other module reads or writes them.
 - Modules meet through the core: the catalogue for content, the learning record for what happened. Assessment appends an answer; review reads it. Neither knows the other exists.
 - Removing a module's folder removes the function and breaks nothing else. A test asserts this for every module.
+
+### The browser side
+
+The browser app is a shell that draws two screens — the start screen and a subject's home — and names no module. Everything a module shows on them it contributes through its browser manifest, listed in one file in the browser app, so removing the module removes all of it. A module may contribute:
+
+| Contribution | Where it appears | For example |
+|---|---|---|
+| a page, with its tab | a tab beside the subject's overview; the page at `/subjects/<subject>/<module>` | the source library, the notes browser |
+| blocks on the subject home | `lead`, above the path, or `side`, in the column beside it | what is due today; a count of notes |
+| figures on a start-screen row | beside each subject's title | reviews due, share mastered |
+| a resume panel | above the start screen's rows | where the learner left off |
+| lesson marks | on each lesson in the path | not started, in progress, passed, mastered |
+
+Lesson marks are the one contribution several modules give for the same thing: one module knows a lesson was started, another that its exam was passed. The shell shows the furthest state any module gives, and a lesson no marking module names as not started. With no marking module at all, the path is drawn without states, rather than claiming every lesson is untouched. A module whose marks cannot be read is left out, and the others still show.
+
+The shell owns what needs no module: the subject list and each subject's path, read from the catalogue through the content endpoints, the interface language, and the states for a server or database that cannot be reached and a subject that does not exist. A loaded subject appears without a restart, because the start screen asks again every 30 seconds and whenever the tab is shown.
 
 ### Modules in the first version
 
