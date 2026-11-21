@@ -9,7 +9,7 @@
 .lesson-title { font-family: var(--title); font-weight: 600; font-size: 2.1rem; letter-spacing: -0.01em; margin-top: 6px; }
 
 .stepbar { display: flex; gap: 5px; margin: 14px 0 0; padding: 0; list-style: none; }
-.stepbar li { flex: 1; height: 8px; border-radius: 4px; background: var(--grid); }
+.stepbar li { flex: 1; height: 8px; border-radius: 4px; background: var(--rule); }
 .stepbar li.done { background: var(--royal); }
 .stepbar li.now { background: var(--royal); box-shadow: 0 0 0 3px var(--royal-wash); }
 .stepbar li button { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 4px; }

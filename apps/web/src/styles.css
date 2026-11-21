@@ -130,7 +130,7 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .resume h2 { font-family: var(--title); font-weight: 600; font-size: 1.9rem; }
 .resume .lesson { font-size: 1.15rem; margin: 8px 0 0; }
 .steps { display: flex; gap: 4px; margin-top: 12px; }
-.steps i { width: 22px; height: 6px; border-radius: 3px; background: var(--grid); }
+.steps i { width: 22px; height: 6px; border-radius: 3px; background: var(--rule); }
 .steps i.on { background: var(--royal); }
 .resume .btn { padding: 12px 26px; font-size: 1.05rem; }
 .alldue { margin: 14px 0 0; color: var(--graphite); }
