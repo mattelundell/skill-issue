@@ -21,6 +21,8 @@ One person who wants to learn a subject properly on their own, in sessions of te
 
 A list of subjects, each with its mastery, the number of reviews due and the lesson you were last in. One primary action per subject: **Continue**. An empty installation explains how to load a first subject.
 
+Under the lesson you were last in, one line gives the questions due in every subject together and about how long they take, with **Repetera allt** leading into one session of them all. With one subject holding them, the line names it — the only place an installation of one subject sees its figure while that subject's row is hidden behind the lesson offered above. Nothing is said when nothing is due.
+
 ### Subject home
 
 - **Due today** — the review queue, with a count and an estimate of the time it takes.
@@ -55,7 +57,7 @@ The start screen offers the lesson you were last in, if it is unfinished, or els
 
 ### Review
 
-One question at a time from what is due across the subject — or across all subjects. Answer, see the explanation, continue. A session ends when the queue is empty or when you stop; stopping early is fine and the rest stays due.
+One question at a time from what is due across the subject — or across all subjects, at `/review`, where the most overdue comes first whichever subject holds it, and each question says which subject it is from. Answer, see the explanation, continue. A session ends when the queue is empty or when you stop; stopping early is fine and the rest stays due.
 
 A question answered wrongly returns later in the same session, behind the next three questions, or at the end when fewer are left; the session is over when each of its questions has been answered right once.
 

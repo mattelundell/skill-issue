@@ -10,3 +10,6 @@
 @media (max-width: 40rem) {
   .review-step { padding: 18px 16px 16px; }
 }
+/* The line under the start screen's resume panel: what is due in every subject. */
+.alldue { margin: 14px 0 0; color: var(--graphite); }
+.alldue a { color: var(--royal); font-weight: 600; }

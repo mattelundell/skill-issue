@@ -34,6 +34,13 @@ const sv = {
   'page.nothing.fresh': 'Ta en lektion, så finns det snart något att repetera.',
   'page.no-checks': 'Här ställs frågorna när modulen för bedömning finns.',
   'home': 'Till ämnet',
+  'all.due.one': '{count} fråga att repetera',
+  'all.due.other': '{count} frågor att repetera',
+  'all.in-one': 'i {subject}',
+  'all.in-many': 'i {count} ämnen',
+  'all.action': 'Repetera allt',
+  'all.kind': 'Repetition · {subject}',
+  'all.home': 'Till dina ämnen',
 } as const;
 
 const en: Readonly<Record<keyof typeof sv, string>> = {
@@ -70,6 +77,13 @@ const en: Readonly<Record<keyof typeof sv, string>> = {
   'page.nothing.fresh': 'Take a lesson, and there will soon be something to review.',
   'page.no-checks': 'The questions are asked here once the assessment module is present.',
   'home': 'To the subject',
+  'all.due.one': '{count} question to review',
+  'all.due.other': '{count} questions to review',
+  'all.in-one': 'in {subject}',
+  'all.in-many': 'in {count} subjects',
+  'all.action': 'Review everything',
+  'all.kind': 'Review · {subject}',
+  'all.home': 'To your subjects',
 };
 
 export const catalogues = { sv, en };
