@@ -13,7 +13,7 @@ import './lessons.css';
 export const lessonsModule: WebModule = {
   id: 'lessons',
   page: { Page: LessonPage },
-  lessonLink: (subjectId, lessonId) => subjectPath(subjectId, 'lessons', [lessonId]),
+  lessonLink: (subjectId, lessonId, step) => subjectPath(subjectId, 'lessons', step === undefined ? [lessonId] : [lessonId, String(step + 1)]),
   homeBlocks: [{ placement: 'lead', Block: ContinueBlock }],
   ResumePanel,
   startedSubjects: async (signal) => {

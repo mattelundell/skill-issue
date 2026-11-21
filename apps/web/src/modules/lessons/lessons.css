@@ -35,7 +35,10 @@
 .lesson .placeholder { padding: 16px 18px; border: 1px dashed var(--rule); border-radius: 8px; color: var(--graphite); max-width: 36rem; margin: 0; }
 
 .lesson .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-.lesson .keys { color: var(--graphite); font-size: 0.85rem; }
+.lesson .keys { color: var(--graphite); font-size: 0.85rem; display: flex; gap: 14px; }
+.lesson .nav .go { display: flex; gap: 14px; align-items: center; }
+.side-toggle { font: inherit; font-size: 0.9rem; color: var(--royal); font-weight: 600; background: none; border: 0; cursor: pointer; padding: 0; }
+.side-toggle:focus-visible { outline: 2px solid var(--royal); outline-offset: 3px; border-radius: 2px; }
 .lesson kbd { font: 0.78rem var(--mono, ui-monospace, monospace); color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
 .lesson-sources { margin-top: 18px; font-size: 0.9rem; color: var(--graphite); }
 .lesson-sources a { color: var(--royal); font-weight: 600; }

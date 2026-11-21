@@ -91,12 +91,12 @@ The browser app is a shell that draws two screens — the start screen and a sub
 | a line across every subject | under the resume panels and above the rows, whether or not a panel shows | how many questions are due in all subjects, with a way into one session of them |
 | which subjects are begun | each start-screen row's action: "Fortsätt" where begun, "Börja" where not, "Öppna" when no module says | the subjects with a lesson begun |
 | lesson marks, in the interface language | on each lesson in the path, and wherever another module lists lessons | not started, in progress, passed, mastered |
-| a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names | the lessons module's page for one lesson |
+| a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names; given a step, the address opens the lesson at that step | the lessons module's page for one lesson; `/<step>` below it, counted from 1, as a note links back to where it was written |
 | a source's address | each source a lesson rests on becomes a link | the reader's page for one source |
 | how a step type is drawn | inside a lesson, by the module that owns the step; a check reports each answer, so the lesson asks a wrong one once more after its last step. Told where the pass through the lesson began, a check taken up again shows what was answered in it; a review draws its questions through the same contribution, one at a time, told they are a review | a check step, drawn and graded by assessment |
 | something at a lesson's end | under the lesson's summary, once it is gone through | the offer to sit the lesson's exam |
 | something at an area's foot | at the foot of each area on the path, whatever the learner has taken, since nothing is locked | the area's exam |
-| something beside a lesson | next to the step on screen | the note pane |
+| something beside a lesson | next to the step on screen, closed until the learner opens it with its button under the step or its key, and closed again with either or with Escape; it is told the step on screen and can ask for the text selected in that step | the note pane, which quotes the selection |
 
 Lesson marks are the one contribution several modules give for the same thing: one module knows a lesson was started, another that its exam was passed. The shell shows the furthest state any module gives, and a lesson no marking module names as not started. With no marking module at all, the path is drawn without states, rather than claiming every lesson is untouched. A module whose marks cannot be read is left out, and the others still show.
 

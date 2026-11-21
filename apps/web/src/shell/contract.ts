@@ -97,12 +97,19 @@ export interface WebModule {
   readonly startedSubjects?: (signal: AbortSignal) => Promise<ReadonlySet<string>>;
   /** The address of one source, for every module that names a source to link it. One module shows sources. */
   readonly sourceLink?: (subjectId: string, sourceId: string) => string;
-  /** The address of one lesson, for every module that names a lesson to link it. One module draws lessons. */
-  readonly lessonLink?: (subjectId: string, lessonId: string) => string;
+  /**
+   * The address of one lesson, for every module that names a lesson to link it;
+   * given a step, counted from 0, the lesson opens at that step. One module draws lessons.
+   */
+  readonly lessonLink?: (subjectId: string, lessonId: string, step?: number) => string;
   /** How a step type is drawn inside a lesson, by the module that owns it: a check, by the module that grades answers. */
   readonly steps?: { readonly check?: ComponentType<CheckStepProps> };
-  /** Something beside a lesson as it is taken, such as the note pane. */
-  readonly LessonSide?: ComponentType<LessonSideProps>;
+  /**
+   * Something beside a lesson as it is taken, such as the note pane. It is
+   * closed until the learner opens it, with its button under the step or its
+   * key, so a lesson keeps its full width for whoever does not want it.
+   */
+  readonly lessonSide?: LessonSide;
   /** Something at a lesson's end, such as the offer to sit its exam. */
   readonly LessonEnd?: ComponentType<LessonEndProps>;
   /** Something at the foot of each area on the subject's path, such as the area's exam. Nothing is locked: it is offered whatever the learner has taken. */
@@ -150,12 +157,26 @@ export interface AreaFooterProps {
   readonly area: OutlineArea;
 }
 
-/** What a contribution beside a lesson is given: the lesson and the step on screen. */
+/** A contribution beside a lesson, and how the learner opens and closes it. */
+export interface LessonSide {
+  /** The button's text when closed and when open, and the word after its key in the lesson's key hints. */
+  readonly label: Readonly<Record<Language, { readonly open: string; readonly close: string; readonly hint: string }>>;
+  /** One lower-case letter that opens and closes it, pressed outside a text field. */
+  readonly key: string;
+  readonly Side: ComponentType<LessonSideProps>;
+}
+
+/** What a contribution beside a lesson is given: the lesson and the step on screen, the text selected in that step, and a way to close itself. */
 export interface LessonSideProps {
   readonly subject: SubjectOutline;
   readonly language: Language;
   readonly lessonId: string;
+  /** The step on screen, counted from 0. */
   readonly step: number;
+  /** The text the learner has selected inside the step on screen, trimmed; undefined when nothing there is selected. */
+  readonly selection: () => string | undefined;
+  /** Closes it, as its button would. */
+  readonly close: () => void;
 }
 
 export type ModulesError =

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { mergeLessonMarks, type CheckStepProps, type LessonEndProps, type LessonMark, type LessonSideProps, type WebModule } from './contract.js';
+import { mergeLessonMarks, type CheckStepProps, type LessonEndProps, type LessonMark, type LessonSide, type WebModule } from './contract.js';
 import type { ComponentType } from 'react';
 import { useI18n } from './i18n.js';
 
@@ -9,11 +9,11 @@ import { useI18n } from './i18n.js';
  * draws a check — and never names the module that answers.
  */
 interface Contributions {
-  readonly lessonLink: ((subjectId: string, lessonId: string) => string) | undefined;
+  readonly lessonLink: WebModule['lessonLink'];
   readonly sourceLink: ((subjectId: string, sourceId: string) => string) | undefined;
   readonly markers: readonly NonNullable<WebModule['lessonMarks']>[];
   readonly CheckStep: ComponentType<CheckStepProps> | undefined;
-  readonly lessonSides: readonly { readonly module: string; readonly Side: ComponentType<LessonSideProps> }[];
+  readonly lessonSides: readonly ({ readonly module: string } & LessonSide)[];
   readonly lessonEnds: readonly { readonly module: string; readonly End: ComponentType<LessonEndProps> }[];
 }
 
@@ -29,7 +29,7 @@ export function ContributionsProvider({ modules, children }: { readonly modules:
       sourceLink: modules.find(({ sourceLink }) => sourceLink !== undefined)?.sourceLink,
       markers: modules.flatMap(({ lessonMarks }) => (lessonMarks === undefined ? [] : [lessonMarks])),
       CheckStep: modules.find(({ steps }) => steps?.check !== undefined)?.steps?.check,
-      lessonSides: modules.flatMap(({ id, LessonSide }) => (LessonSide === undefined ? [] : [{ module: id, Side: LessonSide }])),
+      lessonSides: modules.flatMap(({ id, lessonSide }) => (lessonSide === undefined ? [] : [{ module: id, ...lessonSide }])),
       lessonEnds: modules.flatMap(({ id, LessonEnd }) => (LessonEnd === undefined ? [] : [{ module: id, End: LessonEnd }])),
     }),
     [modules],
@@ -38,7 +38,7 @@ export function ContributionsProvider({ modules, children }: { readonly modules:
 }
 
 /** The address of a lesson, or undefined when no module draws lessons, so a caller names the lesson without linking it. */
-export function useLessonLink(): ((subjectId: string, lessonId: string) => string) | undefined {
+export function useLessonLink(): WebModule['lessonLink'] {
   return useContext(ContributionsContext).lessonLink;
 }
 
@@ -52,8 +52,8 @@ export function useCheckStep(): ComponentType<CheckStepProps> | undefined {
   return useContext(ContributionsContext).CheckStep;
 }
 
-/** What modules put beside a lesson, such as the note pane. */
-export function useLessonSides(): readonly { readonly module: string; readonly Side: ComponentType<LessonSideProps> }[] {
+/** What modules put beside a lesson, such as the note pane, each with how it is opened. */
+export function useLessonSides(): readonly ({ readonly module: string } & LessonSide)[] {
   return useContext(ContributionsContext).lessonSides;
 }
 
