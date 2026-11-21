@@ -44,8 +44,10 @@ export function readZip(archive: Uint8Array, limits: PackLimits = DEFAULT_LIMITS
   let entries: Record<string, Uint8Array>;
   try {
     entries = unzipSync(archive, {
-      // Runs before an entry is inflated. Inflation writes into a buffer of the
-      // declared size and never grows it, so bounding the declared sizes bounds memory.
+      // Runs before an entry is unpacked. A deflated entry is inflated into a buffer
+      // of its declared unpacked size that never grows; a stored entry is copied by
+      // its declared compressed size. Bounding the larger of the two bounds memory,
+      // whichever of them an archive lies about.
       filter: (entry) => {
         // Safety first: ".." also starts with a dot, and must be refused, not skipped as clutter.
         const name = entry.name.endsWith('/') ? entry.name.slice(0, -1) : entry.name;
@@ -56,10 +58,11 @@ export function readZip(archive: Uint8Array, limits: PackLimits = DEFAULT_LIMITS
         if (entry.name.endsWith('/') || isClutter(name)) {
           return false;
         }
+        const bytes = Math.max(entry.originalSize, entry.size);
         count += 1;
-        total += entry.originalSize;
-        if (entry.originalSize > limits.maxFileBytes) {
-          faults.push(fault('pack-too-large', entry.name, null, '', `a file of at most ${limits.maxFileBytes} bytes`, `${entry.originalSize} bytes`));
+        total += bytes;
+        if (bytes > limits.maxFileBytes) {
+          faults.push(fault('pack-too-large', entry.name, null, '', `a file of at most ${limits.maxFileBytes} bytes`, `${bytes} bytes`));
           return false;
         }
         return count <= limits.maxFiles && total <= limits.maxTotalBytes;
