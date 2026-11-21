@@ -459,12 +459,21 @@ describe('the module contract for lessons', () => {
     await vi.waitFor(() => expect(rows()).toEqual([['example-subject', 'Öppna'], ['cra', 'Öppna'], ['statistik', 'Öppna']]));
   });
 
-  it('gives a page without a label no tab, and still opens it at its address', async () => {
-    const quiet: WebModule = { id: 'quiet', page: { Page: ({ path }) => <p>Tyst sida vid {path.join('/')}</p> } };
+  it('gives a page without a label no tab, and draws it alone at its address, without the subject’s heading or tabs', async () => {
+    const quiet: WebModule = { id: 'quiet', page: { Page: ({ path }) => <h1>Tyst sida vid {path.join('/')}</h1> } };
     open('/subjects/example-subject/quiet/energi-och-effekt', [quiet]);
 
-    expect(await screen.findByText('Tyst sida vid energi-och-effekt')).toBeTruthy();
-    expect(within(screen.getByRole('navigation', { name: 'Ämnet' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Översikt']);
+    expect(await screen.findByRole('heading', { level: 1 })).toHaveProperty('textContent', 'Tyst sida vid energi-och-effekt');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(screen.queryByRole('navigation', { name: 'Ämnet' })).toBeNull();
+  });
+
+  it('keeps the tabs on the overview with only the labelled pages in them', async () => {
+    const quiet: WebModule = { id: 'quiet', page: { Page: () => <p>Tyst sida</p> } };
+    open('/subjects/example-subject', [quiet]);
+
+    const tabs = await screen.findByRole('navigation', { name: 'Ämnet' });
+    expect(within(tabs).getAllByRole('link').map((link) => link.textContent)).toEqual(['Översikt']);
   });
 
   it('links each lesson on the path when a module gives lessons an address, and names them only when none does', async () => {

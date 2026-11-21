@@ -83,7 +83,7 @@ The browser app is a shell that draws two screens — the start screen and a sub
 
 | Contribution | Where it appears | For example |
 |---|---|---|
-| a page, with or without a tab | the page at `/subjects/<subject>/<module>`, and everything below that address is the page's own; with a label, a tab beside the subject's overview, without one it is reached from links | the source library, and one source at `/subjects/<subject>/reader/<source>`; one lesson at `/subjects/<subject>/lessons/<lesson>`, reached from the path |
+| a page, with or without a tab | the page at `/subjects/<subject>/<module>`, and everything below that address is the page's own; with a label, a tab beside the subject's overview and the subject's heading above it; without one it is reached from links and drawn alone, as a lesson is | the source library, and one source at `/subjects/<subject>/reader/<source>`; one lesson at `/subjects/<subject>/lessons/<lesson>`, reached from the path |
 | blocks on the subject home | `lead`, above the path, or `side`, in the column beside it | what is due today; a count of notes |
 | figures on a start-screen row | beside each subject's title | reviews due, share mastered |
 | a resume panel | above the start screen's rows; while it shows a subject, the other rows go compact under "Dina andra ämnen" without that subject | where the learner left off |

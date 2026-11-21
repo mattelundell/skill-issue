@@ -40,8 +40,9 @@ export interface WebModule {
   /**
    * A page within a subject, at `/subjects/<subject>/<id>`. Everything below that
    * address is the page's own, such as one source or one lesson. With a label it
-   * has a tab beside the overview; without one it is reached from links, as a
-   * lesson is from the path.
+   * has a tab beside the overview and is drawn under the subject's heading and
+   * tabs; without one it is reached from links, as a lesson is from the path,
+   * and is drawn alone, bringing its own way back to the subject.
    */
   readonly page?: {
     readonly label?: Readonly<Record<Language, string>>;
