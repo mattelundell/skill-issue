@@ -40,9 +40,10 @@ export async function migrate(
   db: Db,
   migrations: readonly Migration[],
 ): Promise<Result<MigrationRun, MigrationError>> {
-  const ordered = [...migrations].sort(
-    (a, b) => a.owner.localeCompare(b.owner) || a.name.localeCompare(b.name),
-  );
+  const ordered = migrations.toSorted((a, b) => {
+    const byOwner = a.owner.localeCompare(b.owner);
+    return byOwner === 0 ? a.name.localeCompare(b.name) : byOwner;
+  });
 
   try {
     const applied = await db.transaction(async (tx) => {

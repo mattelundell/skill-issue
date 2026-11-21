@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { catalogues, isLanguage, languages, translate } from './index.js';
 
+const placeholders = (text: string): readonly string[] =>
+  [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[0]).toSorted();
+
 describe('catalogues', () => {
   it.each(languages)('%s has no empty message', (language) => {
     const empty = Object.entries(catalogues[language]).filter(([, text]) => text.trim() === '');
@@ -8,7 +11,6 @@ describe('catalogues', () => {
   });
 
   it.each(languages)('%s uses the same placeholders as Swedish in every message', (language) => {
-    const placeholders = (text: string): readonly string[] => [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[0]).sort();
     const differing = Object.keys(catalogues.sv).filter((key) => {
       const k = key as keyof typeof catalogues.sv;
       return placeholders(catalogues[language][k]).join() !== placeholders(catalogues.sv[k]).join();
