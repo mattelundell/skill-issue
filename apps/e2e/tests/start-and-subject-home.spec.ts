@@ -65,7 +65,7 @@ test('the subject home is reached from the start screen, draws the path, survive
 
   await expect(page).toHaveURL('/subjects/example-subject');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Exempelämne');
-  await expect(page.getByRole('navigation', { name: 'Ämnet' }).getByRole('link')).toHaveText(['Översikt', 'Material', 'Repetition']);
+  await expect(page.getByRole('navigation', { name: 'Ämnet' }).getByRole('link')).toHaveText(['Översikt', 'Material', 'Repetition', 'Anteckningar']);
   await expect(page.getByText('2 områden')).toBeVisible();
   await expect(page.locator('section[data-area] h3')).toHaveText(['Grunder', 'Fördjupning']);
   await expect(page.locator('section[data-area="fordjupning"] .requires')).toHaveText('Bygger på Grunder.');

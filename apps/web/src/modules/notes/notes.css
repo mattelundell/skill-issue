@@ -1,0 +1,36 @@
+/* The notes module's own styles: the note pane beside a lesson and the Notes tab, in the B5 mockup's language. */
+
+/* the note pane */
+.notes-pane { padding: 16px 18px; }
+.notes-pane h2 { font-size: 1rem; }
+.notes-pane .at { color: var(--graphite); font-size: 0.85rem; margin: 2px 0 10px; }
+.notes-pane textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 0.95rem; line-height: 1.45; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; resize: vertical; }
+.notes-pane textarea:focus-visible { outline: 2px solid var(--royal); outline-offset: 1px; }
+.notes-pane .saved { display: block; color: var(--graphite); font-size: 0.82rem; margin-top: 6px; }
+.notes-pane .saved.failed { color: var(--warn); }
+.notes-pane .state-line { color: var(--graphite); font-size: 0.9rem; }
+.notes-pane .keys { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; color: var(--graphite); font-size: 0.82rem; }
+.notes-pane kbd { font: 0.76rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
+
+/* the Notes tab */
+.notes-toolbar { display: flex; margin-top: 22px; }
+.notes-search { flex: 1 1 18rem; display: flex; align-items: center; position: relative; }
+.notes-search input[type='search'] { width: 100%; font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 40px 8px 34px; }
+.notes-search svg { position: absolute; left: 11px; width: 16px; height: 16px; color: var(--graphite); pointer-events: none; }
+.notes-search kbd { position: absolute; right: 10px; font: 0.78rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--graphite); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; background: var(--paper); }
+.notes-count { display: block; margin: 16px 0 8px; color: var(--graphite); font-size: 0.9rem; }
+.notes-area { margin-top: 22px; }
+.notes-area > h2 { font-family: var(--title); font-weight: 600; font-size: 1.3rem; margin-bottom: 10px; }
+.notes-lesson { padding: 16px 22px; margin-top: 12px; }
+.notes-lesson h3 { font-size: 1.05rem; margin: 0 0 6px; }
+.notes-lesson ol { list-style: none; margin: 0; padding: 0; }
+.notes-lesson .note { padding: 12px 0; border-top: 1px solid var(--rule); }
+.notes-lesson .note:first-child { border-top: 0; }
+.note-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin: 0 0 4px; font-size: 0.9rem; color: var(--graphite); }
+.note-head a { color: var(--royal); font-weight: 600; }
+.note-head b { color: var(--ink); }
+.note-body { max-width: 40rem; overflow-wrap: anywhere; }
+.note-body > :first-child { margin-top: 0; }
+.note-body > :last-child { margin-bottom: 0; }
+.note-body p, .note-body ul, .note-body ol { margin: 0 0 8px; }
+.note-body blockquote { margin: 0 0 8px; padding: 4px 10px; border-left: 3px solid var(--rule); color: var(--graphite); }
