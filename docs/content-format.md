@@ -166,7 +166,7 @@ Common to every question: `id`, `type`, `concepts`, `sources`, `prompt`, `explan
 
 ## assets/
 
-Images a lesson shows: `.png`, `.jpg`, `.jpeg`, `.gif` and `.webp`. Not SVG, because an SVG file can carry script and the application serves assets from its own address. Markdown refers to one as `assets/<file>`, from the root of the pack, wherever the Markdown is.
+Images a lesson shows: `.png`, `.jpg`, `.jpeg`, `.gif` and `.webp`. Not SVG, because an SVG file can carry script and the application serves assets from its own address. Markdown refers to one as `assets/<file>`, from the root of the pack, wherever the Markdown is. The description in brackets is the image's alt text, and an optional title becomes its caption: `![Energiflöde genom en byggnad](assets/energiflode.png "Effekt över ett dygn")`.
 
 ## Rules the application enforces
 

@@ -1,8 +1,8 @@
-import { render } from '@testing-library/react';
+import { fireEvent, render } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Markdown, plainText } from './markdown.js';
 
-const drawn = (source: string): HTMLElement => render(<Markdown source={source} imageText={(alt) => `[Bild: ${alt}]`} />).container;
+const drawn = (source: string): HTMLElement => render(<Markdown source={source} subjectId="example-subject" imageText={(alt) => `[Bild: ${alt}]`} />).container;
 
 describe('Markdown', () => {
   it('draws headings, emphasis, lists and tables', () => {
@@ -30,8 +30,26 @@ describe('Markdown', () => {
     expect(container.textContent).toContain('klicka');
   });
 
-  it('shows an image as its text until the application can serve it', () => {
+  it('draws an image from the subject’s files, with its description as alt text and its title as caption', () => {
+    const container = drawn('![Energiflöde genom en byggnad](assets/energiflode.png "Effekt över ett dygn")');
+    const image = container.querySelector('img');
+    expect([image?.getAttribute('src'), image?.getAttribute('alt')]).toEqual(['/api/v1/content/subjects/example-subject/assets/energiflode.png', 'Energiflöde genom en byggnad']);
+    expect(container.querySelector('.caption')?.textContent).toBe('Effekt över ett dygn');
+  });
+
+  it('shows an image from anywhere but the subject’s files as its text', () => {
+    const container = drawn('![Logga](https://example.org/logga.png) ![Upp](assets/../subject.yaml)');
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.textContent?.trim()).toBe('[Bild: Logga] [Bild: Upp]');
+  });
+
+  it('shows an image that cannot be fetched as its text', () => {
     const container = drawn('![Energiflöde](assets/energiflode.png)');
+    const image = container.querySelector('img');
+    expect(image).not.toBeNull();
+
+    fireEvent.error(image as HTMLImageElement);
+
     expect(container.querySelector('img')).toBeNull();
     expect(container.textContent?.trim()).toBe('[Bild: Energiflöde]');
   });

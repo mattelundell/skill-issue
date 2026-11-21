@@ -58,7 +58,7 @@ export function Source({ subject, sourceId, pathTo }: Pick<PageProps, 'subject' 
       return (
         <>
           {back}
-          <Shown page={fetched.value} subjectLanguage={subject.language} />
+          <Shown page={fetched.value} subjectId={subject.id} subjectLanguage={subject.language} />
         </>
       );
     default: {
@@ -83,7 +83,7 @@ export function Missing({ sourceId, pathTo }: { readonly sourceId: string; reado
   );
 }
 
-function Shown({ page, subjectLanguage }: { readonly page: SourcePage; readonly subjectLanguage: string }) {
+function Shown({ page, subjectId, subjectLanguage }: { readonly page: SourcePage; readonly subjectId: string; readonly subjectLanguage: string }) {
   const { t } = useMessages();
   const { language } = useI18n();
   const { source } = page;
@@ -104,7 +104,7 @@ function Shown({ page, subjectLanguage }: { readonly page: SourcePage; readonly 
         )}
         <Origin source={source} />
         <div className="sheet prose">
-          <Markdown source={source.body} imageText={imageText} />
+          <Markdown source={source.body} subjectId={subjectId} imageText={imageText} />
           <p className="kind-note">{t(`kind.${source.kind}.long`)}</p>
         </div>
       </article>

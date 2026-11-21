@@ -258,3 +258,23 @@ main { display: block; }
 .side .home-block > .sheet, .side > .sheet { padding: 16px 18px; }
 .home-block + .home-block { margin-top: 14px; }
 .module-page { margin-top: 24px; }
+
+/* An image drawn from subject material, with its caption under it. */
+.figure {
+  display: block;
+  margin: 6px 0 16px;
+}
+.figure img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+}
+.figure .caption {
+  display: block;
+  color: var(--graphite);
+  font-size: 0.9rem;
+  margin-top: 6px;
+}
