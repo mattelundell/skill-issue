@@ -1,0 +1,10 @@
+id: grunder
+title: Grunder
+summary: Storheterna och enheterna resten av ämnet bygger på.
+requires: []
+lessons:
+  - energi-och-effekt
+  - enhetsprefix
+exam:
+  questions: 4
+  passMark: 0.75

@@ -1,0 +1,8 @@
+formatVersion: 1
+id: example-subject
+defaultLanguage: sv
+title: Exempelämne
+summary: Energi och effekt, enhetsprefix och energibalans — tillräckligt för att visa formatet.
+areas:
+  - grunder
+  - fordjupning

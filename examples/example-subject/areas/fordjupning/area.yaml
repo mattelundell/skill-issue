@@ -1,0 +1,9 @@
+id: fordjupning
+title: Fördjupning
+summary: Vart energin tar vägen i en byggnad.
+requires: [grunder]
+lessons:
+  - energibalans
+exam:
+  questions: 2
+  passMark: 0.5

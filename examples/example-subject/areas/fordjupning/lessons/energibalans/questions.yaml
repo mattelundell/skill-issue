@@ -1,0 +1,18 @@
+- id: vagar-ut
+  type: multiple-choice
+  concepts: [forluster]
+  sources: [exempelkalla]
+  prompt: Vilka vägar lämnar värme en byggnad?
+  options:
+    - { id: a, text: Genom fönster }
+    - { id: b, text: Med ventilationsluften }
+    - { id: c, text: Genom elmätaren }
+  answer: [a, b]
+  explanation: Värme leds ut genom klimatskärmen och följer med frånluften. Elmätaren mäter bara.
+- id: forklara-balans
+  type: free-recall
+  concepts: [energibalans]
+  sources: [exempelkalla]
+  prompt: Förklara med egna ord vad energibalans betyder för en byggnad.
+  answer: Den energi som tillförs är lika stor som den som lämnar byggnaden, räknat över tid.
+  explanation: Över ett år är tillförd och bortförd energi lika stora; skillnaden lagras inte.

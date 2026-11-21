@@ -1,0 +1,9 @@
+- id: effekt
+  term: Effekt
+  definition: Energi per tidsenhet. Mäts i watt (W).
+  alsoKnownAs: [power]
+  sources: [exempelkalla]
+- id: energi
+  term: Energi
+  definition: Förmågan att uträtta arbete. I byggnader mäts den oftast i kilowattimmar (kWh).
+  sources: [exempelkalla]

@@ -1,0 +1,25 @@
+- id: prefix-ordning
+  type: ordering
+  concepts: [si-prefix]
+  sources: [exempelkalla]
+  prompt: Ordna från minst till störst.
+  items: [kWh, MWh, GWh]
+  explanation: Kilo är tusen, mega en miljon, giga en miljard.
+- id: prefix-par
+  type: matching
+  concepts: [si-prefix]
+  sources: [exempelkalla]
+  prompt: Para ihop prefix och faktor.
+  pairs:
+    - { left: kilo, right: tusen }
+    - { left: mega, right: miljon }
+    - { left: giga, right: miljard }
+  explanation: Prefixen står för faktorer av tusen.
+- id: kilo-betyder
+  type: short-text
+  concepts: [si-prefix]
+  sources: [exempelkalla]
+  prompt: Vilken bokstav förkortar prefixet kilo?
+  accepted: [k]
+  caseSensitive: true
+  explanation: Kilo förkortas med litet k; stort K är kelvin.
