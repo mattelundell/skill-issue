@@ -82,12 +82,28 @@ test('gone through to its end, the lesson offers the next one, and says so on th
   await page.goto(LESSON);
   await page.getByRole('button', { name: 'Fortsätt' }).click();
   await expect(page.locator('.step-kind')).toHaveText('Kontroll');
-  await expect(page.locator('.placeholder')).toContainText('Här finns en kontroll med 2 frågor');
+  // The check holds the learner until both questions are answered; one answered wrong comes back before the end.
+  await expect(page.getByRole('button', { name: 'Avsluta lektionen' })).toBeDisabled();
+  const unit = page.locator('[data-question="kwh-eller-kw"]');
+  await unit.getByRole('radio', { name: /kWh$/ }).check();
+  await unit.getByRole('button', { name: 'Svara' }).click();
+  await expect(unit.locator('.feedback')).toContainText('Inte rätt.Rätt svar: kW');
+  const energy = page.locator('[data-question="berakna-energi"]');
+  await energy.getByRole('textbox', { name: 'Svar i kWh' }).fill('6');
+  await energy.getByRole('button', { name: 'Svara' }).click();
+  await expect(energy.locator('.feedback')).toContainText('Rätt.');
+
+  await page.getByRole('button', { name: 'Avsluta lektionen' }).click();
+  await expect(page.locator('.step-kind')).toHaveText('Igen');
+  await page.locator('[data-question="kwh-eller-kw"]').getByRole('radio', { name: /kW$/ }).check();
+  await page.locator('[data-question="kwh-eller-kw"]').getByRole('button', { name: 'Svara' }).click();
+  await expect(page.locator('[data-question="kwh-eller-kw"] .feedback')).toContainText('Rätt.');
 
   await page.getByRole('button', { name: 'Avsluta lektionen' }).click();
 
   await expect(page.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Nästa lektion: Enhetsprefix' })).toHaveAttribute('href', '/subjects/example-subject/lessons/enhetsprefix');
+  await expect(page.getByRole('link', { name: 'Skriv provet nu' })).toHaveAttribute('href', '/subjects/example-subject/assessment/lesson/energi-och-effekt');
   await page.getByRole('link', { name: 'Till ämnet' }).click();
   await expect(page.locator('li[data-lesson="energi-och-effekt"] .state-word')).toHaveText('Pågår, alla steg genomgångna');
   await expect(page.getByRole('heading', { name: 'Nästa lektion: Enhetsprefix' })).toBeVisible();
