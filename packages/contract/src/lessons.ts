@@ -70,6 +70,17 @@ export const LessonViewSchema = z.object({
   resumeAt: z.number().int().min(0),
   /** Whether the lesson has been reloaded changed since the learner was last in it. */
   changedSince: z.boolean(),
+  /**
+   * The checks of the pass through the lesson now under way, which began after
+   * the learner last reached its end. `answeredAfter` marks where in the
+   * learning record that pass began, so a check resumed midway shows what was
+   * already answered in it; `again` holds the questions answered wrong in it
+   * and not since answered right, which the lesson asks once more before it ends.
+   */
+  checks: z.object({
+    answeredAfter: z.number().int().min(0),
+    again: z.array(ItemIdSchema),
+  }),
 });
 export type LessonView = z.infer<typeof LessonViewSchema>;
 

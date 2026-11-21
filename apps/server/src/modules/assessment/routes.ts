@@ -2,6 +2,7 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import {
   AnswerRequestSchema,
   AskedQuestionsSchema,
+  EarlierAnswersSchema,
   ExamResultSchema,
   GradedSchema,
   ItemIdSchema,
@@ -106,6 +107,46 @@ export function assessmentRoutes({ db, catalogue, record }: ModuleContext): Open
       return c.json(noSubject(subjectId), 404);
     }
     return c.json({ subjectId, questions: shown.value.map(({ question }) => ask(question, randomShuffle)) }, 200);
+  });
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/subjects/{subjectId}/answers',
+    summary: 'The latest check answer to each question asked for, given after a row of the learning record, graded as it was.',
+    description:
+      'For a check step taken up again: `after` is where the pass through the lesson began, as the lesson gives it. An answer given to an earlier revision of the question than the one now shown is left out, so the question is asked afresh.',
+    request: { params: subjectParam, query: z.object({ ids: z.string(), after: z.string().optional(), language: LanguageSchema.optional() }) },
+    responses: {
+      200: { description: 'The answers, in the order the questions were asked for.', content: { 'application/json': { schema: EarlierAnswersSchema } } },
+      400: { description: 'The language is not a language code, or `after` is not a row number.', content: problemContent },
+      404: { description: 'No such subject.', content: problemContent },
+    },
+  });
+  routes.get('/subjects/:subjectId/answers', async (c) => {
+    const subjectId = c.req.param('subjectId');
+    const language = LanguageSchema.optional().safeParse(c.req.query('language'));
+    if (!language.success) {
+      return c.json(badLanguage, 400);
+    }
+    const after = z.coerce.number().int().min(0).safeParse(c.req.query('after') ?? '0');
+    if (!after.success) {
+      return c.json(problem(400, 'after must be a row number from 0'), 400);
+    }
+    const ids = (c.req.query('ids') ?? '').split(',').filter((id) => ItemIdSchema.safeParse(id).success);
+    const shown = await catalogue.questions(subjectId, ids, language.data);
+    if (!shown.ok) {
+      return c.json(noSubject(subjectId), 404);
+    }
+    const latest = await record.latestAnswers(subjectId, ids, { settings: ['lesson-check'], afterSeq: after.data });
+    const answers = shown.value.flatMap((found) => {
+      const answer = latest.get(found.question.id);
+      // The text the learner answered must be the text shown now; otherwise the question is asked afresh.
+      if (answer?.given === undefined || answer.question.language !== found.question.language || answer.question.revision !== found.revision) {
+        return [];
+      }
+      return [{ given: answer.given, graded: graded(found, answer.correct) }];
+    });
+    return c.json({ subjectId, answers }, 200);
   });
 
   routes.openAPIRegistry.registerPath({

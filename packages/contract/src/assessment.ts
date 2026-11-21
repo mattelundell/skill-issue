@@ -31,6 +31,10 @@ export const AskedQuestionSchema = z.discriminatedUnion('type', [
 ]);
 export type AskedQuestion = z.infer<typeof AskedQuestionSchema>;
 export type QuestionType = AskedQuestion['type'];
+export const QuestionTypeSchema = z.enum(['single-choice', 'multiple-choice', 'true-false', 'numeric', 'short-text', 'ordering', 'matching', 'free-recall']);
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
+// The list names every type a question is asked as, and nothing else: a type added to one and not the other does not compile.
+export const QUESTION_TYPES_MATCH: Same<QuestionType, z.infer<typeof QuestionTypeSchema>> = true;
 
 /** The learner's answer, in the shape of its question's type. */
 export const GivenAnswerSchema = z.discriminatedUnion('type', [
@@ -80,6 +84,14 @@ export const AnswerRequestSchema = z.strictObject({
   timeZone: TimeZoneSchema,
   setting: z.enum(['lesson-check', 'review']).optional(),
 });
+
+/** A check answer already given, as it is shown again when the learner comes back to its step. */
+export const EarlierAnswerSchema = z.object({ given: GivenAnswerSchema, graded: GradedSchema });
+export type EarlierAnswer = z.infer<typeof EarlierAnswerSchema>;
+
+/** The latest check answer to each question asked for, at the question's present revision; a question not answered since is left out. */
+export const EarlierAnswersSchema = z.object({ subjectId: ItemIdSchema, answers: z.array(EarlierAnswerSchema) });
+export type EarlierAnswers = z.infer<typeof EarlierAnswersSchema>;
 
 /** The questions a check step asks, by id, as asked. */
 export const AskedQuestionsSchema = z.object({ subjectId: ItemIdSchema, questions: z.array(AskedQuestionSchema) });

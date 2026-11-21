@@ -49,6 +49,7 @@ const view = (resumeAt: number, extra: Partial<LessonView> = {}): LessonView => 
   position: resumeAt === 0 ? null : { step: resumeAt, steps: 3, revision: 1, startedAt: '2026-11-20T10:00:00Z', updatedAt: '2026-11-20T10:05:00Z', finishedAt: null },
   resumeAt,
   changedSince: false,
+  checks: { answeredAfter: 0, again: [] },
   ...extra,
 });
 
@@ -235,6 +236,33 @@ describe('a lesson', () => {
 
     expect(screen.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeTruthy();
     await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1, timeZone: 'Europe/Stockholm' } }));
+  });
+
+  it('asks again after the last step what the record says was answered wrong before the learner left', async () => {
+    api.views = [view(2, { checks: { answeredAfter: 17, again: ['kwh-eller-kw'] } })];
+    const answered: { onSettled?: (done: boolean) => void; given: { questions: string[]; answeredAfter: number | undefined }[] } = { given: [] };
+    const grading: WebModule = {
+      id: 'grading',
+      steps: {
+        check: ({ questions, answeredAfter, onSettled }) => {
+          answered.onSettled = onSettled;
+          answered.given.push({ questions: [...questions], answeredAfter });
+          return <p>Frågor: {questions.join(', ')}</p>;
+        },
+      },
+    };
+    open(LESSON_PAGE, [lessonsModule, grading]);
+    expect(await screen.findByText('Frågor: kwh-eller-kw, berakna-energi')).toBeTruthy();
+    // The step is told where the pass began, so it can show what was answered in it.
+    expect(answered.given.at(-1)).toEqual({ questions: ['kwh-eller-kw', 'berakna-energi'], answeredAfter: 17 });
+
+    act(() => answered.onSettled?.(true));
+    await userEvent.click(screen.getByRole('button', { name: 'Avsluta lektionen' }));
+
+    expect(screen.getByText('Igen')).toBeTruthy();
+    expect(screen.getByText('Frågor: kwh-eller-kw')).toBeTruthy();
+    // The round asking again asks afresh: nothing earlier counts as its answer.
+    expect(answered.given.at(-1)).toEqual({ questions: ['kwh-eller-kw'], answeredAfter: undefined });
   });
 
   it('goes straight to the end when every question was answered right', async () => {

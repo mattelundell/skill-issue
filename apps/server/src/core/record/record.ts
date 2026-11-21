@@ -1,4 +1,4 @@
-import type { AnswerSetting, ExamScope, GivenAnswer, QuestionType } from '@skill-issue/contract';
+import { AnswerSettingSchema, GivenAnswerSchema, QuestionTypeSchema, type AnswerSetting, type ExamScope, type GivenAnswer, type QuestionType } from '@skill-issue/contract';
 import { z } from 'zod';
 import type { Db } from '../db.js';
 
@@ -47,6 +47,21 @@ export type RecordEvent =
       readonly result: { readonly correct: number; readonly total: number; readonly passMark: number; readonly passed: boolean };
     });
 
+/** An answer as the record holds it, with its place in the order rows were written. */
+export interface RecordedAnswer {
+  /** Rises with every row written: a later row always has a higher one. */
+  readonly seq: number;
+  readonly at: Date;
+  readonly timeZone: string;
+  readonly question: ItemAt;
+  readonly setting: AnswerSetting;
+  readonly questionType: QuestionType;
+  readonly options: number | undefined;
+  /** Undefined for an exam question left unanswered. */
+  readonly given: GivenAnswer | undefined;
+  readonly correct: boolean;
+}
+
 /** What the learner answered on the strength of one source. */
 export interface SourceHistory {
   readonly questions: number;
@@ -63,6 +78,46 @@ export interface LearningRecord {
   append(events: readonly RecordEvent[], tx?: Db): Promise<void>;
   /** The answers given to questions that cited a source at the time. */
   sourceHistory(subjectId: string, sourceId: string): Promise<SourceHistory>;
+  /** The latest answer to each of the subject's questions given in one of `settings` after row `afterSeq`, by question id. */
+  latestAnswers(
+    subjectId: string,
+    questionIds: readonly string[],
+    filter: { readonly settings: readonly AnswerSetting[]; readonly afterSeq: number },
+  ): Promise<ReadonlyMap<string, RecordedAnswer>>;
+  /** The row at which the learner last reached a lesson's end; 0 when they never have. */
+  lastFinished(subjectId: string, lessonId: string): Promise<number>;
+}
+
+const ANSWER_COLUMNS = 'seq, at, time_zone, subject_id, item_id, language, revision, setting, question_type, options, given, correct';
+
+const RecordedRowSchema = z.object({
+  seq: z.coerce.number().int(),
+  at: z.date(),
+  time_zone: z.string(),
+  subject_id: z.string(),
+  item_id: z.string(),
+  language: z.string(),
+  revision: z.number().int(),
+  setting: AnswerSettingSchema,
+  question_type: QuestionTypeSchema,
+  options: z.number().int().nullable(),
+  given: GivenAnswerSchema.nullable(),
+  correct: z.boolean(),
+});
+
+function recordedAnswer(row: unknown): RecordedAnswer {
+  const parsed = RecordedRowSchema.parse(row);
+  return {
+    seq: parsed.seq,
+    at: parsed.at,
+    timeZone: parsed.time_zone,
+    question: { subjectId: parsed.subject_id, id: parsed.item_id, language: parsed.language, revision: parsed.revision },
+    setting: parsed.setting,
+    questionType: parsed.question_type,
+    options: parsed.options ?? undefined,
+    given: parsed.given ?? undefined,
+    correct: parsed.correct,
+  };
 }
 
 const COLUMNS = [
@@ -144,6 +199,31 @@ export function createLearningRecord(db: Db): LearningRecord {
       );
       const row = rows[0];
       return { questions: z.number().parse(row?.['questions']), answers: z.number().parse(row?.['answers']) };
+    },
+
+    async latestAnswers(subjectId, questionIds, { settings, afterSeq }) {
+      if (questionIds.length === 0 || settings.length === 0) {
+        return new Map();
+      }
+      const rows = await db.query(
+        `SELECT DISTINCT ON (item_id) ${ANSWER_COLUMNS}
+           FROM record.event
+          WHERE kind = 'answer' AND subject_id = $1 AND item_id = ANY($2::text[]) AND setting = ANY($3::text[]) AND seq > $4
+          ORDER BY item_id, seq DESC`,
+        [subjectId, [...questionIds], [...settings], afterSeq],
+      );
+      return new Map(rows.map((row) => {
+        const answer = recordedAnswer(row);
+        return [answer.question.id, answer];
+      }));
+    },
+
+    async lastFinished(subjectId, lessonId) {
+      const rows = await db.query(
+        `SELECT coalesce(max(seq), 0) AS seq FROM record.event WHERE kind = 'lesson-finished' AND subject_id = $1 AND item_kind = 'lesson' AND item_id = $2`,
+        [subjectId, lessonId],
+      );
+      return z.coerce.number().int().parse(rows[0]?.['seq']);
     },
   };
 }

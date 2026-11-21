@@ -1,11 +1,13 @@
 import {
   API_PREFIX,
   AskedQuestionsSchema,
+  EarlierAnswersSchema,
   ExamResultSchema,
   GradedSchema,
   PassedSchema,
   SittingSchema,
   type AskedQuestions,
+  type EarlierAnswers,
   type ExamResult,
   type ExamScope,
   type GivenAnswer,
@@ -20,6 +22,10 @@ const base = (subjectId: string): string => `/assessment/subjects/${encodeURICom
 
 export const fetchQuestions = async (subjectId: string, ids: readonly string[], language: string, signal: AbortSignal): Promise<Fetched<AskedQuestions>> =>
   getJson(`${base(subjectId)}/questions?ids=${ids.map(encodeURIComponent).join(',')}&language=${encodeURIComponent(language)}`, AskedQuestionsSchema, signal);
+
+/** The latest check answers to these questions given after a row of the learning record: what a check step taken up again shows. */
+export const fetchEarlierAnswers = async (subjectId: string, ids: readonly string[], after: number, language: string, signal: AbortSignal): Promise<Fetched<EarlierAnswers>> =>
+  getJson(`${base(subjectId)}/answers?ids=${ids.map(encodeURIComponent).join(',')}&after=${String(after)}&language=${encodeURIComponent(language)}`, EarlierAnswersSchema, signal);
 
 export const fetchPassed = async (subjectId: string, signal: AbortSignal): Promise<Fetched<Passed>> => getJson(`${base(subjectId)}/passed`, PassedSchema, signal);
 

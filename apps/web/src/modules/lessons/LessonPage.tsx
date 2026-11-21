@@ -96,7 +96,8 @@ function Taking({
   // A check drawn by another module holds the learner until its questions are answered, per step.
   const [settled, setSettled] = useState<ReadonlySet<number>>(new Set());
   // Questions answered wrong and not since answered right; asked once more after the last step, before the end.
-  const [wrong, setWrong] = useState<ReadonlySet<string>>(new Set());
+  // Read back from the record, so a lesson left midway still asks them.
+  const [wrong, setWrong] = useState<ReadonlySet<string>>(() => new Set(view.checks.again));
   const [again, setAgain] = useState<{ readonly questions: readonly string[]; readonly settled: boolean }>();
   const onAnswered = useCallback((questionId: string, correct: boolean) => {
     setWrong((before) => {
@@ -274,6 +275,7 @@ function Taking({
               language={language}
               lessonId={lesson.id}
               step={current}
+              answeredAfter={view.checks.answeredAfter}
               CheckStep={CheckStep}
               onSettled={(done) => setSettled((before) => (done === before.has(step) ? before : done ? new Set(before).add(step) : new Set([...before].filter((each) => each !== step))))}
               onAnswered={onAnswered}
@@ -344,6 +346,7 @@ function StepCard({
   language,
   lessonId,
   step,
+  answeredAfter,
   CheckStep,
   onSettled,
   onAnswered,
@@ -352,6 +355,8 @@ function StepCard({
   readonly language: Language;
   readonly lessonId: string;
   readonly step: ShownStep;
+  /** Where in the learning record the pass under way began, so a check taken up again shows what was answered in it. */
+  readonly answeredAfter: number;
   readonly CheckStep: ReturnType<typeof useCheckStep>;
   readonly onSettled: (settled: boolean) => void;
   readonly onAnswered: (questionId: string, correct: boolean) => void;
@@ -366,7 +371,15 @@ function StepCard({
         {CheckStep === undefined ? (
           <p className="placeholder">{tc('check.placeholder', step.questions.length)}</p>
         ) : (
-          <CheckStep subject={subject} language={language} lessonId={lessonId} questions={step.questions} onSettled={onSettled} onAnswered={onAnswered} />
+          <CheckStep
+            subject={subject}
+            language={language}
+            lessonId={lessonId}
+            questions={step.questions}
+            answeredAfter={answeredAfter}
+            onSettled={onSettled}
+            onAnswered={onAnswered}
+          />
         )}
       </article>
     );
