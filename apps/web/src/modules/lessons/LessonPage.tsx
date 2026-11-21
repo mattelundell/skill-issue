@@ -1,9 +1,9 @@
 import type { LessonView, ShownStep, SubjectOutline } from '@skill-issue/contract';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Language } from '../../i18n/index.js';
 import { languageName } from '../../i18n/index.js';
-import type { PageProps } from '../../shell/contract.js';
-import { useCheckStep, useLessonSides, useSourceLink } from '../../shell/contributions.js';
+import type { CheckStepProps, PageProps } from '../../shell/contract.js';
+import { useCheckStep, useLessonEnds, useLessonSides, useSourceLink } from '../../shell/contributions.js';
 import { Markdown } from '../../shell/markdown.js';
 import { Link, subjectPath } from '../../shell/router.js';
 import { WithCode } from '../../shell/text.js';
@@ -95,7 +95,25 @@ function Taking({
   const [saveFailed, setSaveFailed] = useState(false);
   // A check drawn by another module holds the learner until its questions are answered, per step.
   const [settled, setSettled] = useState<ReadonlySet<number>>(new Set());
+  // Questions answered wrong and not since answered right; asked once more after the last step, before the end.
+  const [wrong, setWrong] = useState<ReadonlySet<string>>(new Set());
+  const [again, setAgain] = useState<{ readonly questions: readonly string[]; readonly settled: boolean }>();
+  const onAnswered = useCallback((questionId: string, correct: boolean) => {
+    setWrong((before) => {
+      if (correct === !before.has(questionId)) {
+        return before;
+      }
+      const after = new Set(before);
+      if (correct) {
+        after.delete(questionId);
+      } else {
+        after.add(questionId);
+      }
+      return after;
+    });
+  }, []);
   const CheckStep = useCheckStep();
+  const lessonEnds = useLessonEnds();
   const sides = useLessonSides();
   const home = subjectPath(subject.id);
 
@@ -131,12 +149,21 @@ function Taking({
   }, [lesson.subjectId, lesson.id, lesson.revision, view.resumeAt, refetchFor]);
 
   const current = lesson.steps[step];
-  const holding = current?.type === 'check' && CheckStep !== undefined && !settled.has(step);
+  const holding = again === undefined ? current?.type === 'check' && CheckStep !== undefined && !settled.has(step) : !again.settled;
   const forward = useCallback(() => {
-    if (!holding) {
+    if (holding) {
+      return;
+    }
+    if (again !== undefined) {
+      setAgain(undefined);
+      moveTo(total);
+    } else if (step === total - 1 && wrong.size > 0 && CheckStep !== undefined) {
+      setAgain({ questions: [...wrong], settled: false });
+      window.scrollTo(0, 0);
+    } else {
       moveTo(step + 1);
     }
-  }, [holding, moveTo, step]);
+  }, [holding, again, step, total, wrong, CheckStep, moveTo]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent): void => {
@@ -189,7 +216,7 @@ function Taking({
       <h1 className="lesson-title">{lesson.title}</h1>
       {lesson.language === subject.language ? null : <p className="chip">{t('in-language', { language: languageName(lesson.language) })}</p>}
       <StepBar steps={lesson.steps} at={step} goTo={moveTo} />
-      {step < total ? <p className="stepcount">{t('step.of', { step: String(step + 1), steps: String(total) })}</p> : null}
+      {again !== undefined ? <p className="stepcount">{t('again.count')}</p> : step < total ? <p className="stepcount">{t('step.of', { step: String(step + 1), steps: String(total) })}</p> : null}
     </>
   );
 
@@ -197,7 +224,13 @@ function Taking({
     return (
       <div className="lesson">
         {head}
-        <End subject={subject} lessonId={lesson.id} summary={lesson.summary} />
+        <End subject={subject} lessonId={lesson.id} summary={lesson.summary}>
+          {lessonEnds.map(({ module, End: Contributed }) => (
+            <div key={module} className="lesson-end" data-module={module}>
+              <Contributed subject={subject} language={language} lessonId={lesson.id} />
+            </div>
+          ))}
+        </End>
         {sourcesLine}
       </div>
     );
@@ -224,15 +257,28 @@ function Taking({
           {saveFailed ? (
             <output className="banner warn">{t('save.failed')}</output>
           ) : null}
-          <StepCard
-            key={step}
-            subject={subject}
-            language={language}
-            lessonId={lesson.id}
-            step={current}
-            CheckStep={CheckStep}
-            onSettled={(done) => setSettled((before) => (done === before.has(step) ? before : done ? new Set(before).add(step) : new Set([...before].filter((each) => each !== step))))}
-          />
+          {again !== undefined && CheckStep !== undefined ? (
+            <AgainCard
+              subject={subject}
+              language={language}
+              lessonId={lesson.id}
+              questions={again.questions}
+              CheckStep={CheckStep}
+              onSettled={(done) => setAgain((before) => (before === undefined || before.settled === done ? before : { ...before, settled: done }))}
+              onAnswered={onAnswered}
+            />
+          ) : (
+            <StepCard
+              key={step}
+              subject={subject}
+              language={language}
+              lessonId={lesson.id}
+              step={current}
+              CheckStep={CheckStep}
+              onSettled={(done) => setSettled((before) => (done === before.has(step) ? before : done ? new Set(before).add(step) : new Set([...before].filter((each) => each !== step))))}
+              onAnswered={onAnswered}
+            />
+          )}
           <div className="nav">
             <span>
               {step > 0 ? (
@@ -245,7 +291,7 @@ function Taking({
               <kbd>Enter</kbd> {t('keys.enter')}
             </span>
             <button type="button" className="btn" onClick={forward} disabled={holding} title={holding ? t('check.answer-first') : undefined}>
-              {step === total - 1 ? t('finish') : t('continue')}
+              {step === total - 1 || again !== undefined ? t('finish') : t('continue')}
             </button>
           </div>
           {sourcesLine}
@@ -253,6 +299,22 @@ function Taking({
         {sideBlocks.length > 0 ? <aside className="lesson-sides">{sideBlocks}</aside> : null}
       </div>
     </div>
+  );
+}
+
+/** The round after the last step that asks again what was answered wrongly. */
+function AgainCard({
+  CheckStep,
+  questions,
+  ...props
+}: Omit<CheckStepProps, 'questions'> & { readonly questions: readonly string[]; readonly CheckStep: NonNullable<ReturnType<typeof useCheckStep>> }) {
+  const { t, tc } = useMessages();
+  return (
+    <article className="sheet step check again">
+      <p className="step-kind again">{t('kind.again')}</p>
+      <h2>{tc('again.title', questions.length)}</h2>
+      <CheckStep {...props} questions={questions} />
+    </article>
   );
 }
 
@@ -284,6 +346,7 @@ function StepCard({
   step,
   CheckStep,
   onSettled,
+  onAnswered,
 }: {
   readonly subject: SubjectOutline;
   readonly language: Language;
@@ -291,6 +354,7 @@ function StepCard({
   readonly step: ShownStep;
   readonly CheckStep: ReturnType<typeof useCheckStep>;
   readonly onSettled: (settled: boolean) => void;
+  readonly onAnswered: (questionId: string, correct: boolean) => void;
 }) {
   const { t, tc } = useMessages();
   const imageText = useCallback((alt: string) => t('image', { alt }), [t]);
@@ -302,7 +366,7 @@ function StepCard({
         {CheckStep === undefined ? (
           <p className="placeholder">{tc('check.placeholder', step.questions.length)}</p>
         ) : (
-          <CheckStep subject={subject} language={language} lessonId={lessonId} questions={step.questions} onSettled={onSettled} />
+          <CheckStep subject={subject} language={language} lessonId={lessonId} questions={step.questions} onSettled={onSettled} onAnswered={onAnswered} />
         )}
       </article>
     );
@@ -315,7 +379,7 @@ function StepCard({
   );
 }
 
-function End({ subject, lessonId, summary }: { readonly subject: SubjectOutline; readonly lessonId: string; readonly summary: string }) {
+function End({ subject, lessonId, summary, children }: { readonly subject: SubjectOutline; readonly lessonId: string; readonly summary: string; readonly children: ReactNode }) {
   const { t } = useMessages();
   const path = subject.areas.flatMap((area) => area.lessons);
   const next = path[path.findIndex((lesson) => lesson.id === lessonId) + 1];
@@ -325,6 +389,7 @@ function End({ subject, lessonId, summary }: { readonly subject: SubjectOutline;
       <h3>{t('end.summary')}</h3>
       <p>{summary}</p>
       {next === undefined ? <p>{t('end.last')}</p> : null}
+      {children}
       <div className="actions">
         {next === undefined ? null : (
           <Link className="btn" to={subjectPath(subject.id, 'lessons', [next.id])}>

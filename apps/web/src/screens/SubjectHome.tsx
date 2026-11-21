@@ -173,7 +173,7 @@ function Overview({ subject, modules }: { readonly subject: SubjectOutline; read
           <p>{tc('home.areas', subject.areas.length)}</p>
         </div>
         {subject.areas.map((area) => (
-          <Area key={area.id} area={area} subject={subject} marks={marks} />
+          <Area key={area.id} area={area} subject={subject} marks={marks} modules={modules} />
         ))}
       </div>
       {side.length > 0 || marked ? (
@@ -190,8 +190,18 @@ function Overview({ subject, modules }: { readonly subject: SubjectOutline; read
   );
 }
 
-function Area({ area, subject, marks }: { readonly area: OutlineArea; readonly subject: SubjectOutline; readonly marks: ReadonlyMap<string, LessonMark> | undefined }) {
-  const { t, list } = useI18n();
+function Area({
+  area,
+  subject,
+  marks,
+  modules,
+}: {
+  readonly area: OutlineArea;
+  readonly subject: SubjectOutline;
+  readonly marks: ReadonlyMap<string, LessonMark> | undefined;
+  readonly modules: readonly WebModule[];
+}) {
+  const { t, list, language } = useI18n();
   const titleOf = (id: string): string => subject.areas.find((candidate) => candidate.id === id)?.title ?? id;
   return (
     <section className="sheet area" aria-labelledby={`area-${area.id}`} data-area={area.id}>
@@ -211,6 +221,13 @@ function Area({ area, subject, marks }: { readonly area: OutlineArea; readonly s
           <Lesson key={lesson.id} lesson={lesson} subject={subject} mark={marks === undefined ? undefined : (marks.get(lesson.id) ?? { state: 'not-started' })} />
         ))}
       </ol>
+      {modules.map(({ id, AreaFooter }) =>
+        AreaFooter === undefined ? null : (
+          <div key={id} className="area-footer" data-module={id}>
+            <AreaFooter subject={subject} language={language} area={area} />
+          </div>
+        ),
+      )}
     </section>
   );
 }

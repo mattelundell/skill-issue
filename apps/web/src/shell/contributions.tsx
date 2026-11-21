@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { mergeLessonMarks, type CheckStepProps, type LessonMark, type LessonSideProps, type WebModule } from './contract.js';
+import { mergeLessonMarks, type CheckStepProps, type LessonEndProps, type LessonMark, type LessonSideProps, type WebModule } from './contract.js';
 import type { ComponentType } from 'react';
 import { useI18n } from './i18n.js';
 
@@ -14,9 +14,10 @@ interface Contributions {
   readonly markers: readonly NonNullable<WebModule['lessonMarks']>[];
   readonly CheckStep: ComponentType<CheckStepProps> | undefined;
   readonly lessonSides: readonly { readonly module: string; readonly Side: ComponentType<LessonSideProps> }[];
+  readonly lessonEnds: readonly { readonly module: string; readonly End: ComponentType<LessonEndProps> }[];
 }
 
-const NONE: Contributions = { lessonLink: undefined, sourceLink: undefined, markers: [], CheckStep: undefined, lessonSides: [] };
+const NONE: Contributions = { lessonLink: undefined, sourceLink: undefined, markers: [], CheckStep: undefined, lessonSides: [], lessonEnds: [] };
 
 const ContributionsContext = createContext<Contributions>(NONE);
 
@@ -29,6 +30,7 @@ export function ContributionsProvider({ modules, children }: { readonly modules:
       markers: modules.flatMap(({ lessonMarks }) => (lessonMarks === undefined ? [] : [lessonMarks])),
       CheckStep: modules.find(({ steps }) => steps?.check !== undefined)?.steps?.check,
       lessonSides: modules.flatMap(({ id, LessonSide }) => (LessonSide === undefined ? [] : [{ module: id, Side: LessonSide }])),
+      lessonEnds: modules.flatMap(({ id, LessonEnd }) => (LessonEnd === undefined ? [] : [{ module: id, End: LessonEnd }])),
     }),
     [modules],
   );
@@ -53,6 +55,11 @@ export function useCheckStep(): ComponentType<CheckStepProps> | undefined {
 /** What modules put beside a lesson, such as the note pane. */
 export function useLessonSides(): readonly { readonly module: string; readonly Side: ComponentType<LessonSideProps> }[] {
   return useContext(ContributionsContext).lessonSides;
+}
+
+/** What modules put at a lesson's end, such as the offer to sit its exam. */
+export function useLessonEnds(): readonly { readonly module: string; readonly End: ComponentType<LessonEndProps> }[] {
+  return useContext(ContributionsContext).lessonEnds;
 }
 
 /**
