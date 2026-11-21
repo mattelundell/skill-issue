@@ -1,4 +1,4 @@
-import { ModuleIdSchema, type SubjectOutline, type SubjectSummary } from '@skill-issue/contract';
+import { ModuleIdSchema, type OutlineArea, type SubjectOutline, type SubjectSummary } from '@skill-issue/contract';
 import type { ComponentType } from 'react';
 import type { Language } from '../i18n/index.js';
 
@@ -79,6 +79,10 @@ export interface WebModule {
   readonly steps?: { readonly check?: ComponentType<CheckStepProps> };
   /** Something beside a lesson as it is taken, such as the note pane. */
   readonly LessonSide?: ComponentType<LessonSideProps>;
+  /** Something at a lesson's end, such as the offer to sit its exam. */
+  readonly LessonEnd?: ComponentType<LessonEndProps>;
+  /** Something at the foot of each area on the subject's path, such as the area's exam. Nothing is locked: it is offered whatever the learner has taken. */
+  readonly AreaFooter?: ComponentType<AreaFooterProps>;
   /** Each lesson's state on the path, by lesson id. A lesson it does not name, it says nothing about. */
   readonly lessonMarks?: (subjectId: string, signal: AbortSignal, language: Language) => Promise<ReadonlyMap<string, LessonMark>>;
 }
@@ -91,6 +95,22 @@ export interface CheckStepProps {
   readonly questions: readonly string[];
   /** Called with true once every question is answered, so the lesson lets the learner on. */
   readonly onSettled: (settled: boolean) => void;
+  /** Called as each question is graded, so the lesson can ask a wrong one again before it ends. */
+  readonly onAnswered: (questionId: string, correct: boolean) => void;
+}
+
+/** What a contribution at a lesson's end is given: the lesson just gone through. */
+export interface LessonEndProps {
+  readonly subject: SubjectOutline;
+  readonly language: Language;
+  readonly lessonId: string;
+}
+
+/** What a contribution at the foot of an area on the path is given. */
+export interface AreaFooterProps {
+  readonly subject: SubjectOutline;
+  readonly language: Language;
+  readonly area: OutlineArea;
 }
 
 /** What a contribution beside a lesson is given: the lesson and the step on screen. */

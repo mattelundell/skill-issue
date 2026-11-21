@@ -196,6 +196,74 @@ describe('a lesson', () => {
     expect(continueButton()).toHaveProperty('disabled', false);
   });
 
+  it('asks a question answered wrong again after the last step, before the end', async () => {
+    api.views = [view(2)];
+    const answered: { onAnswered?: (id: string, correct: boolean) => void; onSettled?: (done: boolean) => void; asked: string[][] } = { asked: [] };
+    const grading: WebModule = {
+      id: 'grading',
+      steps: {
+        check: ({ questions, onSettled, onAnswered }) => {
+          answered.onAnswered = onAnswered;
+          answered.onSettled = onSettled;
+          answered.asked.push([...questions]);
+          return <p>Frågor: {questions.join(', ')}</p>;
+        },
+      },
+    };
+    open(LESSON_PAGE, [lessonsModule, grading]);
+    expect(await screen.findByText('Frågor: kwh-eller-kw, berakna-energi')).toBeTruthy();
+
+    act(() => {
+      answered.onAnswered?.('kwh-eller-kw', false);
+      // Wrong, then right on a second try within the same check: not asked again.
+      answered.onAnswered?.('berakna-energi', false);
+      answered.onAnswered?.('berakna-energi', true);
+      answered.onSettled?.(true);
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Avsluta lektionen' }));
+
+    expect(screen.getByText('Igen')).toBeTruthy();
+    expect(screen.getByText('Frågor: kwh-eller-kw')).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: 'Lektionen är genomgången' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Avsluta lektionen' })).toHaveProperty('disabled', true);
+
+    act(() => {
+      answered.onAnswered?.('kwh-eller-kw', true);
+      answered.onSettled?.(true);
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Avsluta lektionen' }));
+
+    expect(screen.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeTruthy();
+    await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1 } }));
+  });
+
+  it('goes straight to the end when every question was answered right', async () => {
+    api.views = [view(2)];
+    let settle: { onAnswered?: (id: string, correct: boolean) => void; onSettled?: (done: boolean) => void } = {};
+    const grading: WebModule = { id: 'grading', steps: { check: ({ onSettled, onAnswered }) => ((settle = { onSettled, onAnswered }), <p>Frågor</p>) } };
+    open(LESSON_PAGE, [lessonsModule, grading]);
+    await screen.findByText('Frågor');
+
+    act(() => {
+      settle.onAnswered?.('kwh-eller-kw', true);
+      settle.onSettled?.(true);
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Avsluta lektionen' }));
+
+    expect(screen.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeTruthy();
+  });
+
+  it('puts what other modules give at the lesson’s end', async () => {
+    api.views = [view(2)];
+    const offering: WebModule = { id: 'offering', LessonEnd: ({ lessonId }) => <p>Provet för {lessonId}</p> };
+    open(LESSON_PAGE, [lessonsModule, offering]);
+    await screen.findByText(/Här finns en kontroll/);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Avsluta lektionen' }));
+
+    expect(screen.getByText('Provet för energi-och-effekt')).toBeTruthy();
+  });
+
   it('after the last step reaches its end, saved as gone through, and offers the next lesson on the path', async () => {
     api.views = [view(2)];
     open(LESSON_PAGE);

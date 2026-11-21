@@ -25,6 +25,9 @@
 .step-kind { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--graphite); font-weight: 600; margin: 0 0 6px; }
 .step-kind.example { color: var(--done); }
 .step-kind.check { color: var(--royal); }
+.step-kind.again { color: var(--warn); }
+.lesson .step.again { border-left: 6px solid var(--warn); }
+.lesson-end { margin-top: 18px; }
 .lesson .step h2 { font-family: var(--title); font-weight: 600; font-size: 1.55rem; margin: 0 0 14px; }
 .prose-step { font-size: 1.05rem; }
 .prose-step > :first-child { margin-top: 0; }

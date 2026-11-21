@@ -487,6 +487,14 @@ describe('the module contract for lessons', () => {
     ]);
   });
 
+  it('puts what a module gives at the foot of each area on the path', async () => {
+    const footing: WebModule = { id: 'footing', AreaFooter: ({ area }) => <p>Områdesprov för {area.title}</p> };
+    open('/subjects/example-subject', [footing]);
+
+    expect(within(await screen.findByRole('region', { name: 'Grunder' })).getByText('Områdesprov för Grunder')).toBeTruthy();
+    expect(within(screen.getByRole('region', { name: 'Fördjupning' })).getByText('Områdesprov för Fördjupning')).toBeTruthy();
+  });
+
   it('names the lessons on the path without links when no module gives lessons an address', async () => {
     open('/subjects/example-subject', []);
 
@@ -506,7 +514,7 @@ describe('the module contract for lessons', () => {
         const marks = useLessonMarks(subject.id);
         return (
           <div>
-            {Check === undefined ? <p>Ingen ritar kontroller</p> : <Check subject={subject} language={language} lessonId="energi-och-effekt" questions={['kwh-eller-kw']} onSettled={() => undefined} />}
+            {Check === undefined ? <p>Ingen ritar kontroller</p> : <Check subject={subject} language={language} lessonId="energi-och-effekt" questions={['kwh-eller-kw']} onSettled={() => undefined} onAnswered={() => undefined} />}
             {sides.map(({ module, Side }) => (
               <Side key={module} subject={subject} language={language} lessonId="energi-och-effekt" step={2} />
             ))}

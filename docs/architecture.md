@@ -91,7 +91,9 @@ The browser app is a shell that draws two screens — the start screen and a sub
 | lesson marks, in the interface language | on each lesson in the path, and wherever another module lists lessons | not started, in progress, passed, mastered |
 | a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names | the lessons module's page for one lesson |
 | a source's address | each source a lesson rests on becomes a link | the reader's page for one source |
-| how a step type is drawn | inside a lesson, by the module that owns the step | a check step, drawn and graded by assessment |
+| how a step type is drawn | inside a lesson, by the module that owns the step; a check reports each answer, so the lesson asks a wrong one once more after its last step | a check step, drawn and graded by assessment |
+| something at a lesson's end | under the lesson's summary, once it is gone through | the offer to sit the lesson's exam |
+| something at an area's foot | at the foot of each area on the path, whatever the learner has taken, since nothing is locked | the area's exam |
 | something beside a lesson | next to the step on screen | the note pane |
 
 Lesson marks are the one contribution several modules give for the same thing: one module knows a lesson was started, another that its exam was passed. The shell shows the furthest state any module gives, and a lesson no marking module names as not started. With no marking module at all, the path is drawn without states, rather than claiming every lesson is untouched. A module whose marks cannot be read is left out, and the others still show.
