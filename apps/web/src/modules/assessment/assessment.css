@@ -31,7 +31,7 @@
 .answer-row { margin: 10px 0 0; display: flex; gap: 12px; align-items: center; }
 .grade-failed { color: var(--warn); font-size: 0.9rem; }
 
-.feedback { margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 0.95rem; max-width: 38rem; }
+.feedback { display: block; margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 0.95rem; max-width: 38rem; }
 .feedback.right { background: var(--done-wash); border-left: 5px solid var(--done); }
 .feedback.wrong { background: var(--warn-wash); border-left: 5px solid var(--warn); }
 .feedback strong { display: block; margin-bottom: 2px; }
