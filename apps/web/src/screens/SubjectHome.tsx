@@ -1,8 +1,9 @@
 import type { OutlineArea, OutlineLesson, SubjectOutline } from '@skill-issue/contract';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { fetchOutline, type Fetched } from '../api.js';
 import { languageName } from '../i18n/index.js';
-import { mergeLessonMarks, type LessonMark, type WebModule } from '../shell/contract.js';
+import type { LessonMark, WebModule } from '../shell/contract.js';
+import { useLessonLink, useLessonMarks } from '../shell/contributions.js';
 import { useI18n } from '../shell/i18n.js';
 import { Link, startPath, subjectPath } from '../shell/router.js';
 import { WithCode } from '../shell/text.js';
@@ -116,11 +117,15 @@ function Subject({
         <Link to={subjectPath(subject.id)} aria-current={page === undefined ? 'page' : undefined}>
           {t('home.overview')}
         </Link>
-        {pages.map(({ id, label }) => (
-          <Link key={id} to={subjectPath(subject.id, id)} aria-current={page === id ? 'page' : undefined}>
-            {label[language]}
-          </Link>
-        ))}
+        {pages.flatMap(({ id, label }) =>
+          label === undefined
+            ? []
+            : [
+                <Link key={id} to={subjectPath(subject.id, id)} aria-current={page === id ? 'page' : undefined}>
+                  {label[language]}
+                </Link>,
+              ],
+        )}
       </nav>
       {page === undefined ? (
         <Overview subject={subject} modules={modules} />
@@ -140,7 +145,7 @@ function Subject({
 
 function Overview({ subject, modules }: { readonly subject: SubjectOutline; readonly modules: readonly WebModule[] }) {
   const { t, tc, language } = useI18n();
-  const marks = useLessonMarks(subject.id, modules);
+  const marks = useLessonMarks(subject.id);
   const blocks = modules.flatMap(({ id, homeBlocks }) => (homeBlocks ?? []).map((block, index) => ({ key: `${id}:${index}`, module: id, ...block })));
   const lead = blocks.filter((block) => block.placement === 'lead');
   const side = blocks.filter((block) => block.placement === 'side');
@@ -176,38 +181,6 @@ function Overview({ subject, modules }: { readonly subject: SubjectOutline; read
   );
 }
 
-/**
- * Each lesson's state, merged from every module that marks lessons; undefined
- * when no module does, so the path is drawn without states rather than as all
- * "not started". A module whose marks cannot be read is left out, not fatal.
- */
-function useLessonMarks(subjectId: string, modules: readonly WebModule[]): ReadonlyMap<string, LessonMark> | undefined {
-  const marking = modules.some(({ lessonMarks }) => lessonMarks !== undefined);
-  const [marks, setMarks] = useState<{ readonly subjectId: string; readonly marks: ReadonlyMap<string, LessonMark> }>();
-
-  useEffect(() => {
-    const sources = modules.flatMap(({ lessonMarks }) => (lessonMarks === undefined ? [] : [lessonMarks]));
-    if (sources.length === 0) {
-      return undefined;
-    }
-    const controller = new AbortController();
-    const settle = async (): Promise<void> => {
-      const settled = await Promise.allSettled(sources.map(async (source) => source(subjectId, controller.signal)));
-      if (!controller.signal.aborted) {
-        const read = settled.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
-        setMarks({ subjectId, marks: mergeLessonMarks(read) });
-      }
-    };
-    void settle();
-    return () => controller.abort();
-  }, [subjectId, modules]);
-
-  if (!marking) {
-    return undefined;
-  }
-  return marks?.subjectId === subjectId ? marks.marks : new Map();
-}
-
 function Area({ area, subject, marks }: { readonly area: OutlineArea; readonly subject: SubjectOutline; readonly marks: ReadonlyMap<string, LessonMark> | undefined }) {
   const { t, list } = useI18n();
   const titleOf = (id: string): string => subject.areas.find((candidate) => candidate.id === id)?.title ?? id;
@@ -235,14 +208,19 @@ function Area({ area, subject, marks }: { readonly area: OutlineArea; readonly s
 
 function Lesson({ lesson, subject, mark }: { readonly lesson: OutlineLesson; readonly subject: SubjectOutline; readonly mark: LessonMark | undefined }) {
   const { t } = useI18n();
+  const lessonLink = useLessonLink();
+  /** The title, a link to the lesson when a module draws lessons. */
+  const titled = (children: ReactNode) => (lessonLink === undefined ? children : <Link to={lessonLink(subject.id, lesson.id)}>{children}</Link>);
   if (mark === undefined) {
     return (
       <li data-lesson={lesson.id}>
         <span className="mark plain" aria-hidden="true" />
         <span className="lesson">
-          <InLanguage item={lesson} subject={subject}>
-            {lesson.title}
-          </InLanguage>
+          {titled(
+            <InLanguage item={lesson} subject={subject}>
+              {lesson.title}
+            </InLanguage>,
+          )}
         </span>
         <span />
       </li>
@@ -254,9 +232,11 @@ function Lesson({ lesson, subject, mark }: { readonly lesson: OutlineLesson; rea
       <span className={`mark ${mark.state}`} aria-hidden="true" />
       <span>
         <span className="lesson">
-          <InLanguage item={lesson} subject={subject}>
-            {lesson.title}
-          </InLanguage>
+          {titled(
+            <InLanguage item={lesson} subject={subject}>
+              {lesson.title}
+            </InLanguage>,
+          )}
         </span>
         {mark.here === true ? <span className="here">{t('home.here')}</span> : null}
         <span className={`state-word ${mark.state}`}>{mark.detail === undefined ? word : `${word}, ${mark.detail}`}</span>

@@ -83,13 +83,19 @@ The browser app is a shell that draws two screens — the start screen and a sub
 
 | Contribution | Where it appears | For example |
 |---|---|---|
-| a page, with its tab | a tab beside the subject's overview; the page at `/subjects/<subject>/<module>`, and everything below that address is the page's own | the source library, and one source at `/subjects/<subject>/reader/<source>`; the notes browser |
+| a page, with or without a tab | the page at `/subjects/<subject>/<module>`, and everything below that address is the page's own; with a label, a tab beside the subject's overview, without one it is reached from links | the source library, and one source at `/subjects/<subject>/reader/<source>`; one lesson at `/subjects/<subject>/lessons/<lesson>`, reached from the path |
 | blocks on the subject home | `lead`, above the path, or `side`, in the column beside it | what is due today; a count of notes |
 | figures on a start-screen row | beside each subject's title | reviews due, share mastered |
-| a resume panel | above the start screen's rows | where the learner left off |
-| lesson marks | on each lesson in the path | not started, in progress, passed, mastered |
+| a resume panel | above the start screen's rows; while it shows a subject, the other rows go compact under "Dina andra ämnen" without that subject | where the learner left off |
+| which subjects are begun | each start-screen row's action: "Fortsätt" where begun, "Börja" where not, "Öppna" when no module says | the subjects with a lesson begun |
+| lesson marks | on each lesson in the path, and wherever another module lists lessons | not started, in progress, passed, mastered |
+| a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names | the lessons module's page for one lesson |
+| how a step type is drawn | inside a lesson, by the module that owns the step | a check step, drawn and graded by assessment |
+| something beside a lesson | next to the step on screen | the note pane |
 
 Lesson marks are the one contribution several modules give for the same thing: one module knows a lesson was started, another that its exam was passed. The shell shows the furthest state any module gives, and a lesson no marking module names as not started. With no marking module at all, the path is drawn without states, rather than claiming every lesson is untouched. A module whose marks cannot be read is left out, and the others still show.
+
+Contributions meant for another module's page — a lesson's address, the marks, whoever draws a check, what sits beside a lesson — the shell gathers once and hands out on request (`shell/contributions.tsx`), so the module asking never names the one answering. Without the module that answers, the asker gets nothing and says so: a lesson is named but not linked, and a check step is a line saying a check is there, keeping its place so step numbers do not shift when the module arrives.
 
 A page is given the path segments below its address, and a way to build an address within itself, so a page with places of its own — one source, one note — keeps them bookmarkable without the shell knowing what they are.
 
