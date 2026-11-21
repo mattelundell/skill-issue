@@ -8,6 +8,7 @@ RUN npm install --global pnpm@12.21.0
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/contract/package.json packages/contract/
+COPY packages/pack/package.json packages/pack/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 COPY apps/cli/package.json apps/cli/

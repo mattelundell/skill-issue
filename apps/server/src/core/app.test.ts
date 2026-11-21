@@ -1,5 +1,6 @@
 import { OpenAPIHono } from '@hono/zod-openapi';
 import { describe, expect, it } from 'vitest';
+import { contentModule } from '../modules/content/manifest.js';
 import { modules } from '../modules/index.js';
 import { buildApp } from './app.js';
 import type { Db } from './db.js';
@@ -98,6 +99,31 @@ describe('OpenAPI document', () => {
 
     expect(document.info).toEqual({ title: 'Skill Issue', version: '9.9.9' });
     expect(Object.keys(document.paths)).toEqual(['/health']);
+  });
+});
+
+describe('the content module', () => {
+  it('has its routes described in the OpenAPI document', async () => {
+    const response = await appWith([contentModule]).request('/api/v1/openapi.json');
+    const document = (await response.json()) as { paths: Record<string, Record<string, unknown>> };
+
+    expect(Object.fromEntries(Object.entries(document.paths).map(([path, methods]) => [path, Object.keys(methods)]))).toEqual({
+      '/health': ['get'],
+      '/content/packs': ['post'],
+      '/content/subjects': ['get'],
+      '/content/subjects/{subjectId}/pack': ['get'],
+      '/content/schema/pack.json': ['get'],
+    });
+  });
+
+  it('publishes the JSON Schema of a pack', async () => {
+    const response = await appWith([contentModule]).request('/api/v1/content/schema/pack.json');
+    const schema = (await response.json()) as { $schema: string; required: string[]; properties: Record<string, unknown> };
+
+    expect(response.headers.get('content-type')).toBe('application/schema+json');
+    expect(schema.$schema).toBe('https://json-schema.org/draft/2020-12/schema');
+    expect(schema.required).toEqual(['formatVersion', 'subject', 'areas', 'lessons']);
+    expect(Object.keys(schema.properties)).toEqual(['formatVersion', 'subject', 'sources', 'glossary', 'areas', 'lessons', 'questions', 'assets']);
   });
 });
 
