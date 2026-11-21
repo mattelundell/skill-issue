@@ -72,7 +72,7 @@ export function lessonsRoutes({ db, catalogue, record }: ModuleContext): OpenAPI
     path: '/subjects/{subjectId}/lessons/{lessonId}',
     summary: 'One lesson with its steps, and where to take it up.',
     description:
-      "Steps come from the subject's default language, so a step number means the same step in every language; their text is in the language asked for where the lesson is translated. `resumeAt` is the step to open on.",
+      "Steps come from the subject's default language, so a step number means the same step in every language; their text is in the language asked for where the lesson is translated. `resumeAt` is the step to open on. `checks` covers the pass through the lesson under way, which began after the learner last reached its end: the record row it began after, and the questions answered wrong in it and not since answered right.",
     request: { params, ...language },
     responses: {
       200: { description: 'The lesson.', content: { 'application/json': { schema: LessonViewSchema } } },
@@ -91,12 +91,17 @@ export function lessonsRoutes({ db, catalogue, record }: ModuleContext): OpenAPI
     }
     const { lesson } = found;
     const position = await positionOf(db, lesson.subjectId, lesson.id);
+    // The pass under way began after the learner last reached the end; its checks are read back from the record, so leaving loses none of them.
+    const answeredAfter = await record.lastFinished(lesson.subjectId, lesson.id);
+    const asked = [...new Set(lesson.steps.flatMap((step) => (step.type === 'check' ? step.questions : [])))];
+    const latest = await record.latestAnswers(lesson.subjectId, asked, { settings: ['lesson-check'], afterSeq: answeredAfter });
     return c.json(
       {
         lesson,
         position: position === undefined ? null : publicPosition(position),
         resumeAt: resumeAt(position, lesson.steps.length),
         changedSince: position !== undefined && position.revision !== lesson.revision,
+        checks: { answeredAfter, again: asked.filter((id) => latest.get(id)?.correct === false) },
       },
       200,
     );

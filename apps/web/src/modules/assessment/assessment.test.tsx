@@ -1,4 +1,4 @@
-import type { AskedQuestion, ExamResult, Graded, LessonView, Sitting, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
+import type { AskedQuestion, EarlierAnswer, ExamResult, Graded, LessonView, Sitting, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,6 +46,7 @@ const lessonView = (questions: readonly string[]): LessonView => ({
   position: null,
   resumeAt: 0,
   changedSince: false,
+  checks: { answeredAfter: api.answeredAfter, again: [] },
 });
 
 interface FakeApi {
@@ -54,6 +55,9 @@ interface FakeApi {
   sitting: Sitting | undefined;
   result: ExamResult | undefined;
   passed: { lessons: string[]; areas: string[] };
+  /** Where the pass through the lesson began, as the lesson gives it, and the check answers the record holds since. */
+  answeredAfter: number;
+  earlier: EarlierAnswer[];
   readonly posted: { readonly path: string; readonly body: unknown }[];
 }
 
@@ -67,6 +71,8 @@ beforeEach(() => {
     sitting: undefined,
     result: undefined,
     passed: { lessons: [], areas: [] },
+    answeredAfter: 0,
+    earlier: [],
     posted: [],
   };
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
@@ -108,6 +114,14 @@ beforeEach(() => {
     if (path === '/api/v1/assessment/subjects/example-subject/questions') {
       const ids = (url.searchParams.get('ids') ?? '').split(',');
       return json({ subjectId: 'example-subject', questions: api.questions.filter((question) => ids.includes(question.id)) });
+    }
+    if (path === '/api/v1/assessment/subjects/example-subject/answers') {
+      const ids = (url.searchParams.get('ids') ?? '').split(',');
+      // Only the pass the lesson says is under way: an answer asked for from elsewhere is a fault in the page.
+      if (url.searchParams.get('after') !== String(api.answeredAfter)) {
+        return json({ title: 'wrong pass', status: 400 }, 400);
+      }
+      return json({ subjectId: 'example-subject', answers: api.earlier.filter((answer) => ids.includes(answer.graded.questionId)) });
     }
     if (path === '/api/v1/assessment/subjects/example-subject/passed') {
       return json({ subjectId: 'example-subject', ...api.passed });
@@ -193,6 +207,36 @@ describe('a check inside a lesson', () => {
 
     expect(screen.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Skriv provet nu' }).getAttribute('href')).toBe('/subjects/example-subject/assessment/lesson/energi-och-effekt');
+  });
+});
+
+describe('a check taken up again', () => {
+  it('shows a question answered before the learner left with that answer, sends nothing, and lets the learner on', async () => {
+    api.questions = [ASKED['single-choice'], ASKED['true-false']];
+    api.answeredAfter = 41;
+    api.earlier = [
+      {
+        given: { type: 'single-choice', option: 'a' },
+        graded: { questionId: 'kwh-eller-kw', correct: false, expected: { type: 'single-choice', option: 'b' }, explanation: 'Effekt mäts i **watt**.', sources: [SOURCE] },
+      },
+    ];
+    open(LESSON);
+
+    const answeredBefore = await screen.findByRole('region', { name: /Vilken enhet anger effekt\?/ });
+    expect(within(answeredBefore).getByText('Ditt svar: kWh')).toBeTruthy();
+    expect(within(answeredBefore).getByRole('status').textContent?.replace(/\s*\n\s*/g, '')).toBe('Inte rätt.Rätt svar: kWEffekt mäts i watt.Källa: Exempelkälla (Exempelförlaget)');
+    expect(within(answeredBefore).queryByRole('button', { name: 'Svara' })).toBeNull();
+    // The other question was not answered in this pass, so it is asked.
+    const unanswered = screen.getByRole('region', { name: /Effekt är en takt\./ });
+    expect(within(unanswered).getByRole('button', { name: 'Svara' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Avsluta lektionen' })).toHaveProperty('disabled', true);
+
+    await userEvent.click(within(unanswered).getByRole('radio', { name: /Sant/ }));
+    await userEvent.click(within(unanswered).getByRole('button', { name: 'Svara' }));
+    await within(unanswered).findByText('Rätt.');
+
+    expect(screen.getByRole('button', { name: 'Avsluta lektionen' })).toHaveProperty('disabled', false);
+    expect(answersPosted()).toEqual([recorded({ type: 'true-false', value: true })]);
   });
 });
 

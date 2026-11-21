@@ -93,6 +93,12 @@ export interface CheckStepProps {
   readonly language: Language;
   readonly lessonId: string;
   readonly questions: readonly string[];
+  /**
+   * For a step of a lesson taken up again: the learning record's row after which
+   * the pass under way began. A question answered since is shown with that answer
+   * rather than asked afresh. Not given, every question is asked afresh.
+   */
+  readonly answeredAfter?: number;
   /** Called with true once every question is answered, so the lesson lets the learner on. */
   readonly onSettled: (settled: boolean) => void;
   /** Called as each question is graded, so the lesson can ask a wrong one again before it ends. */
