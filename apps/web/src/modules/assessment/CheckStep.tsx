@@ -70,13 +70,15 @@ function AskedOne({
   const [answer, setAnswer] = useState<GivenAnswer>();
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
+  // From the question being shown to the answer being sent: the learning record's "how long it took".
+  const [shownAt] = useState(() => Date.now());
   const imageText = useCallback((alt: string) => alt, []);
   const send = async (): Promise<void> => {
     if (answer === undefined) {
       return;
     }
     setSending(true);
-    const result = await postAnswer(subject.id, question.id, answer, subject.language);
+    const result = await postAnswer(subject.id, question.id, answer, subject.language, Math.min(86_400_000, Math.max(0, Math.round(Date.now() - shownAt))));
     setSending(false);
     setFailed(result === undefined);
     if (result !== undefined) {

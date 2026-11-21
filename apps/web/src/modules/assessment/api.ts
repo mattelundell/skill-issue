@@ -14,6 +14,7 @@ import {
   type Sitting,
 } from '@skill-issue/contract';
 import { getJson, type Fetched } from '../../api.js';
+import { learnerTimeZone } from '../../shell/timeZone.js';
 
 const base = (subjectId: string): string => `/assessment/subjects/${encodeURIComponent(subjectId)}`;
 
@@ -36,11 +37,12 @@ async function postJson<T>(path: string, body: unknown, parser: { safeParse(inpu
   }
 }
 
-export const postAnswer = async (subjectId: string, questionId: string, answer: GivenAnswer, language: string): Promise<Graded | undefined> =>
-  postJson(`${base(subjectId)}/questions/${encodeURIComponent(questionId)}/answers?language=${encodeURIComponent(language)}`, { answer }, GradedSchema);
+/** One answer to a check, with how long it took from the question being shown. */
+export const postAnswer = async (subjectId: string, questionId: string, answer: GivenAnswer, language: string, durationMs: number): Promise<Graded | undefined> =>
+  postJson(`${base(subjectId)}/questions/${encodeURIComponent(questionId)}/answers?language=${encodeURIComponent(language)}`, { answer, durationMs, timeZone: learnerTimeZone() }, GradedSchema);
 
 export const startExam = async (subjectId: string, scope: ExamScope, language: string): Promise<Sitting | undefined> =>
   postJson(`${base(subjectId)}/exams?language=${encodeURIComponent(language)}`, { scope }, SittingSchema);
 
-export const handIn = async (subjectId: string, sittingId: string, answers: readonly { questionId: string; answer: GivenAnswer }[]): Promise<ExamResult | undefined> =>
-  postJson(`${base(subjectId)}/exams/${encodeURIComponent(sittingId)}`, { answers }, ExamResultSchema);
+export const handIn = async (subjectId: string, sittingId: string, answers: readonly { questionId: string; answer: GivenAnswer; durationMs: number }[]): Promise<ExamResult | undefined> =>
+  postJson(`${base(subjectId)}/exams/${encodeURIComponent(sittingId)}`, { answers, timeZone: learnerTimeZone() }, ExamResultSchema);

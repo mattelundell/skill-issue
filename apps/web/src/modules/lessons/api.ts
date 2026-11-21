@@ -1,5 +1,6 @@
 import { API_PREFIX, LessonViewSchema, ResumeSchema, SubjectPositionsSchema, type LessonView, type Resume, type SubjectPositions } from '@skill-issue/contract';
 import { getJson, type Fetched } from '../../api.js';
+import { learnerTimeZone } from '../../shell/timeZone.js';
 
 const lessonPath = (subjectId: string, lessonId: string): string => `/lessons/subjects/${encodeURIComponent(subjectId)}/lessons/${encodeURIComponent(lessonId)}`;
 
@@ -20,7 +21,7 @@ export async function savePosition(subjectId: string, lessonId: string, step: nu
     const response = await fetch(`${API_PREFIX}${lessonPath(subjectId, lessonId)}/position`, {
       method: 'PUT',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ step, revision }),
+      body: JSON.stringify({ step, revision, timeZone: learnerTimeZone() }),
     });
     return response.ok ? 'saved' : response.status === 409 ? 'changed' : 'failed';
   } catch {
