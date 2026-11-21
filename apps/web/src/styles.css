@@ -90,6 +90,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .btn:hover { filter: brightness(1.08); }
 .btn.quiet { background: transparent; color: var(--royal); }
 .btn.small { padding: 5px 12px; font-size: 0.9rem; }
+/* A button that cannot be pressed must look it, on every page, not only where one module remembered. */
+.btn:disabled { opacity: 0.45; cursor: not-allowed; filter: none; }
 .ledger-row > .btn { min-width: 7.5rem; }
 .due > div { flex: 1 1 18rem; }
 .area-foot > span { flex: 1 1 14rem; }

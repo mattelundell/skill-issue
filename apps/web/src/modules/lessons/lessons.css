@@ -37,7 +37,6 @@
 .lesson .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 .lesson .keys { color: var(--graphite); font-size: 0.85rem; }
 .lesson kbd { font: 0.78rem var(--mono, ui-monospace, monospace); color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
-.lesson .btn[disabled] { opacity: 0.45; cursor: not-allowed; filter: none; }
 .lesson-sources { margin-top: 18px; font-size: 0.9rem; color: var(--graphite); }
 .lesson-sources a { color: var(--royal); font-weight: 600; }
 
