@@ -81,6 +81,9 @@ async function sit(kind: 'lesson' | 'area', id: string): Promise<Sitting> {
 const handIn = async (sitting: Sitting, answers: Readonly<Record<string, GivenAnswer>>) =>
   post(`/exams/${sitting.id}`, { answers: sitting.questions.map((question) => ({ questionId: question.id, answer: answers[question.id], durationMs: 1000 })), timeZone: 'Europe/Stockholm' });
 
+/** Options by id, so a comparison does not depend on the order they were asked in. */
+const byId = (options: readonly { id: string; text: string }[]) => options.toSorted((a, b) => a.id.localeCompare(b.id));
+
 describe('asking', () => {
   it('gives a check’s questions in order, without their answers', async () => {
     await load(example);
@@ -88,10 +91,31 @@ describe('asking', () => {
     const response = await here.app.request(`${BASE}/questions?ids=kwh-eller-kw,berakna-energi,finns-inte`);
     const { questions } = AskedQuestionsSchema.parse(await response.json());
 
-    expect(questions).toEqual([
-      { id: 'kwh-eller-kw', language: 'sv', prompt: 'Vilken enhet anger effekt?', type: 'single-choice', options: [{ id: 'a', text: 'kWh' }, { id: 'b', text: 'kW' }, { id: 'c', text: 'kWh/m²' }] },
-      { id: 'berakna-energi', language: 'sv', prompt: 'En motor på 2 kW går i 3 timmar. Hur mycket energi använder den?', type: 'numeric', unit: 'kWh' },
-    ]);
+    const [choice, numeric] = questions;
+    expect(choice?.type === 'single-choice' ? { ...choice, options: byId(choice.options) } : choice).toEqual({
+      id: 'kwh-eller-kw',
+      language: 'sv',
+      prompt: 'Vilken enhet anger effekt?',
+      type: 'single-choice',
+      options: [{ id: 'a', text: 'kWh' }, { id: 'b', text: 'kW' }, { id: 'c', text: 'kWh/m²' }],
+    });
+    expect(numeric).toEqual({ id: 'berakna-energi', language: 'sv', prompt: 'En motor på 2 kW går i 3 timmar. Hur mycket energi använder den?', type: 'numeric', unit: 'kWh' });
+    expect(questions).toHaveLength(2);
+  });
+
+  it('asks a choice question’s options in a new order, so the written order does not give the answer away', async () => {
+    await load(example);
+
+    const orders = new Set<string>();
+    for (let ask = 0; ask < 20; ask += 1) {
+      const response = await here.app.request(`${BASE}/questions?ids=kwh-eller-kw`);
+      const [question] = AskedQuestionsSchema.parse(await response.json()).questions;
+      orders.add(question?.type === 'single-choice' ? question.options.map((option) => option.id).join('') : 'not a choice');
+    }
+
+    // Three options give six orders; twenty asks all landing on one of them by chance is 6⁻¹⁹.
+    expect(orders.has('not a choice')).toBe(false);
+    expect(orders.size).toBeGreaterThan(1);
   });
 });
 

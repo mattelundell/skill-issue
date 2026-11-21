@@ -76,6 +76,26 @@ describe('asking', () => {
     expect(ask(QUESTIONS.ordering, reverse)).toMatchObject({ items: ['giga', 'mega', 'kilo'] });
   });
 
+  it('asks the options of a choice question in the order the shuffle gives, so their written order carries no answer', () => {
+    expect(ask(QUESTIONS.single, reverse)).toEqual({
+      id: 'single',
+      language: 'sv',
+      prompt: 'Fråga?',
+      type: 'single-choice',
+      options: [
+        { id: 'b', text: 'kW' },
+        { id: 'a', text: 'kWh' },
+      ],
+    });
+    expect(ask(QUESTIONS.multiple, reverse)).toMatchObject({
+      options: [
+        { id: 'c', text: 'Elmätaren' },
+        { id: 'b', text: 'Ventilation' },
+        { id: 'a', text: 'Fönster' },
+      ],
+    });
+  });
+
   it('asks a matching question with both sides shuffled apart', () => {
     expect(ask(QUESTIONS.matching, reverse)).toEqual({ id: 'matching', language: 'sv', prompt: 'Fråga?', type: 'matching', lefts: ['M', 'k'], rights: ['10⁶', '10³'] });
   });

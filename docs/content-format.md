@@ -154,6 +154,8 @@ Common to every question: `id`, `type`, `concepts`, `sources`, `prompt`, `explan
 | `matching` | `pairs`, each `{ left, right }` |
 | `free-recall` | `answer` (shown to the learner, who grades themselves) |
 
+The order written in the pack is never the order asked. A choice question's options and a matching question's two sides are shuffled each time the question is asked, and an ordering question's items are never shown in their correct order, so where the right answer stands in the file gives nothing away and an author need not scatter it.
+
 ## glossary.yaml
 
 ```yaml
