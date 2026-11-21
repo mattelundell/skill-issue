@@ -55,7 +55,7 @@ async function put(step: number, revision = 1, lesson = LESSON): Promise<{ statu
   const response = await here.app.request(`${lesson}/position`, {
     method: 'PUT',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ step, revision }),
+    body: JSON.stringify({ step, revision, timeZone: 'Europe/Stockholm' }),
   });
   return { status: response.status, json: await response.json() };
 }

@@ -3,6 +3,7 @@ import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { API_PREFIX, HealthResponseSchema } from '@skill-issue/contract';
 import { createCatalogue } from './catalogue/catalogue.js';
 import type { Db } from './db.js';
+import { createLearningRecord } from './record/record.js';
 import { describeThrown, log } from './log.js';
 import { problem } from './problem.js';
 import type { Registry } from './registry.js';
@@ -44,7 +45,7 @@ export function buildApp({ db, registry, version, webDir }: AppDependencies): Op
     return c.json({ status: 'ok' as const, version, database: 'up' as const, modules }, 200);
   });
 
-  const context = { db, catalogue: createCatalogue(db) };
+  const context = { db, catalogue: createCatalogue(db), record: createLearningRecord(db) };
   for (const module of registry.modules) {
     if (module.routes !== undefined) {
       api.route(`/${module.id}`, module.routes(context));

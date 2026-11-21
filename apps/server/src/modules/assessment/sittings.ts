@@ -36,14 +36,46 @@ CREATE TABLE assessment.sitting (
 CREATE INDEX sitting_passed ON assessment.sitting (subject_id, scope_kind, scope_id) WHERE passed;
 `,
   },
+  {
+    // The learning record names the revision of everything it records. A sitting
+    // drawn before this keeps what it drew; the revision each question and the
+    // scope had is the latest one loaded before the sitting started.
+    name: '0002_revisions',
+    sql: `
+ALTER TABLE assessment.sitting ADD COLUMN scope_language text, ADD COLUMN scope_revision integer CHECK (scope_revision >= 1);
+
+UPDATE assessment.sitting s
+   SET scope_language = subject.default_language,
+       scope_revision = COALESCE(
+         (SELECT max(r.revision) FROM catalogue.revision r
+           WHERE r.subject_id = s.subject_id AND r.kind = s.scope_kind AND r.id = s.scope_id
+             AND r.language = subject.default_language AND r.created_at <= s.started_at),
+         1)
+  FROM catalogue.subject subject
+ WHERE subject.id = s.subject_id;
+
+UPDATE assessment.sitting s
+   SET drawn = (
+     SELECT jsonb_agg(d.elem || jsonb_build_object('revision', COALESCE(
+              (SELECT max(r.revision) FROM catalogue.revision r
+                WHERE r.subject_id = s.subject_id AND r.kind = 'question' AND r.id = d.elem #>> '{question,id}'
+                  AND r.language = d.elem #>> '{question,language}' AND r.created_at <= s.started_at),
+              1)) ORDER BY d.ord)
+       FROM jsonb_array_elements(s.drawn) WITH ORDINALITY AS d (elem, ord));
+
+ALTER TABLE assessment.sitting ALTER COLUMN scope_language SET NOT NULL, ALTER COLUMN scope_revision SET NOT NULL;
+`,
+  },
 ] as const;
 
-const DrawnSchema = z.array(z.object({ question: QuestionSchema, sources: z.array(LessonSourceSchema) }));
+const DrawnSchema = z.array(z.object({ question: QuestionSchema, revision: z.number().int().min(1), sources: z.array(LessonSourceSchema) }));
 
 export interface StoredSitting {
   readonly id: string;
   readonly subjectId: string;
   readonly scope: ExamScope;
+  /** The examined lesson or area as its structure stood when drawn. */
+  readonly scopeAt: { readonly language: string; readonly revision: number };
   readonly title: string;
   readonly passMark: number;
   readonly drawn: readonly ShownQuestion[];
@@ -52,7 +84,7 @@ export interface StoredSitting {
   readonly submitted: { readonly answers: readonly { readonly questionId: string; readonly answer: GivenAnswer }[]; readonly correct: number; readonly passed: boolean } | undefined;
 }
 
-const COLUMNS = 'id, subject_id, scope_kind, scope_id, title, pass_mark, drawn, asked, started_at, submitted_at, answers, correct, passed';
+const COLUMNS = 'id, subject_id, scope_kind, scope_id, scope_language, scope_revision, title, pass_mark, drawn, asked, started_at, submitted_at, answers, correct, passed';
 
 function fromRow(row: Row): StoredSitting {
   const startedAt = row['started_at'];
@@ -64,6 +96,7 @@ function fromRow(row: Row): StoredSitting {
     id: z.string().parse(row['id']),
     subjectId: z.string().parse(row['subject_id']),
     scope: ExamScopeSchema.parse({ kind: row['scope_kind'], id: row['scope_id'] }),
+    scopeAt: { language: z.string().parse(row['scope_language']), revision: z.number().parse(row['scope_revision']) },
     title: z.string().parse(row['title']),
     passMark: Number(row['pass_mark']),
     drawn: DrawnSchema.parse(row['drawn']),
@@ -82,13 +115,13 @@ function fromRow(row: Row): StoredSitting {
 
 export async function createSitting(
   db: Db,
-  sitting: { subjectId: string; scope: ExamScope; title: string; passMark: number; drawn: readonly ShownQuestion[]; asked: readonly AskedQuestion[] },
+  sitting: { subjectId: string; scope: ExamScope; scopeAt: { language: string; revision: number }; title: string; passMark: number; drawn: readonly ShownQuestion[]; asked: readonly AskedQuestion[] },
 ): Promise<StoredSitting> {
   const rows = await db.query(
-    `INSERT INTO assessment.sitting (subject_id, scope_kind, scope_id, title, pass_mark, drawn, asked)
-          VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb)
+    `INSERT INTO assessment.sitting (subject_id, scope_kind, scope_id, scope_language, scope_revision, title, pass_mark, drawn, asked)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb)
        RETURNING ${COLUMNS}`,
-    [sitting.subjectId, sitting.scope.kind, sitting.scope.id, sitting.title, sitting.passMark, JSON.stringify(sitting.drawn), JSON.stringify(sitting.asked)],
+    [sitting.subjectId, sitting.scope.kind, sitting.scope.id, sitting.scopeAt.language, sitting.scopeAt.revision, sitting.title, sitting.passMark, JSON.stringify(sitting.drawn), JSON.stringify(sitting.asked)],
   );
   const row = rows[0];
   if (row === undefined) {
@@ -102,13 +135,18 @@ export async function sittingOf(db: Db, subjectId: string, id: string): Promise<
   return rows[0] === undefined ? undefined : fromRow(rows[0]);
 }
 
-/** Hands a sitting in, once: false when it had already been handed in. */
-export async function submitSitting(db: Db, id: string, result: { answers: readonly { questionId: string; answer: GivenAnswer }[]; correct: number; passed: boolean }): Promise<boolean> {
+/** Hands a sitting in at `at`, once: false when it had already been handed in. */
+export async function submitSitting(
+  db: Db,
+  id: string,
+  at: Date,
+  result: { answers: readonly { questionId: string; answer: GivenAnswer; durationMs?: number }[]; correct: number; passed: boolean },
+): Promise<boolean> {
   const rows = await db.query(
-    `UPDATE assessment.sitting SET submitted_at = now(), answers = $2::jsonb, correct = $3, passed = $4
+    `UPDATE assessment.sitting SET submitted_at = $2, answers = $3::jsonb, correct = $4, passed = $5
       WHERE id = $1 AND submitted_at IS NULL
       RETURNING id`,
-    [id, JSON.stringify(result.answers), result.correct, result.passed],
+    [id, at.toISOString(), JSON.stringify(result.answers.map(({ questionId, answer }) => ({ questionId, answer }))), result.correct, result.passed],
   );
   return rows.length === 1;
 }

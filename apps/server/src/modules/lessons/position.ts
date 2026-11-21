@@ -75,8 +75,9 @@ function fromRow(row: Row): StoredPosition {
 
 const COLUMNS = 'subject_id, lesson_id, step, steps, revision, started_at, updated_at, finished_at';
 
-export async function positionOf(db: Db, subjectId: string, lessonId: string): Promise<StoredPosition | undefined> {
-  const rows = await db.query(`SELECT ${COLUMNS} FROM lessons.position WHERE subject_id = $1 AND lesson_id = $2`, [subjectId, lessonId]);
+/** Where the learner is in one lesson; with `lock`, held until the transaction ends, so two moves at once cannot both count the same step. */
+export async function positionOf(db: Db, subjectId: string, lessonId: string, options: { readonly lock?: boolean } = {}): Promise<StoredPosition | undefined> {
+  const rows = await db.query(`SELECT ${COLUMNS} FROM lessons.position WHERE subject_id = $1 AND lesson_id = $2${options.lock === true ? ' FOR UPDATE' : ''}`, [subjectId, lessonId]);
   return rows[0] === undefined ? undefined : fromRow(rows[0]);
 }
 

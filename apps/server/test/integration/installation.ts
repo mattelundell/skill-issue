@@ -1,6 +1,6 @@
 import type { OpenAPIHono } from '@hono/zod-openapi';
 import { buildApp } from '../../src/core/app.js';
-import { catalogueMigrations } from '../../src/core/catalogue/migrations.js';
+import { coreMigrations } from '../../src/core/migrations.js';
 import type { DbConnection } from '../../src/core/db.js';
 import { migrate } from '../../src/core/migrate.js';
 import { createRegistry } from '../../src/core/registry.js';
@@ -20,7 +20,7 @@ export async function install(): Promise<Installation> {
   if (!registry.ok) {
     throw new Error(`modules do not register: ${registry.error.kind}`);
   }
-  const migrated = await migrate(db, [...catalogueMigrations, ...registry.value.migrations]);
+  const migrated = await migrate(db, [...coreMigrations, ...registry.value.migrations]);
   if (!migrated.ok) {
     throw new Error(`migrations failed: ${JSON.stringify(migrated.error)}`);
   }

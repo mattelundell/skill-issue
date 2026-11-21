@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TimeZoneSchema } from './record.js';
 import { ItemIdSchema, LanguageSchema } from './content.js';
 
 /**
@@ -72,10 +73,11 @@ export const LessonViewSchema = z.object({
 });
 export type LessonView = z.infer<typeof LessonViewSchema>;
 
-/** What the browser sends as the learner moves: the step now on screen, of the revision it was drawn from. */
+/** What the browser sends as the learner moves: the step now on screen, of the revision it was drawn from, and the learner's time zone for the learning record. */
 export const SavePositionSchema = z.strictObject({
   step: z.number().int().min(0),
   revision: z.number().int().min(1),
+  timeZone: TimeZoneSchema,
 });
 export type SavePosition = z.infer<typeof SavePositionSchema>;
 
