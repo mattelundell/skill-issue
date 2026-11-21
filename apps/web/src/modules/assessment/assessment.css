@@ -1,0 +1,54 @@
+/* The assessment module: questions inside a check, the exam, its result. */
+
+.questions .q { border-top: 1px solid var(--rule); padding: 16px 0 6px; }
+.questions .q:first-child { border-top: 0; padding-top: 4px; }
+.q .prompt { font-weight: 600; font-size: 1.05rem; margin: 0 0 10px; }
+.q .prompt p { margin: 0 0 6px; }
+.q .qn { color: var(--graphite); font-weight: 400; font-size: 0.85rem; display: block; }
+.opts { display: grid; gap: 8px; max-width: 30rem; border: 0; margin: 0; padding: 0; }
+.opts.row { grid-auto-flow: column; justify-content: start; }
+.opt { display: grid; grid-template-columns: auto 26px 1fr; gap: 10px; align-items: center; padding: 9px 12px; border: 1.5px solid var(--rule); border-radius: 8px; background: var(--sheet); cursor: pointer; }
+.opt:hover { border-color: var(--royal); }
+.opt.chosen { border-color: var(--royal); background: var(--royal-wash); }
+.opts:disabled .opt { cursor: default; opacity: 0.85; }
+.opt kbd { font: 0.78rem var(--mono, ui-monospace, monospace); color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
+.opts.row .opt { grid-template-columns: auto 1fr; }
+.numeric, .short { display: flex; gap: 8px; align-items: center; }
+.numeric input, .short input { font-size: 1.05rem; padding: 6px 10px; }
+.numeric input { width: 8rem; }
+.short input { width: min(100%, 22rem); }
+.ordering { list-style: decimal; padding-left: 1.4rem; display: grid; gap: 6px; max-width: 26rem; }
+.ordering li { display: flex; gap: 8px; align-items: center; }
+.ordering li span { flex: 1; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); }
+.ordering button { font: inherit; border: 1px solid var(--rule); border-radius: 6px; background: var(--paper); color: var(--ink); width: 2rem; height: 2rem; cursor: pointer; }
+.ordering button:disabled { opacity: 0.35; cursor: default; }
+.matching { display: grid; gap: 8px; margin: 0; max-width: 30rem; }
+.matching > div { display: grid; grid-template-columns: 8rem 1fr; gap: 10px; align-items: center; }
+.matching dt { font-weight: 600; }
+.matching dd { margin: 0; }
+.recall .hint, .hand-in .hint { color: var(--graphite); font-size: 0.92rem; }
+.recall blockquote { margin: 0 0 10px; padding: 8px 12px; border-left: 3px solid var(--royal); background: var(--paper); border-radius: 0 6px 6px 0; }
+.answer-row { margin: 10px 0 0; display: flex; gap: 12px; align-items: center; }
+.grade-failed { color: var(--warn); font-size: 0.9rem; }
+
+.feedback { margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 0.95rem; max-width: 38rem; }
+.feedback.right { background: var(--done-wash); border-left: 5px solid var(--done); }
+.feedback.wrong { background: var(--warn-wash); border-left: 5px solid var(--warn); }
+.feedback strong { display: block; margin-bottom: 2px; }
+.feedback.right strong { color: var(--done); }
+.feedback.wrong strong { color: var(--warn); }
+.feedback p { margin: 0 0 6px; }
+.feedback .src { font-size: 0.88rem; color: var(--graphite); }
+.feedback .src a { color: var(--royal); font-weight: 600; }
+
+.exam-offer { margin-top: 18px; padding: 14px 16px; border-radius: 8px; background: var(--royal-wash); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.exam-offer p { margin: 0; }
+.chip.passed { margin-left: 8px; border-color: var(--done); color: var(--done); }
+.area-exam { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 10px 0 4px; padding-top: 10px; border-top: 1px dashed var(--rule); color: var(--graphite); font-size: 0.9rem; }
+.area-exam a { color: var(--royal); font-weight: 600; }
+
+.exam .hand-in { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.exam .end.failed { border-left-color: var(--warn); }
+.review { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.review li { padding: 16px 20px; }
+.review .given { color: var(--graphite); font-size: 0.92rem; margin: 4px 0 0; }
