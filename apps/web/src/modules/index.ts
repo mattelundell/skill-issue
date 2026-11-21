@@ -1,4 +1,5 @@
 import { checkModules, type WebModule } from '../shell/contract.js';
+import { lessonsModule } from './lessons/index.js';
 import { readerModule } from './reader/index.js';
 
 /**
@@ -6,7 +7,7 @@ import { readerModule } from './reader/index.js';
  * the only place that names them: removing a line removes the module's pages,
  * tabs, blocks, figures and lesson marks, and nothing else.
  */
-export const webModules: readonly WebModule[] = [readerModule];
+export const webModules: readonly WebModule[] = [readerModule, lessonsModule];
 
 const fault = checkModules(webModules);
 if (fault !== undefined) {

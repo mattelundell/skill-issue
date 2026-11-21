@@ -70,6 +70,8 @@ export interface WebModule {
    * reads "continue" or "begin". With no module saying, it reads "open".
    */
   readonly startedSubjects?: (signal: AbortSignal) => Promise<ReadonlySet<string>>;
+  /** The address of one source, for every module that names a source to link it. One module shows sources. */
+  readonly sourceLink?: (subjectId: string, sourceId: string) => string;
   /** The address of one lesson, for every module that names a lesson to link it. One module draws lessons. */
   readonly lessonLink?: (subjectId: string, lessonId: string) => string;
   /** How a step type is drawn inside a lesson, by the module that owns it: a check, by the module that grades answers. */
@@ -77,7 +79,7 @@ export interface WebModule {
   /** Something beside a lesson as it is taken, such as the note pane. */
   readonly LessonSide?: ComponentType<LessonSideProps>;
   /** Each lesson's state on the path, by lesson id. A lesson it does not name, it says nothing about. */
-  readonly lessonMarks?: (subjectId: string, signal: AbortSignal) => Promise<ReadonlyMap<string, LessonMark>>;
+  readonly lessonMarks?: (subjectId: string, signal: AbortSignal, language: Language) => Promise<ReadonlyMap<string, LessonMark>>;
 }
 
 /** What draws a check step is given: the questions it asks, and a way to say when the learner may go on. */
