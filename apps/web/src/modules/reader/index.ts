@@ -1,4 +1,5 @@
 import type { WebModule } from '../../shell/contract.js';
+import { subjectPath } from '../../shell/router.js';
 import { MaterialBlock } from './MaterialBlock.js';
 import { catalogues } from './messages.js';
 import { ReaderPage } from './ReaderPage.js';
@@ -9,4 +10,5 @@ export const readerModule: WebModule = {
   id: 'reader',
   page: { label: { sv: catalogues.sv.tab, en: catalogues.en.tab }, Page: ReaderPage },
   homeBlocks: [{ placement: 'side', Block: MaterialBlock }],
+  sourceLink: (subjectId, sourceId) => subjectPath(subjectId, 'reader', [sourceId]),
 };
