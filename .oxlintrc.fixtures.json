@@ -1,0 +1,7 @@
+{
+  // Everything in .oxlintrc.json — rules, plugins and options — with one
+  // difference: the fixtures are not excluded. Used only by
+  // scripts/check-lint-rules.ts, so that what it proves is the real configuration.
+  "extends": ["./.oxlintrc.json"],
+  "ignorePatterns": ["**/dist/**"]
+}
