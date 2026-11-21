@@ -97,9 +97,28 @@ describe('readZip against an archive that lies about its sizes', () => {
     }
     view.setUint32(entry + 24, 10, true);
 
-    const result = readZip(archive, limits);
+    // A cap above the compressed size, so the entry is inflated and the declared size is what bounds it.
+    const result = readZip(archive, { maxFiles: 3, maxFileBytes: 100_000, maxTotalBytes: 100_000 });
 
     expect(result.ok ? result.value.get('bomb.png')?.length : result).toBe(10);
+  });
+});
+
+describe('readZip against a stored entry that lies about its size', () => {
+  it('counts the stored bytes, which are what gets copied, not the declared unpacked size', () => {
+    // Stored entries are copied by their compressed size, so a header claiming 1 byte unpacked must not let 2,000 through.
+    const archive = zipSync({ 'assets/stored.png': [new Uint8Array(2000).fill(7), { level: 0 }] });
+    const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
+    let entry = archive.length - 22;
+    while (view.getUint32(entry, true) !== 0x02014b50) {
+      entry -= 1;
+    }
+    view.setUint32(entry + 24, 1, true);
+
+    expect(readZip(archive, { ...limits, maxTotalBytes: 5000 })).toEqual({
+      ok: false,
+      error: [{ code: 'pack-too-large', file: 'assets/stored.png', item: null, field: '', expected: 'a file of at most 1000 bytes', found: '2000 bytes' }],
+    });
   });
 });
 
