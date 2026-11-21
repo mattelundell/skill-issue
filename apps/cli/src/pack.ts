@@ -1,5 +1,5 @@
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { basename } from 'node:path';
+import { basename, resolve } from 'node:path';
 import {
   API_PREFIX,
   LoadResultSchema,
@@ -122,7 +122,8 @@ export async function load(command: { readonly path: string; readonly url: strin
   if (!checked.ok) {
     return failed(formatFaults(checked.error));
   }
-  const archive = writeZip(files.value, basename(command.path).replace(/\.zip$/, ''));
+  // Resolved first: the folder name of "." or ".." would put every entry outside the pack.
+  const archive = writeZip(files.value, basename(resolve(command.path)).replace(/\.zip$/, ''));
 
   const preview = await send(fetchImpl, command.url, archive, true);
   if (preview.kind === 'failed') {
