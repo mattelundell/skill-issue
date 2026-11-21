@@ -61,8 +61,10 @@ async function load(files: PackFiles): Promise<void> {
   }
 }
 
+type AnswerEvent = Extract<RecordEvent, { kind: 'answer' }>;
+
 /** One answer as the record would have written it at `at`. */
-function answerAt(questionId: string, at: string, correct: boolean, setting: 'lesson-check' | 'exam' | 'review' = 'lesson-check', timeZone = ZONE): RecordEvent {
+function answerAt(questionId: string, at: string, correct: boolean, setting: 'lesson-check' | 'exam' | 'review' = 'lesson-check', timeZone = ZONE): AnswerEvent {
   const question = QUESTIONS[questionId];
   if (question === undefined) {
     throw new Error(`no such question in these tests: ${questionId}`);
@@ -84,6 +86,8 @@ function answerAt(questionId: string, at: string, correct: boolean, setting: 'le
     ...(setting === 'exam' ? { sittingId: '00000000-0000-4000-8000-000000000001' } : {}),
   };
 }
+
+const timed = (event: AnswerEvent, durationMs: number): AnswerEvent => ({ ...event, durationMs });
 
 const write = async (events: readonly RecordEvent[]): Promise<void> => createLearningRecord(here.db).append(events);
 
@@ -239,7 +243,40 @@ describe('what is due', () => {
       answerAt('kwh-eller-kw', new Date().toISOString(), true),
     ]);
 
-    expect(await due()).toEqual({ subjectId: SUBJECT, questions: ['effekt-ar-takt', 'berakna-energi'], scheduled: 3 });
+    const listed = await due();
+    expect(listed).toMatchObject({ subjectId: SUBJECT, questions: ['effekt-ar-takt', 'berakna-energi'], scheduled: 3 });
+    // The one answered right today is the next to fall due, on a later day.
+    expect(listed.next?.questions).toBe(1);
+    expect(listed.next?.day.localeCompare(new Date().toISOString().slice(0, 10))).toBe(1);
+  });
+
+  it('says how long the learner typically takes over one question: the median of their answers outside exams', async () => {
+    await load(example);
+    await write([
+      timed(answerAt('berakna-energi', daysAgo(5), false), 2000),
+      timed(answerAt('effekt-ar-takt', daysAgo(5, 10), false), 9000),
+      timed(answerAt('kwh-eller-kw', daysAgo(4), true, 'review'), 4000),
+      // An exam question's time is spread over visits, so it says nothing of one answer.
+      timed(answerAt('kwh-eller-kw', daysAgo(3), true, 'exam'), 600_000),
+    ]);
+
+    expect((await due()).typicalAnswerMs).toBe(4000);
+  });
+
+  it('names the next day more questions fall due, and how many', async () => {
+    await load(example);
+    const now = new Date().toISOString();
+    // Wrong today: back tomorrow. Right today on a numeric question: back days later, which is not the next day.
+    await write([
+      answerAt('berakna-energi', now, true, 'lesson-check', 'UTC'),
+      answerAt('effekt-ar-takt', now, false, 'lesson-check', 'UTC'),
+      answerAt('kwh-eller-kw', now, false, 'lesson-check', 'UTC'),
+    ]);
+
+    const tomorrow = new Date(Date.now() + DAY).toISOString().slice(0, 10);
+    expect((await due('?timeZone=UTC')).next).toEqual({ day: tomorrow, questions: 2 });
+    const [later] = await here.db.query(`SELECT to_json(due_at) #>> '{}' AS due_at FROM review.memory WHERE question_id = 'berakna-energi'`);
+    expect(String(later?.['due_at']).slice(0, 10) > tomorrow).toBe(true);
   });
 
   it('lists a question that falls due today, at any hour of it', async () => {
@@ -257,7 +294,7 @@ describe('what is due', () => {
     const response = await here.app.request(`${REVIEW}/due?timeZone=${ZONE}`);
 
     expect(response.status).toBe(200);
-    expect(DueCountsSchema.parse(await response.json())).toEqual({ subjects: { [SUBJECT]: 1 } });
+    expect(DueCountsSchema.parse(await response.json())).toEqual({ subjects: { [SUBJECT]: { due: 1, typicalAnswerMs: 3000 } } });
   });
 
   it('leaves out a question the subject no longer holds', async () => {
@@ -272,13 +309,13 @@ describe('what is due', () => {
     }
     await load(without);
 
-    expect(await due()).toEqual({ subjectId: SUBJECT, questions: ['berakna-energi'], scheduled: 1 });
+    expect(await due()).toMatchObject({ subjectId: SUBJECT, questions: ['berakna-energi'], scheduled: 1 });
   });
 
   it('is nothing in a subject where nothing has been answered', async () => {
     await load(example);
 
-    expect(await due()).toEqual({ subjectId: SUBJECT, questions: [], scheduled: 0 });
+    expect(await due()).toEqual({ subjectId: SUBJECT, questions: [], scheduled: 0, next: null, typicalAnswerMs: null });
     expect(DueCountsSchema.parse(await (await here.app.request(`${REVIEW}/due`)).json())).toEqual({ subjects: {} });
   });
 
