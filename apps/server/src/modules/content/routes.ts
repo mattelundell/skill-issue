@@ -1,5 +1,7 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import {
+  ASSET_MEDIA_TYPES,
+  AssetFileSchema,
   ItemIdSchema,
   LanguageSchema,
   LoadResultSchema,
@@ -177,6 +179,42 @@ export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
   });
   const packJsonSchema = z.toJSONSchema(PackSchema, { io: 'input' });
   routes.get('/schema/pack.json', (c) => c.json(packJsonSchema, 200, { 'content-type': 'application/schema+json' }));
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/subjects/{subjectId}/assets/{file}',
+    summary: "One of a subject's files, such as an image a lesson or a source shows.",
+    description:
+      'Served with its media type and no permission to run anything, since it comes from the application\'s own address. The ETag changes whenever the file does; a request holding the current one is answered 304.',
+    request: { params: z.object({ subjectId: ItemIdSchema, file: AssetFileSchema }) },
+    responses: {
+      200: { description: 'The file.', content: Object.fromEntries(Object.values(ASSET_MEDIA_TYPES).map((type) => [type, { schema: z.string().openapi({ format: 'binary' }) }])) },
+      304: { description: 'The copy the caller holds is the current one.' },
+      404: { description: 'No such subject, or no such file in it.', content: problemContent },
+    },
+  });
+  routes.get('/subjects/:subjectId/assets/:file', async (c) => {
+    const subjectId = c.req.param('subjectId');
+    const file = c.req.param('file');
+    const noFile = problem(404, 'No such file', `The subject has no file ${JSON.stringify(`assets/${file}`)}.`);
+    // An exact lookup on bound values: a name that climbs out of assets/, or any other junk, matches nothing.
+    const asset = await catalogue.asset(subjectId, `assets/${file}`);
+    if (asset === undefined) {
+      return c.json(noFile, 404);
+    }
+    const etag = `"${asset.digest}"`;
+    // Revalidated on every use, so a reloaded subject's new image shows at once; unchanged ones cost a 304.
+    const headers = {
+      etag,
+      'cache-control': 'no-cache',
+      'x-content-type-options': 'nosniff',
+      'content-security-policy': "default-src 'none'; sandbox",
+    };
+    if (c.req.header('if-none-match') === etag) {
+      return c.body(null, 304, headers);
+    }
+    return c.body(new Uint8Array(asset.data), 200, { ...headers, 'content-type': asset.mediaType });
+  });
 
   return routes;
 }

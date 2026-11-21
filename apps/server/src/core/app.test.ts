@@ -112,6 +112,7 @@ describe('the content module', () => {
       '/content/packs': ['post'],
       '/content/subjects': ['get'],
       '/content/subjects/{subjectId}': ['get'],
+      '/content/subjects/{subjectId}/assets/{file}': ['get'],
       '/content/subjects/{subjectId}/pack': ['get'],
       '/content/schema/pack.json': ['get'],
     });
