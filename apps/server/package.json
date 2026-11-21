@@ -1,0 +1,27 @@
+{
+  "name": "@skill-issue/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --dir src",
+    "test:integration": "vitest run --dir test/integration",
+    "start": "node dist/main.js"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.0",
+    "@hono/zod-openapi": "^1.6.0",
+    "@skill-issue/contract": "workspace:*",
+    "hono": "^4.13.0",
+    "pg": "^8.23.0",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.0",
+    "@types/pg": "^8.23.0",
+    "typescript": "^7.0.0",
+    "vitest": "^5.0.0"
+  }
+}

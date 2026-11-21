@@ -1,0 +1,15 @@
+{
+  "name": "skill-issue",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=26"
+  },
+  "scripts": {
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm --filter @skill-issue/contract run build && pnpm -r run typecheck",
+    "test": "pnpm --filter @skill-issue/contract run build && pnpm -r run test",
+    "test:integration": "pnpm --filter @skill-issue/contract run build && pnpm --filter @skill-issue/server run test:integration"
+  }
+}

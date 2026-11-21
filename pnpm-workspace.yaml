@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/*
+
+# A version is taken only once it has been public for seven days (the value is
+# in minutes), because most hijacked releases are found and pulled within days.
+minimumReleaseAge: 10080

@@ -1,0 +1,50 @@
+:root {
+  color-scheme: light dark;
+  --text: light-dark(#1b1b1f, #ececf1);
+  --muted: light-dark(#5c5c66, #a3a3ad);
+  --surface: light-dark(#fafafa, #16161a);
+  --panel: light-dark(#ffffff, #1f1f25);
+  --line: light-dark(#dedee3, #33333b);
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--text);
+}
+
+main {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+
+h1 {
+  margin: 0;
+}
+
+.tagline,
+footer {
+  color: var(--muted);
+}
+
+.empty {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.empty h2 {
+  margin-top: 0;
+}

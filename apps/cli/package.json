@@ -1,0 +1,22 @@
+{
+  "name": "@skill-issue/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "skill-issue": "./dist/main.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@skill-issue/contract": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.0",
+    "typescript": "^7.0.0",
+    "vitest": "^5.0.0"
+  }
+}
