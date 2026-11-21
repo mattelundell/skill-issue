@@ -42,7 +42,9 @@ A lesson is a sequence of steps, one on screen at a time, with a progress bar.
 
 The note pane sits beside the lesson. A note is attached to the lesson, and to the step it was written at, automatically. Selecting text in a step and pressing one key quotes it into the note.
 
-Leaving mid-lesson is normal. The lesson resumes at the step you left.
+Leaving mid-lesson is normal and needs no confirmation; the lesson says on its way out where it will take up. It resumes at the step you left, says so once, and offers a way back to the first step. A lesson already gone through to its end opens at its first step. When the subject has been reloaded and the lesson changed since you were in it, the lesson says so and resumes at the same step number — or at its last step, if it became shorter — because a step number is all that can be kept across a change.
+
+The start screen offers the lesson you were last in, if it is unfinished, or else the next one on that subject's path not yet gone through; the subject home suggests the same for its own lessons.
 
 ### Exam
 
@@ -83,7 +85,7 @@ A lesson has four states.
 | State | Meaning |
 |---|---|
 | Not started | No step completed. |
-| In progress | Some steps completed. |
+| In progress | Some steps completed — or all of them, while the lesson exam is not yet passed: then it reads "all steps gone through", so a finished lesson does not look abandoned. |
 | Passed | The lesson exam was passed. |
 | Mastered | Passed, and the expected recall of its questions is at or above the target. |
 

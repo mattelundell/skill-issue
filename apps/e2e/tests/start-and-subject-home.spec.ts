@@ -60,7 +60,8 @@ test('an empty installation welcomes, and a subject loaded while the start scree
 
 test('the subject home is reached from the start screen, draws the path, survives a reload and leads back', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Öppna: Exempelämne' }).click();
+  // Nothing begun yet, so the way in is to begin.
+  await page.getByRole('link', { name: 'Börja: Exempelämne' }).click();
 
   await expect(page).toHaveURL('/subjects/example-subject');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Exempelämne');
@@ -68,8 +69,8 @@ test('the subject home is reached from the start screen, draws the path, survive
   await expect(page.getByText('2 områden')).toBeVisible();
   await expect(page.locator('section[data-area] h3')).toHaveText(['Grunder', 'Fördjupning']);
   await expect(page.locator('section[data-area="fordjupning"] .requires')).toHaveText('Bygger på Grunder.');
-  await expect(page.locator('section[data-area="grunder"] li')).toHaveText(['Energi och effekt', 'Enhetsprefix']);
-  await expect(page.locator('section[data-area="fordjupning"] li')).toHaveText(['Energibalans']);
+  await expect(page.locator('section[data-area="grunder"] li .lesson')).toHaveText(['Energi och effekt', 'Enhetsprefix']);
+  await expect(page.locator('section[data-area="fordjupning"] li .lesson')).toHaveText(['Energibalans']);
   await expect(page).toHaveTitle('Exempelämne · Skill Issue');
 
   await page.reload();

@@ -62,7 +62,8 @@ test('the subject home leads to the material, and a source opens with its origin
   await expect(origin.getByRole('link', { name: 'example.org' })).toHaveAttribute('href', 'https://example.org/energi');
   const rests = page.getByRole('complementary', { name: 'Det här vilar på källan' });
   await expect(rests.locator('> p')).toHaveText('3 lektioner, 8 frågor och 2 begrepp.');
-  await expect(rests.locator('li')).toHaveText(['Energi och effekt3 frågor', 'Enhetsprefix3 frågor', 'Energibalans2 frågor']);
+  // Lessons mark each citing lesson; none has been begun when this file runs.
+  await expect(rests.locator('li')).toHaveText(['Energi och effektInte påbörjad · 3 frågor', 'EnhetsprefixInte påbörjad · 3 frågor', 'EnergibalansInte påbörjad · 2 frågor']);
   await expect(rests.locator('dt')).toHaveText(['Effekt', 'Energi']);
   await expect(page).toHaveTitle('Exempelkälla om energi och effekt · Exempelämne');
 
