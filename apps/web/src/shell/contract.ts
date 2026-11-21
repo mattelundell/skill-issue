@@ -26,13 +26,24 @@ export interface SubjectProps {
   readonly language: Language;
 }
 
+/** What a module's page is given besides its subject: where within the page the learner is. */
+export interface PageProps extends SubjectProps {
+  /** The path segments below the page, decoded: `/subjects/s/reader/a` gives `['a']`, the page itself `[]`. */
+  readonly path: readonly string[];
+  /** The address of a place within this page, for a link to it. */
+  readonly pathTo: (path: readonly string[]) => string;
+}
+
 export interface WebModule {
   /** Unique, the same as the module's id on the server; also the path segment of its page. */
   readonly id: string;
-  /** A page within a subject, at `/subjects/<subject>/<id>`, with a tab beside the overview. */
+  /**
+   * A page within a subject, at `/subjects/<subject>/<id>`, with a tab beside the
+   * overview. Everything below that address is the page's own, such as one source.
+   */
   readonly page?: {
     readonly label: Readonly<Record<Language, string>>;
-    readonly Page: ComponentType<SubjectProps>;
+    readonly Page: ComponentType<PageProps>;
   };
   /**
    * Blocks on the subject home: `lead` above the path, such as what is due today;

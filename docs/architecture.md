@@ -83,13 +83,17 @@ The browser app is a shell that draws two screens — the start screen and a sub
 
 | Contribution | Where it appears | For example |
 |---|---|---|
-| a page, with its tab | a tab beside the subject's overview; the page at `/subjects/<subject>/<module>` | the source library, the notes browser |
+| a page, with its tab | a tab beside the subject's overview; the page at `/subjects/<subject>/<module>`, and everything below that address is the page's own | the source library, and one source at `/subjects/<subject>/reader/<source>`; the notes browser |
 | blocks on the subject home | `lead`, above the path, or `side`, in the column beside it | what is due today; a count of notes |
 | figures on a start-screen row | beside each subject's title | reviews due, share mastered |
 | a resume panel | above the start screen's rows | where the learner left off |
 | lesson marks | on each lesson in the path | not started, in progress, passed, mastered |
 
 Lesson marks are the one contribution several modules give for the same thing: one module knows a lesson was started, another that its exam was passed. The shell shows the furthest state any module gives, and a lesson no marking module names as not started. With no marking module at all, the path is drawn without states, rather than claiming every lesson is untouched. A module whose marks cannot be read is left out, and the others still show.
+
+A page is given the path segments below its address, and a way to build an address within itself, so a page with places of its own — one source, one note — keeps them bookmarkable without the shell knowing what they are.
+
+A module's interface text is its own: a message catalogue per interface language, beside its code, so removing the module removes its text and the shell's catalogue names no module. A language or a key left out of a module's catalogues does not compile.
 
 The shell owns what needs no module: the subject list and each subject's path, read from the catalogue through the content endpoints, the interface language, and the states for a server or database that cannot be reached and a subject that does not exist. A loaded subject appears without a restart, because the start screen asks again every 30 seconds and whenever the tab is shown.
 

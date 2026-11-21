@@ -3,11 +3,14 @@ import { useEffect, useState, type AnchorHTMLAttributes, type MouseEvent, type R
 /** Where the app is. The path is the whole state of navigation, so a link can be bookmarked and reloaded. */
 export type Route =
   | { readonly kind: 'start' }
-  /** A subject's home; `page` is the module whose page is open, or undefined for the overview. */
-  | { readonly kind: 'subject'; readonly subjectId: string; readonly page: string | undefined }
+  /**
+   * A subject's home; `page` is the module whose page is open, or undefined for
+   * the overview, and `path` the segments below that page, which the module reads.
+   */
+  | { readonly kind: 'subject'; readonly subjectId: string; readonly page: string | undefined; readonly path: readonly string[] }
   | { readonly kind: 'not-found' };
 
-const SUBJECT_PATH = /^\/subjects\/([^/]+)(?:\/([^/]+))?\/?$/;
+const SUBJECT_PATH = /^\/subjects\/([^/]+)(?:\/([^/]+)((?:\/[^/]+)*))?\/?$/;
 
 export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '') {
@@ -20,7 +23,13 @@ export function parseRoute(pathname: string): Route {
   }
   try {
     const page = match?.[2];
-    return { kind: 'subject', subjectId: decodeURIComponent(subject), page: page === undefined ? undefined : decodeURIComponent(page) };
+    const below = match?.[3] ?? '';
+    return {
+      kind: 'subject',
+      subjectId: decodeURIComponent(subject),
+      page: page === undefined ? undefined : decodeURIComponent(page),
+      path: below === '' ? [] : below.slice(1).split('/').map(decodeURIComponent),
+    };
   } catch {
     // A malformed escape such as "%E0" names nothing that exists.
     return { kind: 'not-found' };
@@ -28,8 +37,8 @@ export function parseRoute(pathname: string): Route {
 }
 
 export const startPath = (): string => '/';
-export const subjectPath = (subjectId: string, page?: string): string =>
-  `/subjects/${encodeURIComponent(subjectId)}${page === undefined ? '' : `/${encodeURIComponent(page)}`}`;
+export const subjectPath = (subjectId: string, page?: string, path: readonly string[] = []): string =>
+  `/subjects/${encodeURIComponent(subjectId)}${page === undefined ? '' : [page, ...path].map((segment) => `/${encodeURIComponent(segment)}`).join('')}`;
 
 /** The event the app listens for besides the browser's own back and forward. */
 const NAVIGATED = 'skill-issue:navigated';

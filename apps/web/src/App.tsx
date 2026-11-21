@@ -119,7 +119,7 @@ function Screen({
     case 'start':
       return <Start modules={modules} status={status} refreshStatus={refreshStatus} />;
     case 'subject':
-      return <SubjectHome key={route.subjectId} subjectId={route.subjectId} page={route.page} modules={modules} />;
+      return <SubjectHome key={route.subjectId} subjectId={route.subjectId} page={route.page} path={route.path} modules={modules} />;
     case 'not-found':
       return (
         <div className="sheet state" role="alert">
