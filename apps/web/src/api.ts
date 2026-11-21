@@ -23,7 +23,8 @@ interface Parser<T> {
   safeParse(input: unknown): { readonly success: true; readonly data: T } | { readonly success: false };
 }
 
-async function getJson<T>(path: string, parser: Parser<T>, signal: AbortSignal): Promise<Fetched<T>> {
+/** Reads JSON from the API and checks it against the contract. A module's own reads go through this too. */
+export async function getJson<T>(path: string, parser: Parser<T>, signal: AbortSignal): Promise<Fetched<T>> {
   let response: Response;
   let body: unknown;
   try {
