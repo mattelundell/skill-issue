@@ -111,6 +111,7 @@ describe('the content module', () => {
       '/health': ['get'],
       '/content/packs': ['post'],
       '/content/subjects': ['get'],
+      '/content/subjects/{subjectId}': ['get'],
       '/content/subjects/{subjectId}/pack': ['get'],
       '/content/schema/pack.json': ['get'],
     });
