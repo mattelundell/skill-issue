@@ -1,5 +1,5 @@
 import type { AskedQuestion, ExpectedAnswer, GivenAnswer } from '@skill-issue/contract';
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useMessages } from './messages.js';
 
 /**
@@ -121,6 +121,15 @@ function ShortText({ onChange, disabled }: InputProps<Of<'short-text'>>) {
 function Ordering({ question, onChange, disabled }: InputProps<Of<'ordering'>>) {
   const { t } = useMessages();
   const [items, setItems] = useState<readonly string[]>(question.items);
+  // The order on screen is already a whole answer, so the learner can give it unchanged. Said once, when
+  // first drawn: a caller passing a new onChange on every render must not be told again, or it loops.
+  const told = useRef(false);
+  useEffect(() => {
+    if (!told.current) {
+      told.current = true;
+      onChange({ type: 'ordering', items: question.items });
+    }
+  }, [onChange, question.items]);
   const move = (from: number, to: number): void => {
     const next = [...items];
     const [moved] = next.splice(from, 1);
