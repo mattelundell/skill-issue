@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catalogues, isLanguage, languages, translate } from './index.js';
+import { catalogues, isLanguage, languageName, languages, translate, translateCount } from './index.js';
 
 const placeholders = (text: string): readonly string[] =>
   [...text.matchAll(/\{(\w+)\}/g)].map((match) => match[0]).toSorted();
@@ -37,5 +37,18 @@ describe('translate', () => {
 describe('isLanguage', () => {
   it('accepts the shipped languages and nothing else', () => {
     expect(['sv', 'en', 'de', '', null, 'toString'].filter(isLanguage)).toEqual(['sv', 'en']);
+  });
+});
+
+describe('translateCount', () => {
+  it('takes the singular form for one and the plural for every other count, zero included', () => {
+    expect([0, 1, 2].map((count) => translateCount('sv', 'home.areas', count))).toEqual(['0 områden', '1 område', '2 områden']);
+    expect(translateCount('en', 'home.areas', 1)).toBe('1 area');
+  });
+});
+
+describe('languageName', () => {
+  it('names a language in that language, and falls back to the code for one Intl cannot name', () => {
+    expect(['sv', 'en', 'not a code'].map(languageName)).toEqual(['svenska', 'English', 'not a code']);
   });
 });
