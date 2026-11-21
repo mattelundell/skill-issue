@@ -12,6 +12,7 @@ import {
   type ShownLesson,
 } from '@skill-issue/contract';
 import { problem, problemContent } from '../../core/problem.js';
+import type { RecordEvent } from '../../core/record/record.js';
 import type { ModuleContext } from '../../core/registry.js';
 import { latestPositions, positionOf, positionsIn, savePosition, type StoredPosition } from './position.js';
 
@@ -37,7 +38,7 @@ export function resumeAt(position: LessonPosition | undefined, steps: number): n
 }
 
 /** Runs a lesson step by step and keeps where the learner is in each. */
-export function lessonsRoutes({ db, catalogue }: ModuleContext): OpenAPIHono {
+export function lessonsRoutes({ db, catalogue, record }: ModuleContext): OpenAPIHono {
   const routes = new OpenAPIHono();
   const params = z.object({ subjectId: ItemIdSchema, lessonId: ItemIdSchema });
   const language = { query: z.object({ language: LanguageSchema.optional() }) };
@@ -124,7 +125,7 @@ export function lessonsRoutes({ db, catalogue }: ModuleContext): OpenAPIHono {
     }
     const body = SavePositionSchema.safeParse(json);
     if (!body.success) {
-      return c.json(problem(400, 'The body is not a position', 'Send { "step": <integer from 0>, "revision": <integer from 1> }.'), 400);
+      return c.json(problem(400, 'The body is not a position', 'Send { "step": <integer from 0>, "revision": <integer from 1>, "timeZone": <such as Europe/Stockholm> }.'), 400);
     }
     const found = await lessonOr404(c.req.param('subjectId'), c.req.param('lessonId'), undefined);
     if ('problem' in found) {
@@ -140,7 +141,25 @@ export function lessonsRoutes({ db, catalogue }: ModuleContext): OpenAPIHono {
     if (body.data.step > lesson.steps.length) {
       return c.json(problem(400, 'No such step', `The lesson has ${lesson.steps.length} steps; the step after the last is ${lesson.steps.length}.`), 400);
     }
-    const saved = await savePosition(db, { subjectId: lesson.subjectId, lessonId: lesson.id, step: body.data.step, steps: lesson.steps.length, revision: lesson.revision });
+    const steps = lesson.steps.length;
+    const { step, timeZone } = body.data;
+    const saved = await db.transaction(async (tx) => {
+      const before = await positionOf(tx, lesson.subjectId, lesson.id, { lock: true });
+      // Where the learner was, in this revision's steps: a position from before a reload counts from where it resumes.
+      const from = before === undefined ? 0 : before.revision === lesson.revision ? before.step : resumeAt(before, steps);
+      const at = new Date();
+      const item = { subjectId: lesson.subjectId, id: lesson.id, language: lesson.language, revision: lesson.revision };
+      // Moving on goes through every step passed; moving back goes through none.
+      const gone: RecordEvent[] = [];
+      for (let passed = from; passed < step; passed += 1) {
+        gone.push({ kind: 'step', at, timeZone, lesson: item, step: passed });
+      }
+      if (step === steps && from < steps) {
+        gone.push({ kind: 'lesson-finished', at, timeZone, lesson: item });
+      }
+      await record.append(gone, tx);
+      return savePosition(tx, { subjectId: lesson.subjectId, lessonId: lesson.id, step, steps, revision: lesson.revision });
+    });
     return c.json(publicPosition(saved), 200);
   });
 

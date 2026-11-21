@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ItemIdSchema, LanguageSchema } from './content.js';
 import { LessonSourceSchema } from './lessons.js';
+import { DurationMsSchema, TimeZoneSchema } from './record.js';
 
 /**
  * Asking and grading. A question goes to the browser without its answer, the
@@ -68,7 +69,8 @@ export const GradedSchema = z.object({
 });
 export type Graded = z.infer<typeof GradedSchema>;
 
-export const AnswerRequestSchema = z.strictObject({ answer: GivenAnswerSchema });
+/** One answer to a check, with what the learning record keeps beside it: how long it took and the learner's time zone. */
+export const AnswerRequestSchema = z.strictObject({ answer: GivenAnswerSchema, durationMs: DurationMsSchema, timeZone: TimeZoneSchema });
 
 /** The questions a check step asks, by id, as asked. */
 export const AskedQuestionsSchema = z.object({ subjectId: ItemIdSchema, questions: z.array(AskedQuestionSchema) });
@@ -95,8 +97,10 @@ export const SittingSchema = z.object({
 });
 export type Sitting = z.infer<typeof SittingSchema>;
 
+/** A sitting handed in. Each answer carries how long its question was on screen, over every visit to it, since the learner may move back and forth. */
 export const SubmitExamSchema = z.strictObject({
-  answers: z.array(z.strictObject({ questionId: ItemIdSchema, answer: GivenAnswerSchema })).max(500),
+  answers: z.array(z.strictObject({ questionId: ItemIdSchema, answer: GivenAnswerSchema, durationMs: DurationMsSchema })).max(500),
+  timeZone: TimeZoneSchema,
 });
 
 /** A sitting's result: the mark against the pass mark, and every answer reviewed. */

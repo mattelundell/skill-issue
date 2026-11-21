@@ -70,7 +70,7 @@ async function post(path: string, body: unknown): Promise<{ status: number; json
   return { status: response.status, json: await response.json() };
 }
 
-const answer = async (questionId: string, given: GivenAnswer) => post(`/questions/${questionId}/answers`, { answer: given });
+const answer = async (questionId: string, given: GivenAnswer) => post(`/questions/${questionId}/answers`, { answer: given, durationMs: 1000, timeZone: 'Europe/Stockholm' });
 
 async function sit(kind: 'lesson' | 'area', id: string): Promise<Sitting> {
   const started = await post('/exams', { scope: { kind, id } });
@@ -79,7 +79,7 @@ async function sit(kind: 'lesson' | 'area', id: string): Promise<Sitting> {
 }
 
 const handIn = async (sitting: Sitting, answers: Readonly<Record<string, GivenAnswer>>) =>
-  post(`/exams/${sitting.id}`, { answers: sitting.questions.map((question) => ({ questionId: question.id, answer: answers[question.id] })) });
+  post(`/exams/${sitting.id}`, { answers: sitting.questions.map((question) => ({ questionId: question.id, answer: answers[question.id], durationMs: 1000 })), timeZone: 'Europe/Stockholm' });
 
 describe('asking', () => {
   it('gives a check’s questions in order, without their answers', async () => {
@@ -179,7 +179,7 @@ describe('exams', () => {
     const [first, second] = sitting.questions;
     const answers = { [first?.id ?? '']: RIGHT[first?.id ?? ''] as GivenAnswer, [second?.id ?? '']: RIGHT[second?.id ?? ''] as GivenAnswer };
 
-    const result = ExamResultSchema.parse((await post(`/exams/${sitting.id}`, { answers: Object.entries(answers).map(([questionId, given]) => ({ questionId, answer: given })) })).json);
+    const result = ExamResultSchema.parse((await post(`/exams/${sitting.id}`, { answers: Object.entries(answers).map(([questionId, given]) => ({ questionId, answer: given, durationMs: 1000 })), timeZone: 'Europe/Stockholm' })).json);
 
     expect(result).toMatchObject({ correct: 2, total: 4, passMark: 0.75, passed: false });
     expect(result.review.filter((entry) => entry.given === null).map((entry) => entry.correct)).toEqual([false, false]);
@@ -201,7 +201,7 @@ describe('exams', () => {
     const sitting = await sit('lesson', 'energi-och-effekt');
     const notAsked = ['kwh-eller-kw', 'berakna-energi', 'effekt-ar-takt'].find((id) => !sitting.questions.some((question) => question.id === id)) ?? '';
 
-    expect(await post(`/exams/${sitting.id}`, { answers: [{ questionId: notAsked, answer: RIGHT[notAsked] }] })).toMatchObject({ status: 400, json: { title: 'An answer to a question not asked' } });
+    expect(await post(`/exams/${sitting.id}`, { answers: [{ questionId: notAsked, answer: RIGHT[notAsked], durationMs: 1000 }], timeZone: 'Europe/Stockholm' })).toMatchObject({ status: 400, json: { title: 'An answer to a question not asked' } });
     expect((await handIn(sitting, RIGHT)).status).toBe(200);
     expect(await handIn(sitting, RIGHT)).toMatchObject({ status: 409, json: { title: 'The sitting has been handed in' } });
   });

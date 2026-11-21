@@ -162,16 +162,21 @@ A new type is added by registering these four parts. Nothing else changes.
 
 ## Learning record
 
-One append-only table. A row is written whenever the learner answers a question, completes a step, finishes a lesson or sits an exam. For an answer it holds:
+One append-only table, `record.event`, owned by the core and handed to every module as `record` beside the catalogue. A row is written whenever the learner answers a question (`answer`), goes through a step (`step`), finishes a lesson (`lesson-finished`) or hands in an exam (`exam`). Every row names its item as it stood — subject, kind, id, language and revision — and the database holds it to a revision the catalogue has, so a row always points at the exact text the learner met. For an answer it holds:
 
-- the item, its revision and the concepts it tests
-- when, in UTC to the millisecond, with the learner's time zone
-- what was answered, whether it was correct, and the score
-- how long it took, the question type and the number of options
+- the item, its revision and the concepts it tests; the revision is that of the language the question was shown in
+- when, in UTC to the millisecond, with the learner's time zone, which the browser sends with every answer and every move through a lesson
+- what was answered, whether it was correct, and the score: every type is graded right or wrong today, so the score is 1 or 0
+- how long it took: for a check, from the question being shown to the answer being sent; for an exam, the time the question was on screen over every visit, since the learner moves back and forth; nothing for an exam question left unanswered
+- the question type and the number of options a guess would pick from: the choices, 2 for true or false, the items to order or the pairs to match, and nothing for a typed number, typed text or free recall
 - the setting: lesson check, exam, scheduled review or extra practice
+- the sources the question cited when answered, so a source later removed from the subject can still say what was answered on its strength
+- for an exam's answers, the sitting
 - for a review: the scheduler, its version and parameters, and the item's memory state before and after
 
-Rows are never updated or deleted by the application. Everything a module shows about progress is a view over this table or a table rebuilt from it.
+A step row says which step, counted from 0; moving on past several steps goes through each, and moving back goes through none. A lesson is finished each time the learner reaches its end from inside it, not when the end is merely saved again. An exam row holds the sitting, its mark against its pass mark, and its whole time from started to handed in; its answers and it are written in the same transaction as the hand-in, so neither exists without the other.
+
+Rows are never updated or deleted: a trigger refuses both, so this is a property of the table and not of the code. Everything a module shows about progress is a view over this table or a table rebuilt from it.
 
 ## Review scheduling
 

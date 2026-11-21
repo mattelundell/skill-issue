@@ -170,3 +170,26 @@ export function expected(question: Question): ExpectedAnswer {
     }
   }
 }
+
+/** How many options the learner chooses among, for the learning record: what a guess would have to pick from. Undefined for a type with none. */
+export function optionsOf(question: Question): number | undefined {
+  switch (question.type) {
+    case 'single-choice':
+    case 'multiple-choice':
+      return question.options.length;
+    case 'true-false':
+      return 2;
+    case 'ordering':
+      return question.items.length;
+    case 'matching':
+      return question.pairs.length;
+    case 'numeric':
+    case 'short-text':
+    case 'free-recall':
+      return undefined;
+    default: {
+      const unknown: never = question;
+      return unknown;
+    }
+  }
+}

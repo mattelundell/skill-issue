@@ -3,6 +3,7 @@ import { ModuleIdSchema } from '@skill-issue/contract';
 import type { Catalogue } from './catalogue/catalogue.js';
 import type { Db } from './db.js';
 import type { Migration } from './migrate.js';
+import type { LearningRecord } from './record/record.js';
 import { err, ok, type Result } from './result.js';
 
 /** What the core hands a module. A module reaches nothing else. */
@@ -10,6 +11,8 @@ export interface ModuleContext {
   readonly db: Db;
   /** Subject material: the only way a module stores or reads it. */
   readonly catalogue: Catalogue;
+  /** What the learner did: appended to, never changed. */
+  readonly record: LearningRecord;
 }
 
 /**

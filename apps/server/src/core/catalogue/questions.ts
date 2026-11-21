@@ -13,11 +13,15 @@ import { err, ok, type Result } from '../result.js';
 /** A question as it is shown, with its answer, and the sources its explanation rests on. */
 export interface ShownQuestion {
   readonly question: Question;
+  /** The revision of the entry it is shown from, in `question.language`. */
+  readonly revision: number;
   readonly sources: readonly LessonSource[];
 }
 
 /** What an exam draws from and how it is passed. */
 export interface ExamPlan {
+  /** The lesson or area examined, as its structure stands: the default language and its revision. */
+  readonly scope: { readonly language: string; readonly revision: number };
   readonly title: string;
   readonly questions: number;
   readonly passMark: number;
@@ -42,12 +46,12 @@ const text = (row: Row, column: string): string => {
   return value;
 };
 
-type Bodies = Map<string, Map<string, unknown>>;
+type Bodies = Map<string, Map<string, { readonly body: unknown; readonly revision: number }>>;
 
 /** Current, held bodies of one kind, by id and language. */
 async function bodiesOf(db: Db, subjectId: string, kind: string): Promise<Bodies> {
   const rows = await db.query(
-    `SELECT e.id, e.language, r.body
+    `SELECT e.id, e.language, e.current_revision, r.body
        FROM catalogue.entry e
        JOIN catalogue.revision r USING (subject_id, kind, id, language)
       WHERE e.subject_id = $1 AND e.kind = $2 AND r.revision = e.current_revision AND e.retired_at IS NULL`,
@@ -55,8 +59,8 @@ async function bodiesOf(db: Db, subjectId: string, kind: string): Promise<Bodies
   );
   const byId: Bodies = new Map();
   for (const row of rows) {
-    const languages = byId.get(text(row, 'id')) ?? new Map<string, unknown>();
-    languages.set(text(row, 'language'), row['body']);
+    const languages = byId.get(text(row, 'id')) ?? new Map<string, { body: unknown; revision: number }>();
+    languages.set(text(row, 'language'), { body: row['body'], revision: z.number().parse(row['current_revision']) });
     byId.set(text(row, 'id'), languages);
   }
   return byId;
@@ -93,26 +97,27 @@ class Held {
   }
 
   lessonOf(id: string): string | undefined {
-    const body = this.questions.get(id)?.get(this.defaultLanguage);
-    return body === undefined ? undefined : StoredQuestionSchema.parse(body).lesson;
+    const entry = this.questions.get(id)?.get(this.defaultLanguage);
+    return entry === undefined ? undefined : StoredQuestionSchema.parse(entry.body).lesson;
   }
 
   shown(id: string): ShownQuestion | undefined {
     const languages = this.questions.get(id);
-    const originalBody = languages?.get(this.defaultLanguage);
-    if (languages === undefined || originalBody === undefined) {
+    const originalEntry = languages?.get(this.defaultLanguage);
+    if (languages === undefined || originalEntry === undefined) {
       return undefined;
     }
-    const original = QuestionSchema.parse({ ...BodySchema.parse(originalBody), language: this.defaultLanguage });
-    const translatedBody = languages.get(this.wanted);
-    const translated = translatedBody === undefined || this.wanted === this.defaultLanguage ? undefined : QuestionSchema.parse({ ...BodySchema.parse(translatedBody), language: this.wanted });
-    const question = translated !== undefined && linesUp(original, translated) ? translated : original;
+    const original = QuestionSchema.parse({ ...BodySchema.parse(originalEntry.body), language: this.defaultLanguage });
+    const translatedEntry = languages.get(this.wanted);
+    const translated =
+      translatedEntry === undefined || this.wanted === this.defaultLanguage ? undefined : QuestionSchema.parse({ ...BodySchema.parse(translatedEntry.body), language: this.wanted });
+    const [question, revision] = translated !== undefined && translatedEntry !== undefined && linesUp(original, translated) ? [translated, translatedEntry.revision] : [original, originalEntry.revision];
     const sources = original.sources.flatMap((sourceId) => {
       const sourceLanguages = this.sources.get(sourceId);
-      const body = sourceLanguages?.get(this.wanted) ?? sourceLanguages?.get(this.defaultLanguage);
-      return body === undefined ? [] : [{ id: sourceId, ...StoredSourceSchema.parse(body) }];
+      const entry = sourceLanguages?.get(this.wanted) ?? sourceLanguages?.get(this.defaultLanguage);
+      return entry === undefined ? [] : [{ id: sourceId, ...StoredSourceSchema.parse(entry.body) }];
     });
-    return { question, sources };
+    return { question, revision, sources };
   }
 }
 
@@ -149,7 +154,7 @@ export async function examPlan(db: Db, subjectId: string, scope: ExamScope, lang
   const titled = async (kind: string, id: string) => {
     const languages = (await bodies(kind)).get(id);
     const original = languages?.get(questions.defaultLanguage);
-    return original === undefined ? undefined : { original, shown: languages?.get(questions.wanted) ?? original };
+    return original === undefined ? undefined : { original: original.body, revision: original.revision, shown: (languages?.get(questions.wanted) ?? original).body };
   };
   const bankOf = (lessons: readonly string[]): readonly ShownQuestion[] =>
     questions.ids().flatMap((id) => {
@@ -163,12 +168,12 @@ export async function examPlan(db: Db, subjectId: string, scope: ExamScope, lang
       return err({ kind: 'no-item' });
     }
     const { exam } = StoredLessonSchema.parse(lesson.original);
-    return ok({ title: StoredLessonSchema.parse(lesson.shown).title, questions: exam.questions, passMark: exam.passMark, bank: bankOf([scope.id]) });
+    return ok({ scope: { language: questions.defaultLanguage, revision: lesson.revision }, title: StoredLessonSchema.parse(lesson.shown).title, questions: exam.questions, passMark: exam.passMark, bank: bankOf([scope.id]) });
   }
   const area = await titled('area', scope.id);
   if (area === undefined) {
     return err({ kind: 'no-item' });
   }
   const { exam, lessons } = StoredAreaSchema.parse(area.original);
-  return ok({ title: StoredAreaSchema.parse(area.shown).title, questions: exam.questions, passMark: exam.passMark, bank: bankOf(lessons) });
+  return ok({ scope: { language: questions.defaultLanguage, revision: area.revision }, title: StoredAreaSchema.parse(area.shown).title, questions: exam.questions, passMark: exam.passMark, bank: bankOf(lessons) });
 }

@@ -11,15 +11,17 @@ import {
   StartExamSchema,
   SubmitExamSchema,
   type ExamResult,
+  type GivenAnswer,
   type Graded,
   type Sitting,
 } from '@skill-issue/contract';
 import type { Context } from 'hono';
 import type { ShownQuestion } from '../../core/catalogue/questions.js';
 import { problem, problemContent } from '../../core/problem.js';
+import type { RecordEvent } from '../../core/record/record.js';
 import type { ModuleContext } from '../../core/registry.js';
 import { createSitting, passedIn, sittingOf, submitSitting, type StoredSitting } from './sittings.js';
-import { ask, expected, grade, randomShuffle } from './types.js';
+import { ask, expected, grade, optionsOf, randomShuffle } from './types.js';
 
 const noSubject = (subjectId: string) => problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`);
 const badLanguage = problem(400, 'language must be a language code such as sv, en or en-GB');
@@ -31,6 +33,32 @@ const graded = ({ question, sources }: ShownQuestion, correct: boolean): Graded 
   explanation: question.explanation,
   sources: [...sources],
 });
+
+/** An answer as the learning record keeps it. Every type is graded right or wrong, so its score is 1 or 0. */
+function answered(
+  subjectId: string,
+  { question, revision, sources }: ShownQuestion,
+  given: GivenAnswer | undefined,
+  correct: boolean,
+  at: { at: Date; timeZone: string; setting: 'lesson-check' | 'exam'; durationMs: number | undefined; sittingId?: string },
+): RecordEvent {
+  return {
+    kind: 'answer',
+    at: at.at,
+    timeZone: at.timeZone,
+    question: { subjectId, id: question.id, language: question.language, revision },
+    setting: at.setting,
+    concepts: question.concepts,
+    sources: sources.map((source) => source.id),
+    questionType: question.type,
+    options: optionsOf(question),
+    given,
+    correct,
+    score: correct ? 1 : 0,
+    durationMs: at.durationMs,
+    ...(at.sittingId === undefined ? {} : { sittingId: at.sittingId }),
+  };
+}
 
 const publicSitting = (sitting: StoredSitting): Sitting => ({
   id: sitting.id,
@@ -51,7 +79,7 @@ async function jsonBody(c: Context): Promise<unknown> {
 }
 
 /** Checks inside lessons, and exams on a lesson or an area. Answers are graded here; the browser never holds one before it is given. */
-export function assessmentRoutes({ db, catalogue }: ModuleContext): OpenAPIHono {
+export function assessmentRoutes({ db, catalogue, record }: ModuleContext): OpenAPIHono {
   const routes = new OpenAPIHono();
   const subjectParam = z.object({ subjectId: ItemIdSchema });
 
@@ -104,7 +132,10 @@ export function assessmentRoutes({ db, catalogue }: ModuleContext): OpenAPIHono 
     }
     const body = AnswerRequestSchema.safeParse(await jsonBody(c));
     if (!body.success) {
-      return c.json(problem(400, 'The body is not an answer', 'Send { "answer": { "type": <the question type>, … } }.'), 400);
+      return c.json(
+        problem(400, 'The body is not an answer', 'Send { "answer": { "type": <the question type>, … }, "durationMs": <milliseconds from shown to sent>, "timeZone": <such as Europe/Stockholm> }.'),
+        400,
+      );
     }
     const shown = await catalogue.questions(subjectId, [questionId], language.data);
     if (!shown.ok) {
@@ -118,6 +149,7 @@ export function assessmentRoutes({ db, catalogue }: ModuleContext): OpenAPIHono 
     if (correct === undefined) {
       return c.json(problem(400, 'The answer is of another type', `The question is ${found.question.type}; the answer is ${body.data.answer.type}.`), 400);
     }
+    await record.append([answered(subjectId, found, body.data.answer, correct, { at: new Date(), timeZone: body.data.timeZone, setting: 'lesson-check', durationMs: body.data.durationMs })]);
     return c.json(graded(found, correct), 200);
   });
 
@@ -153,6 +185,7 @@ export function assessmentRoutes({ db, catalogue }: ModuleContext): OpenAPIHono 
     const sitting = await createSitting(db, {
       subjectId,
       scope: body.data.scope,
+      scopeAt: plan.value.scope,
       title: plan.value.title,
       passMark: plan.value.passMark,
       drawn,
@@ -183,7 +216,10 @@ export function assessmentRoutes({ db, catalogue }: ModuleContext): OpenAPIHono 
     }
     const body = SubmitExamSchema.safeParse(await jsonBody(c));
     if (!body.success) {
-      return c.json(problem(400, 'The body is not answers', 'Send { "answers": [{ "questionId": …, "answer": { "type": …, … } }] }.'), 400);
+      return c.json(
+        problem(400, 'The body is not answers', 'Send { "answers": [{ "questionId": …, "answer": { "type": …, … }, "durationMs": <milliseconds on screen> }], "timeZone": <such as Europe/Stockholm> }.'),
+        400,
+      );
     }
     const sitting = await sittingOf(db, subjectId, sittingId);
     if (sitting === undefined) {
@@ -214,7 +250,40 @@ export function assessmentRoutes({ db, catalogue }: ModuleContext): OpenAPIHono 
     const correct = review.filter((entry) => entry.correct).length;
     const total = review.length;
     const passed = correct / total >= sitting.passMark - 1e-9;
-    const handedIn = await submitSitting(db, sitting.id, { answers: body.data.answers, correct, passed });
+    const at = new Date();
+    const { timeZone } = body.data;
+    // The hand-in and what the record keeps of it commit together: never an answer without its sitting, nor a sitting without its answers.
+    const handedIn = await db.transaction(async (tx) => {
+      if (!(await submitSitting(tx, sitting.id, at, { answers: body.data.answers, correct, passed }))) {
+        return false;
+      }
+      await record.append(
+        [
+          ...sitting.drawn.map((shown) => {
+            const sent = body.data.answers.find((each) => each.questionId === shown.question.id);
+            return answered(subjectId, shown, sent?.answer, review.find((entry) => entry.questionId === shown.question.id)?.correct ?? false, {
+              at,
+              timeZone,
+              setting: 'exam',
+              durationMs: sent?.durationMs,
+              sittingId: sitting.id,
+            });
+          }),
+          {
+            kind: 'exam',
+            at,
+            timeZone,
+            scope: sitting.scope.kind,
+            item: { subjectId, id: sitting.scope.id, ...sitting.scopeAt },
+            sittingId: sitting.id,
+            durationMs: Math.max(0, at.getTime() - Date.parse(sitting.startedAt)),
+            result: { correct, total, passMark: sitting.passMark, passed },
+          },
+        ],
+        tx,
+      );
+      return true;
+    });
     if (!handedIn) {
       return c.json(problem(409, 'The sitting has been handed in', 'Start a new sitting to sit the exam again.'), 409);
     }
