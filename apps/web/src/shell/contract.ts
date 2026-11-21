@@ -34,6 +34,18 @@ export interface PageProps extends SubjectProps {
   readonly pathTo: (path: readonly string[]) => string;
 }
 
+/** What a module's page outside any subject is given: where within the page the learner is. */
+export interface AppPageProps {
+  readonly language: Language;
+  /** The path segments below the page, decoded: `/review/a` gives `['a']`, the page itself `[]`. */
+  readonly path: readonly string[];
+  /** The address of a place within this page, for a link to it. */
+  readonly pathTo: (path: readonly string[]) => string;
+}
+
+/** The first path segment that is the shell's own, so no module may take it as its id. */
+export const RESERVED_IDS: ReadonlySet<string> = new Set(['subjects']);
+
 export interface WebModule {
   /** Unique, the same as the module's id on the server; also the path segment of its page. */
   readonly id: string;
@@ -48,6 +60,12 @@ export interface WebModule {
     readonly label?: Readonly<Record<Language, string>>;
     readonly Page: ComponentType<PageProps>;
   };
+  /**
+   * A page that belongs to no one subject, at `/<id>`, such as a review of what
+   * is due in every subject. Everything below that address is the page's own.
+   * It has no tab: it is reached from links, and drawn under the app's own header.
+   */
+  readonly appPage?: { readonly Page: ComponentType<AppPageProps> };
   /**
    * Blocks on the subject home: `lead` above the path, such as what is due today;
    * `side` in the column beside it, such as a count of notes. Drawn in module order.
@@ -66,6 +84,12 @@ export interface WebModule {
     readonly language: Language;
     readonly onShows: (subjectId: string | undefined) => void;
   }>;
+  /**
+   * A line across every subject, under the resume panels and above the rows,
+   * such as how much is due in all of them. Drawn whether or not a panel shows;
+   * it draws nothing when there is nothing to say.
+   */
+  readonly StartLine?: ComponentType<{ readonly subjects: readonly SubjectSummary[]; readonly language: Language }>;
   /**
    * The subjects in which the learner has begun something, so each row's action
    * reads "continue" or "begin". With no module saying, it reads "open".
@@ -136,14 +160,18 @@ export interface LessonSideProps {
 
 export type ModulesError =
   | { readonly kind: 'invalid-id'; readonly id: string }
-  | { readonly kind: 'duplicate-id'; readonly id: string };
+  | { readonly kind: 'duplicate-id'; readonly id: string }
+  | { readonly kind: 'reserved-id'; readonly id: string };
 
-/** Checks a list of modules the way the server's registry does: well-formed ids, none twice. */
+/** Checks a list of modules the way the server's registry does — well-formed ids, none twice — and that none takes an address the shell uses. */
 export function checkModules(modules: readonly WebModule[]): ModulesError | undefined {
   const seen = new Set<string>();
   for (const { id } of modules) {
     if (!ModuleIdSchema.safeParse(id).success) {
       return { kind: 'invalid-id', id };
+    }
+    if (RESERVED_IDS.has(id)) {
+      return { kind: 'reserved-id', id };
     }
     if (seen.has(id)) {
       return { kind: 'duplicate-id', id };

@@ -100,6 +100,8 @@ const everything: WebModule = {
   ],
   StartFigures: ({ subject }) => <span>Fixturfigur för {subject.id}</span>,
   ResumePanel: ({ subjects }) => <section aria-label="Fixturpanel">Fortsätt i {subjects[0]?.title}</section>,
+  StartLine: ({ subjects }) => <p>Fixturrad över {subjects.map((subject) => subject.id).join(' och ')}</p>,
+  appPage: { Page: ({ path, pathTo }) => <p>Fixtursidan utanför ämnena vid [{path.join('|')}], länk till {pathTo(['en plats'])}</p> },
 };
 
 describe('the module contract on the subject home', () => {
@@ -187,12 +189,59 @@ describe('the module contract on the start screen', () => {
     expect(panel.compareDocumentPosition(screen.getByText('Fixturfigur för example-subject')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it('draws each module’s line across every subject under the resume panel and above the rows', async () => {
+    api.subjects = [EXAMPLE, SWEDISH_ONLY];
+    open('/', [everything]);
+
+    const line = await screen.findByText('Fixturrad över example-subject och statistik');
+    const panel = screen.getByRole('region', { name: 'Fixturpanel' });
+    expect(panel.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(line.compareDocumentPosition(screen.getByText('Fixturfigur för example-subject')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('draws the line above the rows when no module has a resume panel', async () => {
+    const { ResumePanel: _none, ...noPanel } = everything;
+    open('/', [noPanel]);
+
+    const line = await screen.findByText('Fixturrad över example-subject');
+    expect(line.compareDocumentPosition(screen.getByText('Fixturfigur för example-subject')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('without the module shows the rows alone', async () => {
     open('/');
 
     expect(await screen.findByRole('link', { name: 'Exempelämne' })).toBeTruthy();
     expect(screen.queryByText(/Fixtur/)).toBeNull();
     expect(screen.queryByRole('region')).toBeNull();
+  });
+});
+
+describe('a module’s page outside any subject', () => {
+  it('is at the module’s own address, given the places below it and a way to build their addresses', async () => {
+    open('/fixture/a%20b/c', [everything]);
+
+    expect(await screen.findByText('Fixtursidan utanför ämnena vid [a b|c], länk till /fixture/en%20plats')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Skill Issue' }).getAttribute('href')).toBe('/');
+  });
+
+  it('is at its address with nothing below it', async () => {
+    open('/fixture', [everything]);
+
+    expect(await screen.findByText('Fixtursidan utanför ämnena vid [], länk till /fixture/en%20plats')).toBeTruthy();
+  });
+
+  it('is gone with the module: its address names nothing', async () => {
+    open('/fixture', []);
+
+    expect(await screen.findByRole('heading', { name: 'Sidan finns inte' })).toBeTruthy();
+    expect(screen.queryByText(/Fixtursidan/)).toBeNull();
+  });
+
+  it('is not found for a module that has no such page', async () => {
+    const { appPage: _none, ...noPage } = everything;
+    open('/fixture', [noPage]);
+
+    expect(await screen.findByRole('heading', { name: 'Sidan finns inte' })).toBeTruthy();
   });
 });
 
@@ -272,6 +321,10 @@ describe('checkModules', () => {
     expect(checkModules([{ id: 'notes' }, { id: 'review' }, { id: 'notes' }])).toEqual({ kind: 'duplicate-id', id: 'notes' });
     expect(checkModules([{ id: 'Notes' }])).toEqual({ kind: 'invalid-id', id: 'Notes' });
     expect(checkModules([{ id: 'notes' }, { id: 'review' }])).toBeUndefined();
+  });
+
+  it('refuses the id “subjects”, whose address is the subjects’ own', () => {
+    expect(checkModules([{ id: 'subjects' }])).toEqual({ kind: 'reserved-id', id: 'subjects' });
   });
 });
 

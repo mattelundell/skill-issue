@@ -8,9 +8,14 @@ export type Route =
    * the overview, and `path` the segments below that page, which the module reads.
    */
   | { readonly kind: 'subject'; readonly subjectId: string; readonly page: string | undefined; readonly path: readonly string[] }
+  /** A module's page outside any subject, at `/<module>`; `path` the segments below it. */
+  | { readonly kind: 'app-page'; readonly page: string; readonly path: readonly string[] }
   | { readonly kind: 'not-found' };
 
 const SUBJECT_PATH = /^\/subjects\/([^/]+)(?:\/([^/]+)((?:\/[^/]+)*))?\/?$/;
+const APP_PAGE_PATH = /^\/([^/]+)((?:\/[^/]+)*)\/?$/;
+
+const segments = (below: string): readonly string[] => (below === '' ? [] : below.slice(1).split('/').map(decodeURIComponent));
 
 export function parseRoute(pathname: string): Route {
   if (pathname === '/' || pathname === '') {
@@ -19,7 +24,7 @@ export function parseRoute(pathname: string): Route {
   const match = SUBJECT_PATH.exec(pathname);
   const subject = match?.[1];
   if (subject === undefined) {
-    return { kind: 'not-found' };
+    return appPageRoute(pathname);
   }
   try {
     const page = match?.[2];
@@ -28,7 +33,7 @@ export function parseRoute(pathname: string): Route {
       kind: 'subject',
       subjectId: decodeURIComponent(subject),
       page: page === undefined ? undefined : decodeURIComponent(page),
-      path: below === '' ? [] : below.slice(1).split('/').map(decodeURIComponent),
+      path: segments(below),
     };
   } catch {
     // A malformed escape such as "%E0" names nothing that exists.
@@ -36,7 +41,22 @@ export function parseRoute(pathname: string): Route {
   }
 }
 
+/** Any other address names a module's page outside the subjects; whether that module has one, the screen decides. */
+function appPageRoute(pathname: string): Route {
+  const match = APP_PAGE_PATH.exec(pathname);
+  const page = match?.[1];
+  if (page === undefined || page === 'subjects') {
+    return { kind: 'not-found' };
+  }
+  try {
+    return { kind: 'app-page', page: decodeURIComponent(page), path: segments(match?.[2] ?? '') };
+  } catch {
+    return { kind: 'not-found' };
+  }
+}
+
 export const startPath = (): string => '/';
+export const appPagePath = (page: string, path: readonly string[] = []): string => [page, ...path].map((segment) => `/${encodeURIComponent(segment)}`).join('');
 export const subjectPath = (subjectId: string, page?: string, path: readonly string[] = []): string =>
   `/subjects/${encodeURIComponent(subjectId)}${page === undefined ? '' : [page, ...path].map((segment) => `/${encodeURIComponent(segment)}`).join('')}`;
 

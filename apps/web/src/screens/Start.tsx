@@ -138,6 +138,7 @@ function StartBody({
       {modules.map(({ id, ResumePanel }) =>
         ResumePanel === undefined ? null : <ResumePanel key={id} subjects={subjects.value} language={language} onShows={reporters.get(id) ?? noReport} />,
       )}
+      {modules.map(({ id, StartLine }) => (StartLine === undefined ? null : <StartLine key={id} subjects={subjects.value} language={language} />))}
       {shown === undefined ? (
         ledger
       ) : rows.length > 0 ? (
