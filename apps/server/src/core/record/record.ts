@@ -90,6 +90,8 @@ export interface LearningRecord {
     questionIds: readonly string[],
     filter: { readonly settings: readonly AnswerSetting[]; readonly afterSeq: number },
   ): Promise<ReadonlyMap<string, RecordedAnswer>>;
+  /** The median time the learner took over one question in a subject, outside exams, whose time on screen is spread over visits; undefined before any. */
+  typicalAnswerMs(subjectId: string): Promise<number | undefined>;
   /** The row at which the learner last reached a lesson's end; 0 when they never have. */
   lastFinished(subjectId: string, lessonId: string): Promise<number>;
 }
@@ -238,6 +240,16 @@ export function createLearningRecord(db: Db): LearningRecord {
         const answer = recordedAnswer(row);
         return [answer.question.id, answer];
       }));
+    },
+
+    async typicalAnswerMs(subjectId) {
+      const rows = await db.query(
+        `SELECT round(percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms))::integer AS ms
+           FROM record.event
+          WHERE kind = 'answer' AND subject_id = $1 AND setting <> 'exam' AND duration_ms IS NOT NULL`,
+        [subjectId],
+      );
+      return z.number().int().nullable().parse(rows[0]?.['ms'] ?? null) ?? undefined;
     },
 
     async lastFinished(subjectId, lessonId) {

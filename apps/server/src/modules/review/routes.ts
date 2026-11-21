@@ -35,7 +35,7 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
   routes.openAPIRegistry.registerPath({
     method: 'get',
     path: '/subjects/{subjectId}/due',
-    summary: 'The questions of a subject due for review today, the most overdue first.',
+    summary: 'The questions of a subject due for review today, the most overdue first; the next day more fall due; and how long the learner typically takes over one.',
     description:
       'Every answer — in a lesson check, an exam or a review — is an observation of the question, so a question needs no card of its own to be scheduled. Only the first answer of a day counts. "Today" is the day in the time zone given, UTC when none is.',
     request: { params: z.object({ subjectId: ItemIdSchema }), query: zoneQuery },
@@ -61,13 +61,16 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
     const now = new Date();
     // Memories come ordered by when they fell due, so the most overdue lead.
     const questions = scheduled.filter((memory) => dueToday(memory, now, timeZone)).map((memory) => memory.questionId);
-    return c.json({ subjectId, questions, scheduled: scheduled.length }, 200);
+    const later = Map.groupBy(scheduled.filter((memory) => !dueToday(memory, now, timeZone)), (memory) => dayIn(memory.dueAt, timeZone));
+    const nextDay = [...later.keys()].toSorted()[0];
+    const next = nextDay === undefined ? null : { day: nextDay, questions: later.get(nextDay)?.length ?? 0 };
+    return c.json({ subjectId, questions, scheduled: scheduled.length, next, typicalAnswerMs: (await record.typicalAnswerMs(subjectId)) ?? null }, 200);
   });
 
   routes.openAPIRegistry.registerPath({
     method: 'get',
     path: '/due',
-    summary: 'How many questions each subject has due for review today.',
+    summary: 'How many questions each subject has due for review today, and how long the learner typically takes over one.',
     description: 'Every subject with a question scheduled is named, with 0 when none is due today.',
     request: { query: zoneQuery },
     responses: {
@@ -85,11 +88,11 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
     await catchUp(db, record, ready);
     const bySubject = Map.groupBy(await memoriesIn(db, undefined, ready), (memory) => memory.subjectId);
     const now = new Date();
-    const subjects: Record<string, number> = {};
+    const subjects: Record<string, { due: number; typicalAnswerMs: number | null }> = {};
     for (const [subjectId, memories] of bySubject) {
       const scheduled = await held(catalogue, subjectId, memories);
       if (scheduled !== undefined && scheduled.length > 0) {
-        subjects[subjectId] = scheduled.filter((memory) => dueToday(memory, now, timeZone)).length;
+        subjects[subjectId] = { due: scheduled.filter((memory) => dueToday(memory, now, timeZone)).length, typicalAnswerMs: (await record.typicalAnswerMs(subjectId)) ?? null };
       }
     }
     return c.json({ subjects }, 200);
