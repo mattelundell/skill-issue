@@ -50,6 +50,7 @@ async function answer(question: Locator, right: boolean): Promise<void> {
     case 'effekt-ar-takt':
       await question.getByRole('radio', { name: right ? /Sant/ : /Falskt/ }).check();
       return;
+    case null:
     default:
       throw new Error(`no answer written for ${String(id)}`);
   }
