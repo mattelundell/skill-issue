@@ -51,12 +51,12 @@ const base = (question: Question) => ({ id: question.id, language: question.lang
 
 export const QUESTION_TYPES: { readonly [T in QuestionType]: QuestionTypePlugin<T> } = {
   'single-choice': {
-    ask: (question) => ({ ...base(question), type: 'single-choice', options: question.options }),
+    ask: (question, shuffle) => ({ ...base(question), type: 'single-choice', options: shuffle(question.options) }),
     grade: (question, given) => given.option === question.answer,
     expected: (question) => ({ type: 'single-choice', option: question.answer }),
   },
   'multiple-choice': {
-    ask: (question) => ({ ...base(question), type: 'multiple-choice', options: question.options }),
+    ask: (question, shuffle) => ({ ...base(question), type: 'multiple-choice', options: shuffle(question.options) }),
     grade: (question, given) => sameSet(given.options, question.answer),
     expected: (question) => ({ type: 'multiple-choice', options: question.answer }),
   },
