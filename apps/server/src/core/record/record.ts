@@ -74,10 +74,16 @@ export interface SourceHistory {
  * reads it, and neither knows the other exists.
  */
 export interface LearningRecord {
-  /** Appends rows in one statement; on `tx` when given, so they commit or roll back with the work that caused them. */
+  /**
+   * Appends rows in one statement; on `tx` when given, so they commit or roll back
+   * with the work that caused them. Rows become visible in the order they are
+   * numbered: appends wait for one another until each one's transaction ends.
+   */
   append(events: readonly RecordEvent[], tx?: Db): Promise<void>;
   /** The answers given to questions that cited a source at the time. */
   sourceHistory(subjectId: string, sourceId: string): Promise<SourceHistory>;
+  /** Answers in every subject written after row `afterSeq`, in the order written, at most `limit` of them. */
+  answersAfter(afterSeq: number, limit: number): Promise<readonly RecordedAnswer[]>;
   /** The latest answer to each of the subject's questions given in one of `settings` after row `afterSeq`, by question id. */
   latestAnswers(
     subjectId: string,
@@ -87,6 +93,9 @@ export interface LearningRecord {
   /** The row at which the learner last reached a lesson's end; 0 when they never have. */
   lastFinished(subjectId: string, lessonId: string): Promise<number>;
 }
+
+/** The advisory lock every append holds until its transaction ends. Any number no other code locks; this one spells "record". */
+const APPEND_LOCK = 0x7265636f7264;
 
 const ANSWER_COLUMNS = 'seq, at, time_zone, subject_id, item_id, language, revision, setting, question_type, options, given, correct';
 
@@ -174,20 +183,28 @@ function columnsOf(event: RecordEvent): Columns {
 
 export function createLearningRecord(db: Db): LearningRecord {
   return {
-    async append(events, tx = db) {
+    async append(events, tx) {
       if (events.length === 0) {
         return;
       }
-      // One parameter per column per row, cast where the driver cannot tell: a value never becomes SQL.
-      const values: unknown[] = [];
-      const tuples = events.map((event) => {
-        const columns = columnsOf(event);
-        return `(${COLUMNS.map((column) => {
-          values.push(columns[column]);
-          return `$${values.length}::${CASTS[column]}`;
-        }).join(', ')})`;
-      });
-      await tx.query(`INSERT INTO record.event (${COLUMNS.join(', ')}) VALUES ${tuples.join(', ')}`, values);
+      const insert = async (on: Db): Promise<void> => {
+        // One parameter per column per row, cast where the driver cannot tell: a value never becomes SQL.
+        const values: unknown[] = [];
+        const tuples = events.map((event) => {
+          const columns = columnsOf(event);
+          return `(${COLUMNS.map((column) => {
+            values.push(columns[column]);
+            return `$${values.length}::${CASTS[column]}`;
+          }).join(', ')})`;
+        });
+        await on.query(`INSERT INTO record.event (${COLUMNS.join(', ')}) VALUES ${tuples.join(', ')}`, values);
+      };
+      const write = async (on: Db): Promise<void> => {
+        // One writer at a time, until its transaction ends: a row then becomes visible only after every row numbered before it, so a reader following the numbers never passes over one that committed late.
+        await on.query('SELECT pg_advisory_xact_lock($1::bigint)', [APPEND_LOCK]);
+        await insert(on);
+      };
+      await (tx === undefined ? db.transaction(write) : write(tx));
     },
 
     async sourceHistory(subjectId, sourceId) {
@@ -199,6 +216,11 @@ export function createLearningRecord(db: Db): LearningRecord {
       );
       const row = rows[0];
       return { questions: z.number().parse(row?.['questions']), answers: z.number().parse(row?.['answers']) };
+    },
+
+    async answersAfter(afterSeq, limit) {
+      const rows = await db.query(`SELECT ${ANSWER_COLUMNS} FROM record.event WHERE kind = 'answer' AND seq > $1 ORDER BY seq LIMIT $2`, [afterSeq, limit]);
+      return rows.map(recordedAnswer);
     },
 
     async latestAnswers(subjectId, questionIds, { settings, afterSeq }) {
