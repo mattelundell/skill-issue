@@ -109,7 +109,7 @@ function Shown({ page, subjectId, subjectLanguage }: { readonly page: SourcePage
           <p className="kind-note">{t(`kind.${source.kind}.long`)}</p>
         </div>
       </article>
-      {page.status === 'current' ? <RestsOn subjectId={subjectId} areas={page.areas} terms={page.terms} /> : <RestedOn />}
+      {page.status === 'current' ? <RestsOn subjectId={subjectId} areas={page.areas} terms={page.terms} /> : <RestedOn history={page.history} />}
     </div>
   );
 }
@@ -224,12 +224,27 @@ function RestsOn({ subjectId, areas, terms }: { readonly subjectId: string; read
   );
 }
 
-function RestedOn() {
-  const { t } = useMessages();
+/** A retired source: nothing in the subject rests on it now, and what the learner once answered on its strength. */
+function RestedOn({ history }: { readonly history: { readonly questions: number; readonly answers: number } }) {
+  const { t, tc } = useMessages();
   return (
     <aside className="sheet cited">
       <h2>{t('rests.retired.title')}</h2>
       <p>{t('rests.retired.body')}</p>
+      {history.questions > 0 ? (
+        <>
+          <h3>{t('history.title')}</h3>
+          <ul>
+            <li>
+              <span className="mark plain" aria-hidden="true" />
+              <span>
+                {tc('history.questions', history.questions)}
+                <span className="sub">{t('history.kept')}</span>
+              </span>
+            </li>
+          </ul>
+        </>
+      ) : null}
     </aside>
   );
 }

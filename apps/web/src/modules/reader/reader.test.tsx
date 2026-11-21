@@ -280,7 +280,7 @@ describe('one source', () => {
   });
 
   it('shows a source the subject no longer holds as it last stood, saying when it was taken out', async () => {
-    api.pages.set('bbr', { status: 'retired', retiredAt: '2026-11-21T09:30:00.000Z', source: { ...CURRENT.source, id: 'bbr', title: 'BBR 29' } });
+    api.pages.set('bbr', { status: 'retired', retiredAt: '2026-11-21T09:30:00.000Z', source: { ...CURRENT.source, id: 'bbr', title: 'BBR 29' }, history: { questions: 0, answers: 0 } });
     open('/subjects/energi/reader/bbr');
 
     expect((await screen.findByRole('note')).textContent).toBe(
@@ -288,6 +288,15 @@ describe('one source', () => {
     );
     expect(screen.getByRole('complementary').textContent).toBe('Det här vilade på källanIngen lektion eller fråga i ämnet som det ser ut nu citerar den.');
     expect(screen.getByRole('heading', { name: 'BBR 29' })).toBeTruthy();
+  });
+
+  it('names, on a retired source, the questions the learner answered on its strength', async () => {
+    api.pages.set('bbr', { status: 'retired', retiredAt: '2026-11-21T09:30:00.000Z', source: { ...CURRENT.source, id: 'bbr', title: 'BBR 29' }, history: { questions: 2, answers: 5 } });
+    open('/subjects/energi/reader/bbr');
+
+    expect((await screen.findByRole('complementary')).textContent).toBe(
+      'Det här vilade på källanIngen lektion eller fråga i ämnet som det ser ut nu citerar den.I din historik2 frågor du har svarat påSvaren finns kvar; de gällde frågorna som de såg ut då.',
+    );
   });
 
   it('of an unknown id says there is none, naming it, and leads back', async () => {

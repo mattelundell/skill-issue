@@ -7,7 +7,7 @@ const noSubject = (subjectId: string) => problem(404, 'No such subject', `No sub
 const badLanguage = problem(400, 'language must be a language code such as sv, en or en-GB');
 
 /** Shows a subject's source material, with where each piece came from and what rests on it. */
-export function readerRoutes({ catalogue }: ModuleContext): OpenAPIHono {
+export function readerRoutes({ catalogue, record }: ModuleContext): OpenAPIHono {
   const routes = new OpenAPIHono();
   const language = { query: z.object({ language: LanguageSchema.optional() }) };
 
@@ -39,7 +39,7 @@ export function readerRoutes({ catalogue }: ModuleContext): OpenAPIHono {
     path: '/subjects/{subjectId}/sources/{sourceId}',
     summary: 'One source, with the lessons and glossary terms that rest on it.',
     description:
-      'Citing lessons are grouped by area in path order, each with the number of questions in its bank that cite the source; the questions themselves are not given. A source the subject no longer holds is answered with its last revision and status "retired".',
+      'Citing lessons are grouped by area in path order, each with the number of questions in its bank that cite the source; the questions themselves are not given. A source the subject no longer holds is answered with its last revision and status "retired", and with how many questions resting on it the learner answered, and how many times, from the learning record.',
     request: { params: z.object({ subjectId: ItemIdSchema, sourceId: ItemIdSchema }), ...language },
     responses: {
       200: { description: 'The source.', content: { 'application/json': { schema: SourcePageSchema } } },
@@ -63,7 +63,7 @@ export function readerRoutes({ catalogue }: ModuleContext): OpenAPIHono {
     }
     const page = await catalogue.sourcePage(subjectId, sourceId, wanted.data);
     if (page.ok) {
-      return c.json(page.value, 200);
+      return page.value.status === 'retired' ? c.json({ ...page.value, history: await record.sourceHistory(subjectId, sourceId) }, 200) : c.json(page.value, 200);
     }
     switch (page.error.kind) {
       case 'no-subject':
