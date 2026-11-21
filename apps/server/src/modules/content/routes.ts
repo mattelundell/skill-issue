@@ -4,7 +4,6 @@ import {
   LanguageSchema,
   LoadResultSchema,
   PackSchema,
-  ProblemSchema,
   SubjectOutlineSchema,
   SubjectSummarySchema,
   type ContentFault,
@@ -15,20 +14,11 @@ import {
 import { checkPack, checkPackFiles, DEFAULT_LIMITS, encodePack, readZip, writeZip } from '@skill-issue/pack';
 import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
+import { problem, problemContent } from '../../core/problem.js';
 import type { ModuleContext } from '../../core/registry.js';
 
 /** A zip archive is at most this large on the wire; unpacked, the pack limits apply. */
 const MAX_BODY_BYTES = DEFAULT_LIMITS.maxTotalBytes;
-
-const problem = (status: number, title: string, detail?: string, faults?: readonly ContentFault[]): Problem => ({
-  type: 'about:blank',
-  title,
-  status,
-  ...(detail === undefined ? {} : { detail }),
-  ...(faults === undefined ? {} : { faults: [...faults] }),
-});
-
-const problemContent = { 'application/json': { schema: ProblemSchema } };
 
 const DryRunSchema = z.enum(['true', 'false']).optional();
 

@@ -1,9 +1,10 @@
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { API_PREFIX, HealthResponseSchema, type Problem } from '@skill-issue/contract';
+import { API_PREFIX, HealthResponseSchema } from '@skill-issue/contract';
 import { createCatalogue } from './catalogue/catalogue.js';
 import type { Db } from './db.js';
 import { describeThrown, log } from './log.js';
+import { problem } from './problem.js';
 import type { Registry } from './registry.js';
 
 export interface AppDependencies {
@@ -14,7 +15,6 @@ export interface AppDependencies {
   readonly webDir?: string;
 }
 
-const problem = (status: number, title: string): Problem => ({ type: 'about:blank', title, status });
 
 const healthRoute = createRoute({
   method: 'get',
