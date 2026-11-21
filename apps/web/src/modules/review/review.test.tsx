@@ -1,4 +1,4 @@
-import type { AskedQuestion, Due, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
+import type { AskedQuestion, Due, DueCounts, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,18 +18,37 @@ const OUTLINE: SubjectOutline = {
   areas: [{ id: 'grunder', language: 'sv', title: 'Grunder', summary: 'Storheterna.', requires: [], lessons: [{ id: 'energi-och-effekt', language: 'sv', title: 'Energi och effekt', summary: 'kWh och kW.' }] }],
 };
 
+const OTHER: SubjectSummary = { id: 'statistik', defaultLanguage: 'sv', languages: ['sv'], title: 'Statistik för mätdata', summary: 'Medelvärden.' };
+const OTHER_OUTLINE: SubjectOutline = {
+  ...OTHER,
+  language: 'sv',
+  areas: [{ id: 'lagesmatt', language: 'sv', title: 'Lägesmått', summary: 'Medelvärde och median.', requires: [], lessons: [{ id: 'medelvarde', language: 'sv', title: 'Medelvärde', summary: 'Summan delad med antalet.' }] }],
+};
+const OTHER_QUESTIONS: readonly AskedQuestion[] = [{ language: 'sv', id: 'medel-ar-kvot', prompt: 'Medelvärdet är summan delad med antalet.', type: 'true-false' }];
+
 const QUESTIONS: readonly AskedQuestion[] = [
   { language: 'sv', id: 'effekt-ar-takt', prompt: 'Effekt är en takt.', type: 'true-false' },
   { language: 'sv', id: 'berakna-energi', prompt: '2 kW i 3 timmar?', type: 'numeric', unit: 'kWh' },
 ];
-const RIGHT: Readonly<Record<string, unknown>> = { 'effekt-ar-takt': { type: 'true-false', value: true }, 'berakna-energi': { type: 'numeric', value: 6 } };
-const EXPECTED: Readonly<Record<string, unknown>> = { 'effekt-ar-takt': { type: 'true-false', value: true }, 'berakna-energi': { type: 'numeric', value: 6, unit: 'kWh', tolerance: 0 } };
+const RIGHT: Readonly<Record<string, unknown>> = {
+  'effekt-ar-takt': { type: 'true-false', value: true },
+  'berakna-energi': { type: 'numeric', value: 6 },
+  'medel-ar-kvot': { type: 'true-false', value: true },
+};
+const EXPECTED: Readonly<Record<string, unknown>> = {
+  'effekt-ar-takt': { type: 'true-false', value: true },
+  'berakna-energi': { type: 'numeric', value: 6, unit: 'kWh', tolerance: 0 },
+  'medel-ar-kvot': { type: 'true-false', value: true },
+};
 
 /** Today and tomorrow in the time zone the tests run in, as the page reckons them. */
 const dayAfter = (days: number): string => new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() + days * 86_400_000));
 
 interface FakeApi {
   due: Due;
+  /** What every subject has due, as the start screen's line and the session across subjects read it. */
+  everywhere: DueCounts;
+  subjects: SubjectSummary[];
   readonly posted: { readonly path: string; readonly body: unknown }[];
   readonly requested: string[];
 }
@@ -38,7 +57,13 @@ let api: FakeApi;
 const json = (body: unknown, status = 200): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 beforeEach(() => {
-  api = { due: { subjectId: 'example-subject', questions: [], scheduled: 0, next: null, typicalAnswerMs: null }, posted: [], requested: [] };
+  api = {
+    due: { subjectId: 'example-subject', questions: [], scheduled: 0, next: null, typicalAnswerMs: null },
+    everywhere: { subjects: {}, questions: [] },
+    subjects: [SUBJECT],
+    posted: [],
+    requested: [],
+  };
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : String(input), 'http://app.test');
     const path = url.pathname;
@@ -55,17 +80,27 @@ beforeEach(() => {
       return json({ status: 'ok', version: 'test', database: 'up', modules: ['content', 'assessment', 'review'] });
     }
     if (path === '/api/v1/content/subjects') {
-      return json([SUBJECT]);
+      return json(api.subjects);
     }
     if (path === '/api/v1/content/subjects/example-subject') {
       return json(OUTLINE);
     }
+    if (path === '/api/v1/content/subjects/statistik') {
+      return json(OTHER_OUTLINE);
+    }
     if (path === '/api/v1/review/subjects/example-subject/due') {
       return json(api.due);
+    }
+    if (path === '/api/v1/review/due') {
+      return json(api.everywhere);
     }
     if (path === '/api/v1/assessment/subjects/example-subject/questions') {
       const ids = (url.searchParams.get('ids') ?? '').split(',');
       return json({ subjectId: 'example-subject', questions: QUESTIONS.filter((question) => ids.includes(question.id)) });
+    }
+    if (path === '/api/v1/assessment/subjects/statistik/questions') {
+      const ids = (url.searchParams.get('ids') ?? '').split(',');
+      return json({ subjectId: 'statistik', questions: OTHER_QUESTIONS.filter((question) => ids.includes(question.id)) });
     }
     if (path === '/api/v1/assessment/subjects/example-subject/passed') {
       return json({ subjectId: 'example-subject', lessons: [], areas: [] });
@@ -91,6 +126,16 @@ const answersPosted = () =>
       const { answer, setting } = body as { answer: unknown; setting: unknown };
       return { question: /questions\/([^/]+)/.exec(path)?.[1], answer, setting };
     });
+
+/** Which subject each answer was sent to, in order. */
+const subjectsAnswered = () => api.posted.filter(({ path }) => path.endsWith('/answers')).map(({ path }) => /assessment\/subjects\/([^/]+)/.exec(path)?.[1]);
+
+async function answerTrueFalseTo(prompt: string, value: 'Sant' | 'Falskt'): Promise<void> {
+  const question = await screen.findByRole('region', { name: prompt });
+  await userEvent.click(within(question).getByRole('radio', { name: new RegExp(value) }));
+  await userEvent.click(within(question).getByRole('button', { name: 'Svara' }));
+  await within(question).findByRole('status');
+}
 
 async function answerTrueFalse(value: 'Sant' | 'Falskt'): Promise<void> {
   const question = await screen.findByRole('region', { name: 'Effekt är en takt.' });
@@ -225,6 +270,112 @@ describe('on the start screen', () => {
     open('/');
 
     expect(await screen.findByText('Inget att repetera i dag')).toBeTruthy();
+  });
+});
+
+describe('across every subject', () => {
+  beforeEach(() => {
+    api.subjects = [SUBJECT, OTHER];
+  });
+
+  it('says on the start screen how many questions are due in all subjects and about how long they take, and leads into one session', async () => {
+    api.everywhere = {
+      // 2 × 20 s + 3 × 40 s = 160 s: about three minutes.
+      subjects: { 'example-subject': { due: 2, typicalAnswerMs: 20_000 }, statistik: { due: 3, typicalAnswerMs: 40_000 } },
+      questions: [],
+    };
+    open('/');
+
+    const line = await screen.findByText(/att repetera i 2 ämnen/);
+    expect(line.textContent).toBe('5 frågor att repetera i 2 ämnen, ca 3 min. Repetera allt');
+    expect(within(line).getByRole('link', { name: 'Repetera allt' }).getAttribute('href')).toBe('/review');
+  });
+
+  it('names the subject when only one has questions due, so an installation with one subject still sees its figure', async () => {
+    api.everywhere = {
+      subjects: { 'example-subject': { due: 0, typicalAnswerMs: 20_000 }, statistik: { due: 1, typicalAnswerMs: 30_000 } },
+      questions: [],
+    };
+    open('/');
+
+    const line = await screen.findByText(/att repetera i Statistik/);
+    expect(line.textContent).toBe('1 fråga att repetera i Statistik för mätdata, ca 1 min. Repetera nu');
+    expect(within(line).getByRole('link', { name: 'Repetera nu' }).getAttribute('href')).toBe('/review');
+  });
+
+  it('leaves the minutes out while a subject with questions due has no pace to go by', async () => {
+    api.everywhere = { subjects: { 'example-subject': { due: 2, typicalAnswerMs: 20_000 }, statistik: { due: 1, typicalAnswerMs: null } }, questions: [] };
+    open('/');
+
+    expect((await screen.findByText(/att repetera i 2 ämnen/)).textContent).toBe('3 frågor att repetera i 2 ämnen. Repetera allt');
+  });
+
+  it('says nothing on the start screen when nothing is due anywhere', async () => {
+    api.everywhere = { subjects: { 'example-subject': { due: 0, typicalAnswerMs: 20_000 } }, questions: [] };
+    open('/');
+
+    await screen.findByRole('link', { name: 'Exempelämne' });
+    await vi.waitFor(() => expect(api.requested.some((request) => request.startsWith('/api/v1/review/due'))).toBe(true));
+    expect(screen.queryByText(/att repetera i/)).toBeNull();
+  });
+
+  it('asks the questions due in every subject in one session, each sent to its own subject as a review, a wrong one asked again', async () => {
+    api.everywhere = {
+      subjects: { 'example-subject': { due: 1, typicalAnswerMs: 20_000 }, statistik: { due: 1, typicalAnswerMs: 20_000 } },
+      questions: [
+        { subjectId: 'statistik', questionId: 'medel-ar-kvot' },
+        { subjectId: 'example-subject', questionId: 'effekt-ar-takt' },
+      ],
+    };
+    open('/review');
+
+    expect(await screen.findByText('2 frågor kvar')).toBeTruthy();
+    // Each question says which subject it comes from.
+    expect(screen.getByText('Repetition · Statistik för mätdata')).toBeTruthy();
+    await answerTrueFalseTo('Medelvärdet är summan delad med antalet.', 'Falskt');
+    await userEvent.click(screen.getByRole('button', { name: 'Nästa fråga' }));
+
+    expect(screen.getByText('Repetition · Exempelämne')).toBeTruthy();
+    await answerTrueFalseTo('Effekt är en takt.', 'Sant');
+    await userEvent.click(screen.getByRole('button', { name: 'Nästa fråga' }));
+
+    expect(screen.getByText('1 fråga kvar')).toBeTruthy();
+    await answerTrueFalseTo('Medelvärdet är summan delad med antalet.', 'Sant');
+    await userEvent.click(screen.getByRole('button', { name: 'Avsluta' }));
+
+    expect(screen.getByRole('heading', { name: 'Klart för i dag' })).toBeTruthy();
+    expect(screen.getByText('Du har repeterat 2 frågor.')).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Till dina ämnen' }).getAttribute('href')).toBe('/');
+    expect(answersPosted()).toEqual([
+      { question: 'medel-ar-kvot', answer: { type: 'true-false', value: false }, setting: 'review' },
+      { question: 'effekt-ar-takt', answer: { type: 'true-false', value: true }, setting: 'review' },
+      { question: 'medel-ar-kvot', answer: { type: 'true-false', value: true }, setting: 'review' },
+    ]);
+    expect(subjectsAnswered()).toEqual(['statistik', 'example-subject', 'statistik']);
+    expect(api.requested.filter((request) => request.startsWith('/api/v1/review/due'))[0]).toBe('/api/v1/review/due?timeZone=Europe%2FStockholm');
+  });
+
+  it('with nothing due anywhere says so and leads back to the subjects', async () => {
+    open('/review');
+
+    expect(await screen.findByRole('heading', { name: 'Inget att repetera i dag' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Till dina ämnen' }).getAttribute('href')).toBe('/');
+  });
+
+  it('is gone with the module: no line on the start screen, and the session’s address names nothing', async () => {
+    api.everywhere = { subjects: { statistik: { due: 3, typicalAnswerMs: 20_000 } }, questions: [{ subjectId: 'statistik', questionId: 'medel-ar-kvot' }] };
+    open('/', [assessmentModule]);
+
+    await screen.findByRole('link', { name: 'Exempelämne' });
+    expect(screen.queryByText(/att repetera/)).toBeNull();
+    expect(api.requested.some((request) => request.startsWith('/api/v1/review'))).toBe(false);
+  });
+
+  it('without the module, the address of the session across subjects is not found', async () => {
+    open('/review', [assessmentModule]);
+
+    expect(await screen.findByRole('heading', { name: 'Sidan finns inte' })).toBeTruthy();
+    expect(api.requested.some((request) => request.startsWith('/api/v1/review'))).toBe(false);
   });
 });
 
