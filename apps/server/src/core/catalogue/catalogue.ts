@@ -12,6 +12,7 @@ import {
   type LoadResult,
   type OutlineLesson,
   type Pack,
+  type ShownLesson,
   type SubjectOutline,
   type SourceLibrary,
   type SourcePage,
@@ -19,6 +20,7 @@ import {
 } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
 import type { Result } from '../result.js';
+import { shownLesson, type LessonReadError } from './lessons.js';
 import { sourceLibrary, sourcePage, type SourcePageError } from './sources.js';
 
 /** The catalogue as modules see it: the only way subject material is stored or read. */
@@ -40,6 +42,11 @@ export interface Catalogue {
   sourceLibrary(subjectId: string, language: string | undefined): Promise<SourceLibrary | undefined>;
   /** One source and what rests on it; a source the subject no longer holds as its last revision. */
   sourcePage(subjectId: string, sourceId: string, language: string | undefined): Promise<Result<SourcePage, SourcePageError>>;
+  /**
+   * One lesson as it is taken, in `language` where translated, with its area and the sources it rests on.
+   * A lesson the subject no longer holds is not offered.
+   */
+  lesson(subjectId: string, lessonId: string, language: string | undefined): Promise<Result<ShownLesson, LessonReadError>>;
   /** A file the subject currently carries, at its path in the pack such as `assets/figur.png`; undefined when it carries none there. */
   asset(subjectId: string, path: string): Promise<StoredAsset | undefined>;
 }
@@ -428,6 +435,7 @@ export function createCatalogue(db: Db): Catalogue {
     outline,
     sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
     sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),
+    lesson: async (subjectId, lessonId, language) => shownLesson(db, subjectId, lessonId, language),
     asset: async (subjectId, path) => {
       const rows = await db.query('SELECT media_type, data, digest FROM catalogue.asset WHERE subject_id = $1 AND path = $2', [subjectId, path]);
       const row = rows[0];

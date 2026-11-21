@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ContentFaultSchema } from './content.js';
 
 export * from './content.js';
+export * from './lessons.js';
 export * from './reader.js';
 export * from './result.js';
 
