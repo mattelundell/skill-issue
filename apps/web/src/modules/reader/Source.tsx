@@ -9,7 +9,7 @@ import { WithCode } from '../../shell/text.js';
 import { fetchSource } from './api.js';
 import { formatAge, formatDay } from './format.js';
 import { useMessages } from './messages.js';
-import { useFetched } from './useFetched.js';
+import { useFetched } from '../../shell/useFetched.js';
 
 /** One source: where it came from, the material itself, and what in the subject rests on it. */
 export function Source({ subject, sourceId, pathTo }: Pick<PageProps, 'subject' | 'pathTo'> & { readonly sourceId: string }) {

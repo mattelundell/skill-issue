@@ -5,7 +5,7 @@ import { Link, subjectPath } from '../../shell/router.js';
 import { fetchLibrary } from './api.js';
 import { firstDifference } from './format.js';
 import { useMessages } from './messages.js';
-import { useFetched } from './useFetched.js';
+import { useFetched } from '../../shell/useFetched.js';
 
 /** How many publishers the block names before it counts the rest. */
 const NAMED_PUBLISHERS = 2;

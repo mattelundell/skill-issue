@@ -9,7 +9,7 @@ import { fetchLibrary } from './api.js';
 import { firstDifference, formatDay } from './format.js';
 import { useMessages } from './messages.js';
 import { findAt, snippet } from './search.js';
-import { useFetched } from './useFetched.js';
+import { useFetched } from '../../shell/useFetched.js';
 
 const ORDERS = ['cited', 'title', 'read'] as const;
 type Order = (typeof ORDERS)[number];

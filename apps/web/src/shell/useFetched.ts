@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Fetched } from '../../api.js';
+import type { Fetched } from '../api.js';
 
 /**
  * Loads a value once per `key`, and again on `retry()`. Undefined while the
