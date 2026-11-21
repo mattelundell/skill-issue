@@ -11,6 +11,7 @@ import {
   type ItemRef,
   type LoadResult,
   type OutlineLesson,
+  type ExamScope,
   type Pack,
   type ShownLesson,
   type SubjectOutline,
@@ -21,6 +22,7 @@ import {
 import type { Db, Row } from '../db.js';
 import type { Result } from '../result.js';
 import { shownLesson, type LessonReadError } from './lessons.js';
+import { examPlan, shownQuestions, type ExamPlan, type QuestionReadError, type ShownQuestion } from './questions.js';
 import { sourceLibrary, sourcePage, type SourcePageError } from './sources.js';
 
 /** The catalogue as modules see it: the only way subject material is stored or read. */
@@ -47,6 +49,10 @@ export interface Catalogue {
    * A lesson the subject no longer holds is not offered.
    */
   lesson(subjectId: string, lessonId: string, language: string | undefined): Promise<Result<ShownLesson, LessonReadError>>;
+  /** Questions by id with their answers, as shown in `language`, in the order asked for; ids the subject does not hold are left out. */
+  questions(subjectId: string, ids: readonly string[], language: string | undefined): Promise<Result<readonly ShownQuestion[], QuestionReadError>>;
+  /** What an exam on a lesson or an area draws from, and how it is passed. */
+  examPlan(subjectId: string, scope: ExamScope, language: string | undefined): Promise<Result<ExamPlan, QuestionReadError>>;
   /** A file the subject currently carries, at its path in the pack such as `assets/figur.png`; undefined when it carries none there. */
   asset(subjectId: string, path: string): Promise<StoredAsset | undefined>;
 }
@@ -436,6 +442,8 @@ export function createCatalogue(db: Db): Catalogue {
     sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
     sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),
     lesson: async (subjectId, lessonId, language) => shownLesson(db, subjectId, lessonId, language),
+    questions: async (subjectId, ids, language) => shownQuestions(db, subjectId, ids, language),
+    examPlan: async (subjectId, scope, language) => examPlan(db, subjectId, scope, language),
     asset: async (subjectId, path) => {
       const rows = await db.query('SELECT media_type, data, digest FROM catalogue.asset WHERE subject_id = $1 AND path = $2', [subjectId, path]);
       const row = rows[0];
