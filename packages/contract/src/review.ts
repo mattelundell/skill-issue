@@ -20,8 +20,13 @@ export const DueSchema = z.object({
 });
 export type Due = z.infer<typeof DueSchema>;
 
-/** How many questions each subject has due today, and how long one typically takes, for every subject with a question scheduled. */
+/**
+ * What is due today across every subject: how many in each, and how long one
+ * typically takes there, for every subject with a question scheduled; and the
+ * due questions themselves, the most overdue first whichever subject holds them.
+ */
 export const DueCountsSchema = z.object({
   subjects: z.record(ItemIdSchema, z.object({ due: z.number().int().min(0), typicalAnswerMs: z.number().int().min(0).nullable() })),
+  questions: z.array(z.object({ subjectId: ItemIdSchema, questionId: ItemIdSchema })),
 });
 export type DueCounts = z.infer<typeof DueCountsSchema>;

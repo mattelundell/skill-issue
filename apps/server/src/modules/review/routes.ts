@@ -26,6 +26,18 @@ async function held(catalogue: Catalogue, subjectId: string, memories: readonly 
  */
 const dueToday = (memory: Memory, now: Date, timeZone: string): boolean => dayIn(memory.dueAt, timeZone) <= dayIn(now, timeZone);
 
+/** The moment a question fell due, earliest first; ties broken by subject and question, so the order is the same on every read. */
+function mostOverdueFirst(a: Memory, b: Memory): number {
+  const byTime = a.dueAt.getTime() - b.dueAt.getTime();
+  if (byTime !== 0) {
+    return byTime;
+  }
+  if (a.subjectId !== b.subjectId) {
+    return a.subjectId < b.subjectId ? -1 : 1;
+  }
+  return a.questionId < b.questionId ? -1 : a.questionId > b.questionId ? 1 : 0;
+}
+
 /** Schedules questions to come back, from the learning record, and says which are due. */
 export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIHono {
   const routes = new OpenAPIHono();
@@ -70,8 +82,9 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
   routes.openAPIRegistry.registerPath({
     method: 'get',
     path: '/due',
-    summary: 'How many questions each subject has due for review today, and how long the learner typically takes over one.',
-    description: 'Every subject with a question scheduled is named, with 0 when none is due today.',
+    summary: 'The questions due for review today in every subject, the most overdue first; how many each subject has due; and how long the learner typically takes over one there.',
+    description:
+      'Every subject with a question scheduled is named, with 0 when none is due today. The questions are one list across subjects, ordered by the moment each fell due, so a review of everything asks the most overdue first whichever subject it is in.',
     request: { query: zoneQuery },
     responses: {
       200: { description: 'The counts, by subject.', content: { 'application/json': { schema: DueCountsSchema } } },
@@ -89,13 +102,17 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
     const bySubject = Map.groupBy(await memoriesIn(db, undefined, ready), (memory) => memory.subjectId);
     const now = new Date();
     const subjects: Record<string, { due: number; typicalAnswerMs: number | null }> = {};
+    const due: Memory[] = [];
     for (const [subjectId, memories] of bySubject) {
       const scheduled = await held(catalogue, subjectId, memories);
       if (scheduled !== undefined && scheduled.length > 0) {
-        subjects[subjectId] = { due: scheduled.filter((memory) => dueToday(memory, now, timeZone)).length, typicalAnswerMs: (await record.typicalAnswerMs(subjectId)) ?? null };
+        const today = scheduled.filter((memory) => dueToday(memory, now, timeZone));
+        due.push(...today);
+        subjects[subjectId] = { due: today.length, typicalAnswerMs: (await record.typicalAnswerMs(subjectId)) ?? null };
       }
     }
-    return c.json({ subjects }, 200);
+    const questions = due.toSorted(mostOverdueFirst).map(({ subjectId, questionId }) => ({ subjectId, questionId }));
+    return c.json({ subjects, questions }, 200);
   });
 
   return routes;
