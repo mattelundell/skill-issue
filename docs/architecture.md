@@ -91,7 +91,7 @@ The browser app is a shell that draws two screens — the start screen and a sub
 | lesson marks, in the interface language | on each lesson in the path, and wherever another module lists lessons | not started, in progress, passed, mastered |
 | a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names | the lessons module's page for one lesson |
 | a source's address | each source a lesson rests on becomes a link | the reader's page for one source |
-| how a step type is drawn | inside a lesson, by the module that owns the step; a check reports each answer, so the lesson asks a wrong one once more after its last step | a check step, drawn and graded by assessment |
+| how a step type is drawn | inside a lesson, by the module that owns the step; a check reports each answer, so the lesson asks a wrong one once more after its last step. Told where the pass through the lesson began, a check taken up again shows what was answered in it; a review draws its questions through the same contribution, one at a time, told they are a review | a check step, drawn and graded by assessment |
 | something at a lesson's end | under the lesson's summary, once it is gone through | the offer to sit the lesson's exam |
 | something at an area's foot | at the foot of each area on the path, whatever the learner has taken, since nothing is locked | the area's exam |
 | something beside a lesson | next to the step on screen | the note pane |
@@ -172,23 +172,28 @@ One append-only table, `record.event`, owned by the core and handed to every mod
 - the setting: lesson check, exam, scheduled review or extra practice
 - the sources the question cited when answered, so a source later removed from the subject can still say what was answered on its strength
 - for an exam's answers, the sitting
-- for a review: the scheduler, its version and parameters, and the item's memory state before and after
 
 A step row says which step, counted from 0; moving on past several steps goes through each, and moving back goes through none. A lesson is finished each time the learner reaches its end from inside it, not when the end is merely saved again. An exam row holds the sitting, its mark against its pass mark, and its whole time from started to handed in; its answers and it are written in the same transaction as the hand-in, so neither exists without the other.
 
 Rows are never updated or deleted: a trigger refuses both, so this is a property of the table and not of the code. Everything a module shows about progress is a view over this table or a table rebuilt from it.
 
+A review answer is an answer like any other, with the setting "review". The scheduler's memory state is not in the record: it is derived, and replaying the record with the same scheduler reproduces it exactly, so the record keeps only what happened and whoever grades an answer need not know a scheduler exists.
+
+Rows become visible in the order they are numbered: every append holds a transaction-scoped lock until its transaction ends, so a row that commits late, such as an exam's answers written with the hand-in, can never appear behind a higher-numbered one. A module that follows the record by row number therefore never passes a row over.
+
+Besides appending, the record answers a few reads, so modules meet in the core rather than in each other's tables: the answers after a row, the latest answer to each of some questions in given settings, the row at which a lesson was last finished, a learner's typical time over one question, and what was answered on a source's strength.
+
 ## Review scheduling
 
-Review uses **FSRS**, the algorithm behind current Anki, through its reference TypeScript library, with the model version pinned.
+Review uses **FSRS**, the algorithm behind current Anki, through its reference TypeScript library, `ts-fsrs`, pinned to an exact version, with the model pinned to FSRS-6, the one current Anki schedules with. Fuzz is off, so a replay gives exactly the state built live.
 
-- Each question the learner has met has a memory state: how hard it is for them, and how stable the memory is. From these the algorithm estimates the chance of recalling it today and schedules the next review for when that chance falls to the target, 90 % by default.
-- Automatically graded answers map to two ratings: wrong is "again", right is "good". Free-recall questions offer all four.
-- Scheduling is in whole days. A question answered wrongly in a session returns later in the same session, and then follows the schedule.
-- The memory state per question is a table owned by the review module and can be rebuilt by replaying the learning record. Changing the algorithm, or fitting its parameters to the learner's own history, is a replay, not a migration.
-- A check answered inside a lesson and an exam answer both count as observations, so a question does not need a separate "card" to enter review.
-
-Open design points, to settle when the module is built: how a guessed multiple-choice answer should count, and how to behave when a bank is too small to avoid repeating the same question.
+- Each question the learner has met has a memory state: how hard it is for them, and how stable the memory is. From these the algorithm estimates the chance of recalling it today and schedules the next review for when that chance falls to the target, 90 %.
+- A check answered inside a lesson, an exam answer and a review answer all count as observations, so a question does not need a separate "card" to enter review.
+- **Only the first answer to a question on a day counts**, the day being the learner's own, in their time zone. A second answer the same day — the round a lesson asks again, a wrong answer coming back in a session — is the learning itself; counting it would rate a question "good" minutes after it was forgotten.
+- **Ratings.** Wrong is "again". Right is "good", unless a guess would hit the question one time in three or more often — true or false, a single choice among three or fewer, a matching of two — when it is "hard": the memory still grows, but a lucky guess does not send the question away for weeks. The chance of a guess comes from the type and the number of options the record keeps for each answer. Free recall is graded right or wrong by the learner today, so it gives "again" or "good"; offering it all four ratings needs a free-recall answer that carries them.
+- **Scheduling is in whole days.** Short-term learning steps are off. A question is due once the day it falls due on has come in the learner's time zone, at any hour of it.
+- **The memory is a view of the record**, in tables owned by the review module: each question's state, and how far into the record it has been brought and by which scheduler. Every read first folds in the answers written since, in order, under a lock so two reads fold each answer once. The scheduler is named by everything that changes a due date — library, version, model, retention, steps and fuzz — and a memory built by any other is thrown away and replayed from the first row. Changing the algorithm, or fitting its parameters to the learner's own history, is therefore a replay, not a migration.
+- **A session** is what was due when it opened, asked one question at a time. A question answered wrongly returns later in the same session: behind the next three questions, or at the end when fewer are left. When it is the last one left it comes straight back, after its explanation has been shown — a bank too small to put anything between is not a reason to let it go unanswered. The session ends when every question in it has been answered right once, or when the learner stops; what is left stays due.
 
 ## API
 

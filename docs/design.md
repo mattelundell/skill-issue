@@ -37,7 +37,7 @@ A lesson is a sequence of steps, one on screen at a time, with a progress bar.
 
 - A **text step** teaches one idea. Terms from the glossary are marked and show their definition on hover.
 - An **example step** works through a case.
-- A **check step** asks one to three questions on what was just covered. The answer is graded at once, with the explanation and its source. A wrong answer brings the question back before the lesson ends.
+- A **check step** asks one to three questions on what was just covered. The answer is graded at once, with the explanation and its source. A wrong answer brings the question back before the lesson ends, even when the lesson was left and resumed in between. A check step come back to — after leaving, or by going back a step — shows the answers already given in this pass through the lesson rather than asking them again; a pass begins when a lesson gone through to its end is opened again.
 - The lesson closes with a summary of what was covered, what was answered wrongly, and the offer to sit the lesson exam now or later.
 
 The note pane sits beside the lesson. A note is attached to the lesson, and to the step it was written at, automatically. Selecting text in a step and pressing one key quotes it into the note.
@@ -57,7 +57,9 @@ The start screen offers the lesson you were last in, if it is unfinished, or els
 
 One question at a time from what is due across the subject — or across all subjects. Answer, see the explanation, continue. A session ends when the queue is empty or when you stop; stopping early is fine and the rest stays due.
 
-A question answered wrongly returns later in the same session.
+A question answered wrongly returns later in the same session, behind the next three questions, or at the end when fewer are left; the session is over when each of its questions has been answered right once.
+
+The subject home says how many questions are due today and about how long they take at the learner's own pace, or, with nothing due, when the next review is. Each subject's row on the start screen says the same in a line.
 
 ### Material
 
