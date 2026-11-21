@@ -1,0 +1,63 @@
+/* The lessons module: one lesson as it is taken, and its slim block on the subject home. */
+
+.lesson-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-top: 4px; }
+.lesson-top .crumb { margin: 0; }
+.lesson-top .crumb a { color: var(--royal); }
+.leave { text-align: right; font-size: 0.9rem; margin: 0; }
+.leave a { color: var(--royal); font-weight: 600; }
+.leave span { display: block; color: var(--graphite); font-size: 0.82rem; }
+.lesson-title { font-family: var(--title); font-weight: 600; font-size: 2.1rem; letter-spacing: -0.01em; margin-top: 6px; }
+
+.stepbar { display: flex; gap: 5px; margin: 14px 0 0; padding: 0; list-style: none; }
+.stepbar li { flex: 1; height: 8px; border-radius: 4px; background: var(--grid); }
+.stepbar li.done { background: var(--royal); }
+.stepbar li.now { background: var(--royal); box-shadow: 0 0 0 3px var(--royal-wash); }
+.stepbar li button { display: block; width: 100%; height: 100%; padding: 0; border: 0; background: transparent; cursor: pointer; border-radius: 4px; }
+.stepbar li button:hover { background: rgb(255 255 255 / 25%); }
+.stepcount { color: var(--graphite); font-size: 0.9rem; margin: 6px 0 0; }
+
+.lesson-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 18px; align-items: start; }
+.lesson-grid.with-side { grid-template-columns: minmax(0, 1fr) 19rem; }
+.lesson-sides { display: grid; gap: 14px; position: sticky; top: 16px; }
+
+.lesson .step { padding: 26px 30px 22px; min-height: 16rem; }
+.lesson .step.example { border-left: 6px solid var(--done); }
+.step-kind { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--graphite); font-weight: 600; margin: 0 0 6px; }
+.step-kind.example { color: var(--done); }
+.step-kind.check { color: var(--royal); }
+.lesson .step h2 { font-family: var(--title); font-weight: 600; font-size: 1.55rem; margin: 0 0 14px; }
+.prose-step { font-size: 1.05rem; }
+.prose-step > :first-child { margin-top: 0; }
+.prose-step p, .prose-step ul, .prose-step ol { max-width: 38rem; margin: 0 0 12px; }
+.lesson .placeholder { padding: 16px 18px; border: 1px dashed var(--rule); border-radius: 8px; color: var(--graphite); max-width: 36rem; margin: 0; }
+
+.lesson .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.lesson .keys { color: var(--graphite); font-size: 0.85rem; }
+.lesson kbd { font: 0.78rem var(--mono, ui-monospace, monospace); color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
+.lesson .btn[disabled] { opacity: 0.45; cursor: not-allowed; filter: none; }
+.lesson-sources { margin-top: 18px; font-size: 0.9rem; color: var(--graphite); }
+.lesson-sources a { color: var(--royal); font-weight: 600; }
+
+.lesson .banner { margin: 0 0 14px; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--rule); background: var(--sheet); font-size: 0.92rem; display: flex; gap: 12px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+.lesson .banner.info { border-left: 5px solid var(--royal); }
+.lesson .banner.warn { border-color: var(--warn); background: var(--warn-wash); }
+.link-button { font: inherit; color: var(--royal); font-weight: 600; background: none; border: 0; padding: 0; cursor: pointer; white-space: nowrap; }
+.link-button:hover { text-decoration: underline; }
+
+.lesson .end { padding: 26px 30px; margin-top: 18px; border-left: 6px solid var(--done); }
+.lesson .end h2 { font-family: var(--title); font-weight: 600; font-size: 1.7rem; }
+.lesson .end h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--graphite); margin: 20px 0 8px; font-weight: 600; }
+.lesson .end .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+
+.due.slim { border-left-width: 1px; padding: 12px 18px; }
+.due.slim h2 { font-size: 1rem; font-weight: 600; }
+
+@media (max-width: 760px) {
+  .lesson-grid.with-side { grid-template-columns: 1fr; }
+  .lesson-sides { position: static; }
+  .lesson-title { font-size: 1.6rem; }
+  .lesson .step, .lesson .end { padding: 20px 16px; }
+  .lesson-top { flex-direction: column; }
+  .leave { text-align: left; }
+  .lesson .keys { display: none; }
+}
