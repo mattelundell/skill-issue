@@ -17,7 +17,7 @@ export const lessonsModule: WebModule = {
   homeBlocks: [{ placement: 'lead', Block: ContinueBlock }],
   ResumePanel,
   startedSubjects: async (signal) => {
-    const resume = await fetchResume('sv', signal);
+    const resume = await fetchResume(signal);
     if (resume.kind !== 'ok') {
       throw new Error('where the learner has begun could not be read');
     }
