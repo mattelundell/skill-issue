@@ -89,6 +89,22 @@ function answerAt(questionId: string, at: string, correct: boolean, setting: 'le
 
 const timed = (event: AnswerEvent, durationMs: number): AnswerEvent => ({ ...event, durationMs });
 
+/** A second subject: the example pack under another id, so the same questions exist in both. */
+const OTHER = 'other-subject';
+
+function asSubject(files: PackFiles, subjectId: string): PackFiles {
+  const renamed = new Map(files);
+  // The subject file and each of its translations carry the id.
+  for (const file of ['subject.yaml', 'subject.en.yaml']) {
+    const text = decode(files.get(file));
+    expect(text).toContain(`id: ${SUBJECT}\n`);
+    renamed.set(file, encode(text.replace(`id: ${SUBJECT}\n`, `id: ${subjectId}\n`)));
+  }
+  return renamed;
+}
+
+const inSubject = (event: AnswerEvent, subjectId: string): AnswerEvent => ({ ...event, question: { ...event.question, subjectId } });
+
 const write = async (events: readonly RecordEvent[]): Promise<void> => createLearningRecord(here.db).append(events);
 
 async function due(query = `?timeZone=${ZONE}`) {
@@ -294,7 +310,36 @@ describe('what is due', () => {
     const response = await here.app.request(`${REVIEW}/due?timeZone=${ZONE}`);
 
     expect(response.status).toBe(200);
-    expect(DueCountsSchema.parse(await response.json())).toEqual({ subjects: { [SUBJECT]: { due: 1, typicalAnswerMs: 3000 } } });
+    expect(DueCountsSchema.parse(await response.json())).toEqual({
+      subjects: { [SUBJECT]: { due: 1, typicalAnswerMs: 3000 } },
+      questions: [{ subjectId: SUBJECT, questionId: 'effekt-ar-takt' }],
+    });
+  });
+
+  it('lists what is due in every subject together, the most overdue first whichever subject it is in', async () => {
+    await load(example);
+    await load(asSubject(example, OTHER));
+    await write([
+      answerAt('berakna-energi', daysAgo(3), false),
+      inSubject(timed(answerAt('effekt-ar-takt', daysAgo(6), false), 7000), OTHER),
+      answerAt('effekt-ar-takt', daysAgo(5), false),
+      inSubject(timed(answerAt('kwh-eller-kw', daysAgo(2), false), 9000), OTHER),
+      // Answered right today in the other subject: scheduled, not due.
+      inSubject(answerAt('berakna-energi', new Date().toISOString(), true), OTHER),
+    ]);
+
+    const response = await here.app.request(`${REVIEW}/due?timeZone=${ZONE}`);
+
+    expect(response.status).toBe(200);
+    expect(DueCountsSchema.parse(await response.json())).toEqual({
+      subjects: { [SUBJECT]: { due: 2, typicalAnswerMs: 3000 }, [OTHER]: { due: 2, typicalAnswerMs: 7000 } },
+      questions: [
+        { subjectId: OTHER, questionId: 'effekt-ar-takt' },
+        { subjectId: SUBJECT, questionId: 'effekt-ar-takt' },
+        { subjectId: SUBJECT, questionId: 'berakna-energi' },
+        { subjectId: OTHER, questionId: 'kwh-eller-kw' },
+      ],
+    });
   });
 
   it('leaves out a question the subject no longer holds', async () => {
@@ -316,7 +361,7 @@ describe('what is due', () => {
     await load(example);
 
     expect(await due()).toEqual({ subjectId: SUBJECT, questions: [], scheduled: 0, next: null, typicalAnswerMs: null });
-    expect(DueCountsSchema.parse(await (await here.app.request(`${REVIEW}/due`)).json())).toEqual({ subjects: {} });
+    expect(DueCountsSchema.parse(await (await here.app.request(`${REVIEW}/due`)).json())).toEqual({ subjects: {}, questions: [] });
   });
 
   it('refuses a time zone that is not one, and answers “no such subject” for one that does not exist', async () => {
