@@ -12,6 +12,7 @@ COPY packages/pack/package.json packages/pack/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
 COPY apps/cli/package.json apps/cli/
+COPY apps/e2e/package.json apps/e2e/
 RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.base.json ./

@@ -4,7 +4,7 @@ A study application for one person. Load a subject, take its lessons, get tested
 
 The application ships with no subjects. A subject is a pack of source material, lessons and questions that you — or an AI assistant working for you — write and load through the API.
 
-**Status: in development.** A subject can be loaded, updated and exported through the API and the command-line tool. There are no study screens yet.
+**Status: in development.** A subject can be loaded, updated and exported through the API and the command-line tool, and the browser app lists the subjects and shows each one's path of areas and lessons. There are no study screens yet.
 
 ## Running it
 
@@ -48,7 +48,10 @@ pnpm run test
 
 docker-compose -f docker-compose.test.yml up -d --wait   # throwaway database
 pnpm run test:integration
+pnpm run test:e2e                                        # builds, then drives the app in a browser
 ```
+
+`pnpm run test:e2e` starts the built server, serving the built browser app, on a fresh database in the throwaway PostgreSQL, and drives it with Playwright. The first run needs the browser: `pnpm --filter @skill-issue/e2e exec playwright install chromium`.
 
 `pnpm run lint` does two things. It lints the code, and then it lints the deliberate violations kept in each `lint-fixtures` folder and fails unless every marked line is reported by the rule it names — so a rule that has been switched off, or has stopped working, fails the run instead of passing quietly. A rule worth relying on gets a line in a fixture.
 

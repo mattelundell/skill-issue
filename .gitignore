@@ -3,3 +3,5 @@ dist/
 secrets/
 *.log
 *.tsbuildinfo
+test-results/
+playwright-report/
