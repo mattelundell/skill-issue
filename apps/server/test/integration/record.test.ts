@@ -337,7 +337,41 @@ describe('a lesson', () => {
   });
 });
 
+describe('an answer in a scheduled review', () => {
+  it('is recorded like a check answer, with the setting "review"', async () => {
+    await load(example);
+
+    await answer('kwh-eller-kw', { type: 'single-choice', option: 'b' }, { setting: 'review' });
+
+    expect((await rows()).map(({ at: _at, ...row }) => row)).toEqual([
+      answerRow({ item_id: 'kwh-eller-kw', concepts: ['effekt'], question_type: 'single-choice', options: 3, given: { type: 'single-choice', option: 'b' }, correct: true, score: 1, setting: 'review' }),
+    ]);
+  });
+
+  it('is refused, and nothing recorded, for a setting a single answer is never given in', async () => {
+    await load(example);
+
+    const refused = await Promise.all(['exam', 'practice', 'anywhere'].map(async (setting) => answer('kwh-eller-kw', { type: 'single-choice', option: 'b' }, { setting })));
+
+    expect(refused.map(({ status }) => status)).toEqual([400, 400, 400]);
+    expect(await rows()).toEqual([]);
+  });
+});
+
 describe('the table', () => {
+  it('keeps the shape of every kind of row after the scheduler column is gone: an exam answer still needs its sitting', async () => {
+    await load(example);
+    await answer('kwh-eller-kw', { type: 'single-choice', option: 'a' });
+
+    await expect(
+      here.db.query(
+        `INSERT INTO record.event (kind, at, time_zone, subject_id, item_kind, item_id, language, revision, setting, concepts, sources, question_type, given, correct, score)
+              SELECT kind, at, time_zone, subject_id, item_kind, item_id, language, revision, 'exam', concepts, sources, question_type, given, correct, score FROM record.event`,
+      ),
+    ).rejects.toThrow(/event_shape/);
+    expect(await here.db.query(`SELECT 1 FROM information_schema.columns WHERE table_schema = 'record' AND column_name = 'scheduler'`)).toEqual([]);
+  });
+
   it('refuses to have a row changed or removed', async () => {
     await load(example);
     await answer('kwh-eller-kw', { type: 'single-choice', option: 'a' });
