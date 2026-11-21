@@ -13,9 +13,13 @@ import {
   type OutlineLesson,
   type Pack,
   type SubjectOutline,
+  type SourceLibrary,
+  type SourcePage,
   type SubjectSummary,
 } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
+import type { Result } from '../result.js';
+import { sourceLibrary, sourcePage, type SourcePageError } from './sources.js';
 
 /** The catalogue as modules see it: the only way subject material is stored or read. */
 export interface Catalogue {
@@ -29,6 +33,13 @@ export interface Catalogue {
    * language where it has no translation; undefined when there is no such subject.
    */
   outline(subjectId: string, language: string | undefined): Promise<SubjectOutline | undefined>;
+  /**
+   * The subject's sources in pack order, each in `language` where translated,
+   * with how much of the subject cites it; undefined when there is no such subject.
+   */
+  sourceLibrary(subjectId: string, language: string | undefined): Promise<SourceLibrary | undefined>;
+  /** One source and what rests on it; a source the subject no longer holds as its last revision. */
+  sourcePage(subjectId: string, sourceId: string, language: string | undefined): Promise<Result<SourcePage, SourcePageError>>;
 }
 
 /** The pack's collections of items and the kind each holds. Assets are kept apart: they have no revisions. */
@@ -401,5 +412,12 @@ export function createCatalogue(db: Db): Catalogue {
     };
   };
 
-  return { load, exportPack, listSubjects, outline };
+  return {
+    load,
+    exportPack,
+    listSubjects,
+    outline,
+    sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
+    sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),
+  };
 }
