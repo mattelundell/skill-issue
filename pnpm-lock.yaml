@@ -193,6 +193,9 @@ importers:
       '@skill-issue/contract':
         specifier: workspace:*
         version: link:../../packages/contract
+      '@skill-issue/pack':
+        specifier: workspace:*
+        version: link:../../packages/pack
     devDependencies:
       '@types/node':
         specifier: ^26.6.0
