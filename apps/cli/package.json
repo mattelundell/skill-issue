@@ -12,7 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@skill-issue/contract": "workspace:*"
+    "@skill-issue/contract": "workspace:*",
+    "@skill-issue/pack": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.6.0",

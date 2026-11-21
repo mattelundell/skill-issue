@@ -4,7 +4,7 @@ A study application for one person. Load a subject, take its lessons, get tested
 
 The application ships with no subjects. A subject is a pack of source material, lessons and questions that you — or an AI assistant working for you — write and load through the API.
 
-**Status: skeleton.** The application starts and answers, with its modules registered and empty. It cannot load a subject yet.
+**Status: in development.** A subject can be loaded, updated and exported through the API and the command-line tool. There are no study screens yet.
 
 ## Running it
 
@@ -16,6 +16,25 @@ docker-compose up -d --build --wait
 ```
 
 Then open <http://127.0.0.1:4747>. The application listens on this machine only.
+
+## Loading a subject
+
+`examples/example-subject/` is a small, complete pack. With the command-line tool built (`pnpm run build`):
+
+```sh
+node apps/cli/dist/main.js validate examples/example-subject    # check it, without the application
+node apps/cli/dist/main.js load examples/example-subject        # load it; an update asks for --yes
+node apps/cli/dist/main.js export example-subject out.zip       # write it back out, as a .zip or a new folder
+```
+
+Or straight against the API — the OpenAPI document is at <http://127.0.0.1:4747/api/v1/openapi.json>:
+
+```sh
+curl -X POST 'http://127.0.0.1:4747/api/v1/content/packs?dryRun=true' \
+  -H 'content-type: application/zip' --data-binary @pack.zip
+```
+
+A rejected pack is answered with every fault, each naming the file, item and field it is in.
 
 ## Working on it
 
