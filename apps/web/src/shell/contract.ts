@@ -87,12 +87,19 @@ export interface WebModule {
   readonly lessonMarks?: (subjectId: string, signal: AbortSignal, language: Language) => Promise<ReadonlyMap<string, LessonMark>>;
 }
 
-/** What draws a check step is given: the questions it asks, and a way to say when the learner may go on. */
+/**
+ * What draws a check step is given: the questions it asks, and a way to say when
+ * the learner may go on. A scheduled review draws its questions the same way,
+ * one at a time, outside any lesson.
+ */
 export interface CheckStepProps {
   readonly subject: SubjectOutline;
   readonly language: Language;
-  readonly lessonId: string;
+  /** The lesson the check belongs to; none for a question asked in a review. */
+  readonly lessonId?: string;
   readonly questions: readonly string[];
+  /** Where the questions are asked; a lesson's check when not given. */
+  readonly setting?: 'lesson-check' | 'review';
   /**
    * For a step of a lesson taken up again: the learning record's row after which
    * the pass under way began. A question answered since is shown with that answer

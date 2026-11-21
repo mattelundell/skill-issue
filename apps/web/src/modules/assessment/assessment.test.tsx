@@ -144,7 +144,7 @@ afterEach(() => {
 });
 
 /** What the learning record keeps beside every answer sent: how long it took, and the learner's time zone. */
-const recorded = (answer: unknown, durationMs = 0) => ({ answer, durationMs, timeZone: 'Europe/Stockholm' });
+const recorded = (answer: unknown, durationMs = 0, setting = 'lesson-check') => ({ answer, durationMs, timeZone: 'Europe/Stockholm', setting });
 
 function open(path: string): void {
   window.history.replaceState(null, '', path);
