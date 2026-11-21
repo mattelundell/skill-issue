@@ -154,6 +154,9 @@ export const ASSET_MEDIA_TYPES = {
   webp: 'image/webp',
 } as const;
 
+/** The name of a file in a pack's `assets/` folder. */
+export const AssetFileSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, 'a file name of letters, digits, dots, dashes and underscores');
+
 export const AssetSchema = z.strictObject({
   /** Relative to the pack's root, always under `assets/`. */
   path: z.string().regex(/^assets\/[A-Za-z0-9][A-Za-z0-9._-]*$/, 'assets/<file name>'),

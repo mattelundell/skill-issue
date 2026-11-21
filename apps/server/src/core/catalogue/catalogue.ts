@@ -40,6 +40,15 @@ export interface Catalogue {
   sourceLibrary(subjectId: string, language: string | undefined): Promise<SourceLibrary | undefined>;
   /** One source and what rests on it; a source the subject no longer holds as its last revision. */
   sourcePage(subjectId: string, sourceId: string, language: string | undefined): Promise<Result<SourcePage, SourcePageError>>;
+  /** A file the subject currently carries, at its path in the pack such as `assets/figur.png`; undefined when it carries none there. */
+  asset(subjectId: string, path: string): Promise<StoredAsset | undefined>;
+}
+
+/** A file as stored: its bytes, its media type, and a digest of the bytes that changes whenever they do. */
+export interface StoredAsset {
+  readonly mediaType: string;
+  readonly data: Uint8Array;
+  readonly digest: string;
 }
 
 /** The pack's collections of items and the kind each holds. Assets are kept apart: they have no revisions. */
@@ -419,5 +428,17 @@ export function createCatalogue(db: Db): Catalogue {
     outline,
     sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
     sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),
+    asset: async (subjectId, path) => {
+      const rows = await db.query('SELECT media_type, data, digest FROM catalogue.asset WHERE subject_id = $1 AND path = $2', [subjectId, path]);
+      const row = rows[0];
+      if (row === undefined) {
+        return undefined;
+      }
+      const data = row['data'];
+      if (!(data instanceof Buffer)) {
+        throw new TypeError('catalogue asset data is not bytes');
+      }
+      return { mediaType: text(row, 'media_type'), data: new Uint8Array(data), digest: text(row, 'digest') };
+    },
   };
 }
