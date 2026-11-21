@@ -9,6 +9,7 @@ import { WithCode } from '../../shell/text.js';
 import { fetchSource } from './api.js';
 import { formatAge, formatDay } from './format.js';
 import { useMessages } from './messages.js';
+import { useLessonLink, useLessonMarks } from '../../shell/contributions.js';
 import { useFetched } from '../../shell/useFetched.js';
 
 /** One source: where it came from, the material itself, and what in the subject rests on it. */
@@ -108,7 +109,7 @@ function Shown({ page, subjectId, subjectLanguage }: { readonly page: SourcePage
           <p className="kind-note">{t(`kind.${source.kind}.long`)}</p>
         </div>
       </article>
-      {page.status === 'current' ? <RestsOn areas={page.areas} terms={page.terms} /> : <RestedOn />}
+      {page.status === 'current' ? <RestsOn subjectId={subjectId} areas={page.areas} terms={page.terms} /> : <RestedOn />}
     </div>
   );
 }
@@ -158,9 +159,11 @@ function Origin({ source }: { readonly source: ShownSource }) {
  * shown, so the material does not give away answers before a lesson asks them.
  * Lessons are named, not linked, until a module draws a lesson.
  */
-function RestsOn({ areas, terms }: { readonly areas: readonly CitingArea[]; readonly terms: readonly CitingTerm[] }) {
+function RestsOn({ subjectId, areas, terms }: { readonly subjectId: string; readonly areas: readonly CitingArea[]; readonly terms: readonly CitingTerm[] }) {
   const { t, tc } = useMessages();
-  const { list } = useI18n();
+  const { list, t: shellText } = useI18n();
+  const lessonLink = useLessonLink();
+  const marks = useLessonMarks(subjectId);
   const lessons = areas.flatMap((area) => area.lessons);
   if (lessons.length === 0 && terms.length === 0) {
     return (
@@ -184,15 +187,23 @@ function RestsOn({ areas, terms }: { readonly areas: readonly CitingArea[]; read
             {area.title}
           </h3>
           <ul>
-            {area.lessons.map((lesson) => (
-              <li key={lesson.id} data-lesson={lesson.id}>
-                <span className="mark plain" aria-hidden="true" />
-                <span>
-                  <span lang={lesson.language}>{lesson.title}</span>
-                  {lesson.questions > 0 ? <span className="sub">{tc('cited.questions', lesson.questions)}</span> : null}
-                </span>
-              </li>
-            ))}
+            {area.lessons.map((lesson) => {
+              // With a marking module, every lesson has a state: one it does not name is not started.
+              const mark = marks === undefined ? undefined : (marks.get(lesson.id) ?? { state: 'not-started' as const });
+              const state = mark === undefined ? undefined : `${shellText(`lesson.${mark.state}`)}${mark.detail === undefined ? '' : `, ${mark.detail}`}`;
+              const counted = lesson.questions > 0 ? tc('cited.questions', lesson.questions) : undefined;
+              const sub = [state, counted].filter((part) => part !== undefined).join(' · ');
+              const title = <span lang={lesson.language}>{lesson.title}</span>;
+              return (
+                <li key={lesson.id} data-lesson={lesson.id} data-state={mark?.state}>
+                  <span className={mark === undefined ? 'mark plain' : `mark ${mark.state}`} aria-hidden="true" />
+                  <span>
+                    {lessonLink === undefined ? title : <Link to={lessonLink(subjectId, lesson.id)}>{title}</Link>}
+                    {sub === '' ? null : <span className="sub">{sub}</span>}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}

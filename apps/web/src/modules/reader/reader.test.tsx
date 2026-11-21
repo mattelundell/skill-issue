@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App.js';
+import type { WebModule } from '../../shell/contract.js';
 import { catalogueFaults } from '../../shell/messages.js';
 import { readerModule } from './index.js';
 import { catalogues } from './messages.js';
@@ -238,6 +239,27 @@ describe('one source', () => {
     expect(within(rests).getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(['Grunder', 'Energiberäkning', 'Begrepp']);
     expect(within(rests).getAllByRole('listitem').map((item) => item.textContent)).toEqual(['Energiprestandatal6 frågor', 'Säkerhetsmarginaler1 fråga']);
     expect(rests.querySelector('dl')?.textContent).toBe('FgeoGeografisk justeringsfaktor.');
+  });
+
+  it('links each citing lesson and shows its state, when modules give lessons an address and marks', async () => {
+    const lessons: WebModule = {
+      id: 'lessons',
+      lessonLink: (subjectId, lessonId) => `/subjects/${subjectId}/lessons/${lessonId}`,
+      lessonMarks: async () => new Map([['etal', { state: 'in-progress' as const, detail: 'steg 4 av 7' }]]),
+    };
+    open('/subjects/energi/reader/bfs', [readerModule, lessons]);
+
+    const rests = await screen.findByRole('complementary', { name: 'Det här vilar på källan' });
+    await vi.waitFor(() =>
+      expect(within(rests).getAllByRole('listitem').map((item) => [within(item).getByRole('link').getAttribute('href'), item.querySelector('.sub')?.textContent, item.getAttribute('data-state')])).toEqual([
+        ['/subjects/energi/lessons/etal', 'Pågår, steg 4 av 7 · 6 frågor', 'in-progress'],
+        ['/subjects/energi/lessons/marginaler', 'Inte påbörjad · 1 fråga', 'not-started'],
+      ]),
+    );
+  });
+
+  it('gives other modules the address of a source', () => {
+    expect(readerModule.sourceLink?.('energi', 'bfs')).toBe('/subjects/energi/reader/bfs');
   });
 
   it('leads back to the library', async () => {
