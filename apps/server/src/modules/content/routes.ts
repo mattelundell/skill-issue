@@ -1,9 +1,11 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
 import {
   ItemIdSchema,
+  LanguageSchema,
   LoadResultSchema,
   PackSchema,
   ProblemSchema,
+  SubjectOutlineSchema,
   SubjectSummarySchema,
   type ContentFault,
   type Pack,
@@ -115,6 +117,32 @@ export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
     responses: { 200: { description: 'The subjects.', content: { 'application/json': { schema: z.array(SubjectSummarySchema) } } } },
   });
   routes.get('/subjects', async (c) => c.json(await catalogue.listSubjects(), 200));
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/subjects/{subjectId}',
+    summary: "A subject's path: its areas in the recommended order, each with its lessons.",
+    description:
+      'Every area and lesson is shown in the language asked for where it has been translated, and in the subject\'s default language where it has not; each says which language it is in.',
+    request: { params: z.object({ subjectId: ItemIdSchema }), query: z.object({ language: LanguageSchema.optional() }) },
+    responses: {
+      200: { description: 'The outline.', content: { 'application/json': { schema: SubjectOutlineSchema } } },
+      400: { description: 'The language is not a language code.', content: problemContent },
+      404: { description: 'No such subject.', content: problemContent },
+    },
+  });
+  routes.get('/subjects/:subjectId', async (c) => {
+    const subjectId = c.req.param('subjectId');
+    const language = LanguageSchema.optional().safeParse(c.req.query('language'));
+    if (!language.success) {
+      return c.json(problem(400, 'language must be a language code such as sv, en or en-GB'), 400);
+    }
+    const outline = ItemIdSchema.safeParse(subjectId).success ? await catalogue.outline(subjectId, language.data) : undefined;
+    if (outline === undefined) {
+      return c.json(problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`), 404);
+    }
+    return c.json(outline, 200);
+  });
 
   routes.openAPIRegistry.registerPath({
     method: 'get',

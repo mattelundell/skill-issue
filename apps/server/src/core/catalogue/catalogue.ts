@@ -1,13 +1,18 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 import {
+  AreaSchema,
   FORMAT_VERSION,
   ItemKindSchema,
+  LessonSchema,
   PackSchema,
+  SubjectSchema,
   type ItemKind,
   type ItemRef,
   type LoadResult,
+  type OutlineLesson,
   type Pack,
+  type SubjectOutline,
   type SubjectSummary,
 } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
@@ -19,6 +24,11 @@ export interface Catalogue {
   /** The subject's current items as a pack, or undefined when there is no such subject. */
   exportPack(subjectId: string): Promise<Pack | undefined>;
   listSubjects(): Promise<readonly SubjectSummary[]>;
+  /**
+   * The subject's path in `language`, each entry falling back to the default
+   * language where it has no translation; undefined when there is no such subject.
+   */
+  outline(subjectId: string, language: string | undefined): Promise<SubjectOutline | undefined>;
 }
 
 /** The pack's collections of items and the kind each holds. Assets are kept apart: they have no revisions. */
@@ -37,6 +47,12 @@ const COLLECTION_OF: ReadonlyMap<ItemKind, ItemCollection> = new Map(COLLECTIONS
 
 /** The title and summary of a stored subject entry. */
 const SubjectTextSchema = z.object({ title: z.string(), summary: z.string() });
+
+/** Stored bodies carry no language: it is a column of the entry. */
+const StoredSubjectSchema = SubjectSchema.omit({ language: true });
+const StoredAreaSchema = AreaSchema.omit({ language: true });
+/** Only what the path shows of a lesson; its steps and bank are not read here. */
+const StoredLessonSchema = z.object({ title: LessonSchema.shape.title, summary: LessonSchema.shape.summary });
 
 /** JSON with object keys sorted, so equal content always gives the same digest. */
 function canonical(value: unknown): string {
@@ -322,5 +338,68 @@ export function createCatalogue(db: Db): Catalogue {
     });
   };
 
-  return { load, exportPack, listSubjects };
+  const outline = async (subjectId: string, language: string | undefined): Promise<SubjectOutline | undefined> => {
+    const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+    const subject = subjects[0];
+    if (subject === undefined) {
+      return undefined;
+    }
+    const defaultLanguage = text(subject, 'default_language');
+    const rows = await db.query(
+      `SELECT e.kind, e.id, e.language, r.body
+         FROM catalogue.entry e
+         JOIN catalogue.revision r USING (subject_id, kind, id, language)
+        WHERE e.subject_id = $1 AND e.kind IN ('subject', 'area', 'lesson')
+          AND r.revision = e.current_revision AND e.retired_at IS NULL`,
+      [subjectId],
+    );
+    const bodies = new Map<string, Map<string, unknown>>();
+    for (const row of rows) {
+      const key = `${text(row, 'kind')}\u0000${text(row, 'id')}`;
+      const translations = bodies.get(key) ?? new Map<string, unknown>();
+      translations.set(text(row, 'language'), row['body']);
+      bodies.set(key, translations);
+    }
+    const wanted = language ?? defaultLanguage;
+    /** The entry in the wanted language, else in the default one; the structure always comes from the default. */
+    const shown = <T>(kind: ItemKind, id: string, schema: z.ZodType<T>): { readonly original: T; readonly body: T; readonly language: string } | undefined => {
+      const translations = bodies.get(`${kind}\u0000${id}`);
+      const original = translations?.get(defaultLanguage);
+      if (translations === undefined || original === undefined) {
+        // An item no longer held, or held only in translation: the path does not offer it.
+        return undefined;
+      }
+      const translated = translations.get(wanted);
+      return translated === undefined
+        ? { original: schema.parse(original), body: schema.parse(original), language: defaultLanguage }
+        : { original: schema.parse(original), body: schema.parse(translated), language: wanted };
+    };
+    const root = shown('subject', subjectId, StoredSubjectSchema);
+    if (root === undefined) {
+      throw new Error(`subject ${subjectId} has no entry in its default language ${defaultLanguage}`);
+    }
+    const languages = [...(bodies.get(`subject\u0000${subjectId}`)?.keys() ?? [])].toSorted();
+    const areas = root.original.areas.flatMap((areaId) => {
+      const area = shown('area', areaId, StoredAreaSchema);
+      if (area === undefined) {
+        return [];
+      }
+      const lessons = area.original.lessons.flatMap((lessonId): OutlineLesson[] => {
+        const lesson = shown('lesson', lessonId, StoredLessonSchema);
+        return lesson === undefined ? [] : [{ id: lessonId, language: lesson.language, title: lesson.body.title, summary: lesson.body.summary }];
+      });
+      return [{ id: areaId, language: area.language, title: area.body.title, summary: area.body.summary, requires: area.original.requires, lessons }];
+    });
+    return {
+      id: subjectId,
+      defaultLanguage,
+      languages,
+      language: root.language,
+      title: root.body.title,
+      summary: root.body.summary,
+      areas,
+    };
+  };
+
+  return { load, exportPack, listSubjects, outline };
 }

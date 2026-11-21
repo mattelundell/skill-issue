@@ -232,3 +232,35 @@ export const SubjectSummarySchema = z.object({
   summary: z.string(),
 });
 export type SubjectSummary = z.infer<typeof SubjectSummarySchema>;
+
+/** An area or a lesson as the path shows it, in the language it is shown in. */
+const OutlineTextSchema = {
+  id: ItemIdSchema,
+  /** The language this entry is shown in: the one asked for, or the subject's default where no translation exists. */
+  language: LanguageSchema,
+  title: z.string(),
+  summary: z.string(),
+};
+
+export const OutlineLessonSchema = z.object(OutlineTextSchema);
+export type OutlineLesson = z.infer<typeof OutlineLessonSchema>;
+
+export const OutlineAreaSchema = z.object({
+  ...OutlineTextSchema,
+  /** Areas recommended first, by id. A recommendation: nothing is locked. */
+  requires: z.array(ItemIdSchema),
+  lessons: z.array(OutlineLessonSchema),
+});
+export type OutlineArea = z.infer<typeof OutlineAreaSchema>;
+
+/**
+ * A subject's path: its areas in the recommended order, each with its lessons.
+ * The order comes from the default language, so every translation shows the same path.
+ */
+export const SubjectOutlineSchema = z.object({
+  ...SubjectSummarySchema.shape,
+  /** The language the subject's own title and summary are shown in. */
+  language: LanguageSchema,
+  areas: z.array(OutlineAreaSchema),
+});
+export type SubjectOutline = z.infer<typeof SubjectOutlineSchema>;

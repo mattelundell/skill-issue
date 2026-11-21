@@ -1,6 +1,6 @@
 import { join } from 'node:path';
 import type { OpenAPIHono } from '@hono/zod-openapi';
-import type { ItemRef, LoadResult, Pack } from '@skill-issue/contract';
+import { SubjectOutlineSchema, type ItemRef, type LoadResult, type Pack, type SubjectOutline } from '@skill-issue/contract';
 import { readFolder, writeZip, type PackFiles } from '@skill-issue/pack';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from '../../src/core/app.js';
@@ -347,5 +347,95 @@ describe('listing subjects', () => {
 
   it('is empty on a new installation', async () => {
     expect(await (await here.app.request('/api/v1/content/subjects')).json()).toEqual([]);
+  });
+});
+
+/** The outline the API gives, parsed against the contract so a field it drops or misnames fails here. */
+const outlineOf = async (query = ''): Promise<SubjectOutline> =>
+  SubjectOutlineSchema.parse(await (await here.app.request(`/api/v1/content/subjects/example-subject${query}`)).json());
+
+describe('a subject outline', () => {
+  it('gives the path in the default language: areas in order, each with what it builds on and its lessons in order', async () => {
+    await loadZip(example);
+
+    const response = await here.app.request('/api/v1/content/subjects/example-subject');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({
+      id: 'example-subject',
+      defaultLanguage: 'sv',
+      languages: ['en', 'sv'],
+      language: 'sv',
+      title: 'Exempelämne',
+      summary: 'Energi och effekt, enhetsprefix och energibalans — tillräckligt för att visa formatet.',
+      areas: [
+        {
+          id: 'grunder',
+          language: 'sv',
+          title: 'Grunder',
+          summary: 'Storheterna och enheterna resten av ämnet bygger på.',
+          requires: [],
+          lessons: [
+            { id: 'energi-och-effekt', language: 'sv', title: 'Energi och effekt', summary: 'Skillnaden mellan kWh och kW, och varför båda spelar roll.' },
+            { id: 'enhetsprefix', language: 'sv', title: 'Enhetsprefix', summary: 'Kilo, mega och giga, och hur man räknar mellan dem.' },
+          ],
+        },
+        {
+          id: 'fordjupning',
+          language: 'sv',
+          title: 'Fördjupning',
+          summary: 'Vart energin tar vägen i en byggnad.',
+          requires: ['grunder'],
+          lessons: [
+            { id: 'energibalans', language: 'sv', title: 'Energibalans', summary: 'Energin som tillförs en byggnad lämnar den också, på olika vägar.' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('in another language shows each item translated where it is, and in the default language, marked as such, where it is not', async () => {
+    await loadZip(example);
+
+    const outline = await outlineOf('?language=en');
+
+    expect(outline).toMatchObject({ language: 'en', title: 'Example subject' });
+    expect(outline.areas.map((area) => [area.id, area.language, area.title])).toEqual([
+      ['grunder', 'sv', 'Grunder'],
+      ['fordjupning', 'sv', 'Fördjupning'],
+    ]);
+    expect(outline.areas[0]?.lessons.map((lesson) => [lesson.id, lesson.language, lesson.title])).toEqual([
+      ['energi-och-effekt', 'en', 'Energy and power'],
+      ['enhetsprefix', 'sv', 'Enhetsprefix'],
+    ]);
+  });
+
+  it('shows a lesson in the default language once its translation is no longer held, not the retired translation', async () => {
+    await loadZip(example);
+    await loadZip(new Map([...example].filter(([path]) => !path.endsWith('/energi-och-effekt/lesson.en.md') && !path.endsWith('/energi-och-effekt/questions.en.yaml'))));
+
+    const outline = await outlineOf('?language=en');
+
+    expect(outline.areas[0]?.lessons[0]).toEqual({
+      id: 'energi-och-effekt',
+      language: 'sv',
+      title: 'Energi och effekt',
+      summary: 'Skillnaden mellan kWh och kW, och varför båda spelar roll.',
+    });
+  });
+
+  it('of an unknown subject is answered 404', async () => {
+    const response = await here.app.request('/api/v1/content/subjects/no-such-subject');
+
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ status: 404, detail: 'No subject has the id "no-such-subject".' });
+  });
+
+  it('in a malformed language is answered 400', async () => {
+    await loadZip(example);
+
+    const response = await here.app.request('/api/v1/content/subjects/example-subject?language=english');
+
+    expect(response.status).toBe(400);
   });
 });
