@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import { ContentFaultSchema } from './content.js';
+
+export * from './content.js';
+export * from './result.js';
 
 /** Identifier of a module; also the path segment its API routes are mounted under. */
 export const ModuleIdSchema = z.string().regex(/^[a-z][a-z0-9-]*$/);
@@ -28,6 +32,8 @@ export const ProblemSchema = z.object({
   title: z.string(),
   status: z.number().int(),
   detail: z.string().optional(),
+  /** Every fault found in rejected content, not only the first. */
+  faults: z.array(ContentFaultSchema).optional(),
 });
 export type Problem = z.infer<typeof ProblemSchema>;
 
