@@ -71,4 +71,30 @@ CREATE TRIGGER event_append_only BEFORE UPDATE OR DELETE ON record.event
   FOR EACH ROW EXECUTE FUNCTION record.refuse_change();
 `;
 
-export const recordMigrations: readonly Migration[] = [{ owner: CORE_OWNER, name: '0002_record', sql: record }];
+/**
+ * A review answer is an answer like any other. The scheduler's memory state is
+ * the review module's own, rebuilt by replaying these rows with the scheduler
+ * it names, so the record keeps only what happened: a review answer can be
+ * graded by whoever grades answers without knowing a scheduler exists.
+ * Dropping the column drops the row-shape check that named it, so the check is
+ * added again without it.
+ */
+const reviewIsAnAnswer = `
+ALTER TABLE record.event
+  DROP COLUMN scheduler,
+  ADD CONSTRAINT event_shape CHECK (CASE kind
+    WHEN 'answer' THEN item_kind = 'question' AND setting IS NOT NULL AND concepts IS NOT NULL AND sources IS NOT NULL
+                       AND question_type IS NOT NULL AND correct IS NOT NULL AND score IS NOT NULL AND step IS NULL AND result IS NULL
+                       AND (setting = 'exam') = (sitting_id IS NOT NULL)
+                       AND (given IS NOT NULL OR setting = 'exam')
+    WHEN 'step' THEN item_kind = 'lesson' AND step IS NOT NULL AND setting IS NULL AND given IS NULL AND correct IS NULL AND result IS NULL
+    WHEN 'lesson-finished' THEN item_kind = 'lesson' AND step IS NULL AND setting IS NULL AND given IS NULL AND correct IS NULL AND result IS NULL
+    WHEN 'exam' THEN item_kind IN ('lesson', 'area') AND sitting_id IS NOT NULL AND result IS NOT NULL AND duration_ms IS NOT NULL
+                     AND setting IS NULL AND given IS NULL AND correct IS NULL AND step IS NULL
+  END);
+`;
+
+export const recordMigrations: readonly Migration[] = [
+  { owner: CORE_OWNER, name: '0002_record', sql: record },
+  { owner: CORE_OWNER, name: '0003_review_is_an_answer', sql: reviewIsAnAnswer },
+];

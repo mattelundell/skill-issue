@@ -69,8 +69,17 @@ export const GradedSchema = z.object({
 });
 export type Graded = z.infer<typeof GradedSchema>;
 
-/** One answer to a check, with what the learning record keeps beside it: how long it took and the learner's time zone. */
-export const AnswerRequestSchema = z.strictObject({ answer: GivenAnswerSchema, durationMs: DurationMsSchema, timeZone: TimeZoneSchema });
+/**
+ * One answer to a question asked on its own, with what the learning record keeps
+ * beside it: how long it took, the learner's time zone, and where it was asked —
+ * inside a lesson's check, which is the default, or in a scheduled review.
+ */
+export const AnswerRequestSchema = z.strictObject({
+  answer: GivenAnswerSchema,
+  durationMs: DurationMsSchema,
+  timeZone: TimeZoneSchema,
+  setting: z.enum(['lesson-check', 'review']).optional(),
+});
 
 /** The questions a check step asks, by id, as asked. */
 export const AskedQuestionsSchema = z.object({ subjectId: ItemIdSchema, questions: z.array(AskedQuestionSchema) });

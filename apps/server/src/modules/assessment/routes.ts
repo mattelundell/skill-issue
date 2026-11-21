@@ -40,7 +40,7 @@ function answered(
   { question, revision, sources }: ShownQuestion,
   given: GivenAnswer | undefined,
   correct: boolean,
-  at: { at: Date; timeZone: string; setting: 'lesson-check' | 'exam'; durationMs: number | undefined; sittingId?: string },
+  at: { at: Date; timeZone: string; setting: 'lesson-check' | 'review' | 'exam'; durationMs: number | undefined; sittingId?: string },
 ): RecordEvent {
   return {
     kind: 'answer',
@@ -111,7 +111,7 @@ export function assessmentRoutes({ db, catalogue, record }: ModuleContext): Open
   routes.openAPIRegistry.registerPath({
     method: 'post',
     path: '/subjects/{subjectId}/questions/{questionId}/answers',
-    summary: 'Grades one answer, as a check inside a lesson does: right or wrong, the right answer, why, and where that comes from.',
+    summary: 'Grades one answer to a question asked on its own — in a lesson check, or in a scheduled review: right or wrong, the right answer, why, and where that comes from.',
     request: {
       params: z.object({ subjectId: ItemIdSchema, questionId: ItemIdSchema }),
       query: z.object({ language: LanguageSchema.optional() }),
@@ -149,7 +149,7 @@ export function assessmentRoutes({ db, catalogue, record }: ModuleContext): Open
     if (correct === undefined) {
       return c.json(problem(400, 'The answer is of another type', `The question is ${found.question.type}; the answer is ${body.data.answer.type}.`), 400);
     }
-    await record.append([answered(subjectId, found, body.data.answer, correct, { at: new Date(), timeZone: body.data.timeZone, setting: 'lesson-check', durationMs: body.data.durationMs })]);
+    await record.append([answered(subjectId, found, body.data.answer, correct, { at: new Date(), timeZone: body.data.timeZone, setting: body.data.setting ?? 'lesson-check', durationMs: body.data.durationMs })]);
     return c.json(graded(found, correct), 200);
   });
 
