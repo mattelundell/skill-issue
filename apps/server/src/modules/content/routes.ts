@@ -1,0 +1,164 @@
+import { OpenAPIHono, z } from '@hono/zod-openapi';
+import {
+  ItemIdSchema,
+  LoadResultSchema,
+  PackSchema,
+  ProblemSchema,
+  SubjectSummarySchema,
+  type ContentFault,
+  type Pack,
+  type Problem,
+  type Result,
+} from '@skill-issue/contract';
+import { checkPack, checkPackFiles, DEFAULT_LIMITS, encodePack, readZip, writeZip } from '@skill-issue/pack';
+import type { Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import type { ModuleContext } from '../../core/registry.js';
+
+/** A zip archive is at most this large on the wire; unpacked, the pack limits apply. */
+const MAX_BODY_BYTES = DEFAULT_LIMITS.maxTotalBytes;
+
+const problem = (status: number, title: string, detail?: string, faults?: readonly ContentFault[]): Problem => ({
+  type: 'about:blank',
+  title,
+  status,
+  ...(detail === undefined ? {} : { detail }),
+  ...(faults === undefined ? {} : { faults: [...faults] }),
+});
+
+const problemContent = { 'application/json': { schema: ProblemSchema } };
+
+const DryRunSchema = z.enum(['true', 'false']).optional();
+
+async function packFromRequest(c: Context): Promise<Result<Pack, Problem>> {
+  const type = (c.req.header('content-type') ?? '').split(';')[0]?.trim().toLowerCase();
+  const body = new Uint8Array(await c.req.arrayBuffer());
+  let checked: Result<Pack, ContentFault[]>;
+  if (type === 'application/json') {
+    let json: unknown;
+    try {
+      json = JSON.parse(new TextDecoder().decode(body));
+    } catch (thrown) {
+      // Not propagated: the sender learns what was wrong with what they sent.
+      return { ok: false, error: problem(400, 'The body is not JSON', thrown instanceof Error ? thrown.message : String(thrown)) };
+    }
+    checked = checkPack(json);
+  } else if (type === 'application/zip') {
+    const files = readZip(body);
+    checked = files.ok ? checkPackFiles(files.value) : files;
+  } else {
+    return { ok: false, error: problem(415, 'Send a pack as application/json or application/zip', `Content-Type was ${JSON.stringify(type ?? '')}`) };
+  }
+  if (!checked.ok) {
+    const count = checked.error.length;
+    return {
+      ok: false,
+      error: problem(422, 'The pack was not loaded', `${count} ${count === 1 ? 'fault' : 'faults'}; correct each and send the pack again.`, checked.error),
+    };
+  }
+  return checked;
+}
+
+/** Accepts, validates, versions and exports subject material. */
+export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
+  const routes = new OpenAPIHono();
+
+  routes.openAPIRegistry.registerPath({
+    method: 'post',
+    path: '/packs',
+    summary: 'Load a subject pack, or with dryRun=true only check it and report what would change.',
+    description:
+      'A pack whose subject already exists updates that subject: changed items get a new revision, and items no longer in the pack are retired. Sending the same pack twice changes nothing. A rejected pack is answered with every fault found, each naming the file, item and field it is in.',
+    request: {
+      query: z.object({ dryRun: DryRunSchema }),
+      body: {
+        required: true,
+        content: {
+          'application/json': { schema: PackSchema },
+          'application/zip': { schema: z.string().openapi({ format: 'binary' }) },
+        },
+      },
+    },
+    responses: {
+      200: { description: 'Checked, and stored unless it was a dry run or nothing differed.', content: { 'application/json': { schema: LoadResultSchema } } },
+      201: { description: 'A new subject, stored.', content: { 'application/json': { schema: LoadResultSchema } } },
+      400: { description: 'The body is not JSON, or the query is wrong.', content: problemContent },
+      413: { description: 'The body is larger than a pack may be.', content: problemContent },
+      415: { description: 'Neither JSON nor a zip archive.', content: problemContent },
+      422: { description: 'The pack breaks the format; `faults` lists every fault.', content: problemContent },
+    },
+  });
+  routes.post(
+    '/packs',
+    bodyLimit({
+      maxSize: MAX_BODY_BYTES,
+      onError: (c) => c.json(problem(413, 'The pack is too large', `At most ${MAX_BODY_BYTES} bytes may be sent.`), 413),
+    }),
+    async (c) => {
+      const dryRun = DryRunSchema.safeParse(c.req.query('dryRun'));
+      if (!dryRun.success) {
+        return c.json(problem(400, 'dryRun must be true or false'), 400);
+      }
+      const pack = await packFromRequest(c);
+      if (!pack.ok) {
+        return c.json(pack.error, pack.error.status === 400 ? 400 : pack.error.status === 415 ? 415 : 422);
+      }
+      const result = await catalogue.load(pack.value, { dryRun: dryRun.data === 'true' });
+      return c.json(result, result.created && result.stored ? 201 : 200);
+    },
+  );
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/subjects',
+    summary: 'Every subject loaded, with the languages it is written in.',
+    responses: { 200: { description: 'The subjects.', content: { 'application/json': { schema: z.array(SubjectSummarySchema) } } } },
+  });
+  routes.get('/subjects', async (c) => c.json(await catalogue.listSubjects(), 200));
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/subjects/{subjectId}/pack',
+    summary: 'Export a subject as a pack: JSON, or with format=zip the pack folder as a zip archive.',
+    description: 'What is exported loads unchanged into this or any other installation. It holds the subject only, nothing about who studied it.',
+    request: { params: z.object({ subjectId: ItemIdSchema }), query: z.object({ format: z.enum(['json', 'zip']).optional() }) },
+    responses: {
+      200: {
+        description: 'The pack.',
+        content: { 'application/json': { schema: PackSchema }, 'application/zip': { schema: z.string().openapi({ format: 'binary' }) } },
+      },
+      400: { description: 'The format is neither json nor zip.', content: problemContent },
+      404: { description: 'No such subject.', content: problemContent },
+    },
+  });
+  routes.get('/subjects/:subjectId/pack', async (c) => {
+    const subjectId = c.req.param('subjectId');
+    const format = c.req.query('format') ?? 'json';
+    if (format !== 'json' && format !== 'zip') {
+      return c.json(problem(400, 'format must be json or zip'), 400);
+    }
+    const pack = ItemIdSchema.safeParse(subjectId).success ? await catalogue.exportPack(subjectId) : undefined;
+    if (pack === undefined) {
+      return c.json(problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`), 404);
+    }
+    if (format === 'json') {
+      return c.json(pack, 200);
+    }
+    const archive = writeZip(encodePack(pack), subjectId);
+    return c.body(archive.slice().buffer, 200, {
+      'content-type': 'application/zip',
+      'content-disposition': `attachment; filename="${subjectId}.zip"`,
+    });
+  });
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/schema/pack.json',
+    summary: 'The JSON Schema of a pack sent as JSON: the authority on the format.',
+    responses: { 200: { description: 'JSON Schema, draft 2020-12.', content: { 'application/schema+json': { schema: z.looseObject({}) } } } },
+  });
+  const packJsonSchema = z.toJSONSchema(PackSchema, { io: 'input' });
+  routes.get('/schema/pack.json', (c) => c.json(packJsonSchema, 200, { 'content-type': 'application/schema+json' }));
+
+  return routes;
+}

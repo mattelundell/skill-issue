@@ -158,8 +158,8 @@ Open design points, to settle when the module is built: how a guessed multiple-c
 
 ## API
 
-- Versioned under `/api/v1`. The OpenAPI document is served by the application.
-- **Content endpoints** accept one item or a whole subject. Loading is idempotent: the same content sent twice changes nothing.
+- Versioned under `/api/v1`. The OpenAPI document is served by the application at `/api/v1/openapi.json`.
+- **Content endpoints** accept one item or a whole subject. Loading is idempotent: the same content sent twice changes nothing. A whole subject is sent to `POST /api/v1/content/packs`, as JSON or as a zip archive of the pack folder.
 - **Validation is strict and the errors are written to be acted on.** A rejected request returns a problem document listing every fault with the path to the offending field, what was expected and what was found. An AI assistant should be able to correct its output from the response alone.
 - A **dry-run** flag validates without storing.
 - **Export** returns a subject in the same format it is loaded in.
@@ -184,7 +184,8 @@ An **authoring guide** written for an AI assistant ships with the application. I
 
 ## Storage
 
-- Catalogue tables hold identity, hierarchy, language and revision; bodies are JSON validated by the schemas.
+- Catalogue tables hold identity, hierarchy, language and revision; bodies are JSON validated by the schemas. They belong to the core, so that every module reads subject material the same way; the `content` module writes them through the core's catalogue service and owns no tables of its own.
+- The core's migrations run before any module's, so a module's tables may refer to the catalogue. Migrations are ordered by code unit, never by the machine's locale, so that every installation applies them in the same order.
 - The learning record is one table, indexed by time and by item.
 - Each module's tables live in its own schema and are created by its own migrations.
 - Notes are indexed for full-text search.

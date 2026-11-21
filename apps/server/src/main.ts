@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { buildApp } from './core/app.js';
+import { catalogueMigrations } from './core/catalogue/migrations.js';
 import { connect } from './core/db.js';
 import { parseEnv } from './core/env.js';
 import { describeThrown, log } from './core/log.js';
@@ -31,7 +32,7 @@ async function start(): Promise<void> {
     password,
   });
 
-  const migrated = await migrate(db, registry.value.migrations);
+  const migrated = await migrate(db, [...catalogueMigrations, ...registry.value.migrations]);
   if (!migrated.ok) {
     await db.close();
     const { owner, name, kind } = migrated.error;
