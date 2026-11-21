@@ -19,7 +19,7 @@ interface SubjectHomeProps {
 
 /** A subject: its overview — what modules put there, then the path — or one module's page. */
 export function SubjectHome({ subjectId, page, path, modules }: SubjectHomeProps) {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [outline, setOutline] = useState<{ readonly subjectId: string; readonly fetched: Fetched<SubjectOutline> }>();
 
   useEffect(() => {
@@ -80,6 +80,15 @@ export function SubjectHome({ subjectId, page, path, modules }: SubjectHomeProps
           <p>{t('home.failed.body')}</p>
         </div>
       </>
+    );
+  }
+  // A page with no tab is drawn alone, as a lesson is: it brings its own way back to the subject.
+  const focused = modules.find(({ id }) => id === page)?.page;
+  if (focused !== undefined && focused.label === undefined) {
+    return (
+      <div className="module-page focused" data-module={page}>
+        <focused.Page subject={current.value} language={language} path={path} pathTo={(below) => subjectPath(subjectId, page, below)} />
+      </div>
     );
   }
   return (
