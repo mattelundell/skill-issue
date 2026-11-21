@@ -1,4 +1,4 @@
-import pg from 'pg';
+import { Pool, type PoolClient } from 'pg';
 
 export type Row = Readonly<Record<string, unknown>>;
 
@@ -24,7 +24,7 @@ export interface DbSettings {
   readonly password: string;
 }
 
-function queryOn(target: pg.Pool | pg.PoolClient) {
+function queryOn(target: Pool | PoolClient) {
   return async (text: string, values: readonly unknown[] = []): Promise<readonly Row[]> => {
     const result = await target.query<Record<string, unknown>>(text, [...values]);
     return result.rows;
@@ -32,7 +32,7 @@ function queryOn(target: pg.Pool | pg.PoolClient) {
 }
 
 export function connect(settings: DbSettings): DbConnection {
-  const pool = new pg.Pool({ ...settings, max: 10 });
+  const pool = new Pool({ ...settings, max: 10 });
 
   const transaction = async <T>(work: (tx: Db) => Promise<T>): Promise<T> => {
     const client = await pool.connect();
