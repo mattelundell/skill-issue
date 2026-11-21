@@ -1,0 +1,96 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+
+  // Type-aware rules run on the TypeScript compiler itself, through
+  // oxlint-tsgolint, so the linter and the build agree on every type.
+  // Nothing is a warning: a finding either fails the run or is not a rule.
+  "options": {
+    "typeAware": true,
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error"
+  },
+
+  // Every plugin is enabled here, not per folder: a plugin named only in an
+  // override does not get its category rules, and its absence shows nowhere.
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "promise", "node", "vitest", "react", "jsx-a11y"],
+
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error"
+  },
+
+  "rules": {
+    // The type checker is only as good as the places that switch it off.
+    // `as const` stays allowed: it narrows, it does not assert.
+    "typescript/no-explicit-any": "error",
+    "typescript/no-non-null-assertion": "error",
+    "typescript/consistent-type-assertions": ["error", { "assertionStyle": "never" }],
+    "typescript/ban-ts-comment": [
+      "error",
+      { "ts-expect-error": "allow-with-description", "ts-ignore": true, "ts-nocheck": true, "minimumDescriptionLength": 10 }
+    ],
+    "typescript/no-unsafe-argument": "error",
+    "typescript/no-unsafe-assignment": "error",
+    "typescript/no-unsafe-call": "error",
+    "typescript/no-unsafe-member-access": "error",
+    "typescript/no-unsafe-return": "error",
+    // A suppression names the rule it suppresses.
+    "unicorn/no-abusive-eslint-disable": "error",
+
+    // Failure is handled, never dropped: every union member has a branch,
+    // every promise is awaited, and what is thrown is an Error.
+    "typescript/switch-exhaustiveness-check": "error",
+    "typescript/no-misused-promises": "error",
+    "typescript/only-throw-error": "error",
+    "typescript/prefer-promise-reject-errors": "error",
+    "typescript/use-unknown-in-catch-callback-variable": "error",
+    "typescript/require-await": "error",
+    "typescript/return-await": "error",
+    "eslint/no-empty": "error",
+
+    // No silent coercion.
+    "eslint/eqeqeq": "error",
+    // A condition is a boolean or a possibly-absent object. A number or a
+    // string in a condition is a comparison someone forgot to write: 0 and ""
+    // take the false branch.
+    "typescript/strict-boolean-expressions": ["error", { "allowNumber": false, "allowString": false }],
+    "typescript/restrict-plus-operands": "error",
+
+    // Immutable unless it says otherwise.
+    "eslint/no-var": "error",
+    "eslint/prefer-const": "error",
+    "eslint/no-param-reassign": ["error", { "props": true }],
+    "typescript/prefer-readonly": "error",
+
+    // Output goes through the logger or an explicit stream, where it can be tested.
+    "eslint/no-console": "error",
+    "import/no-cycle": "error",
+    // A stylesheet is imported for its effect; nothing else may be.
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    "typescript/no-deprecated": "error",
+    "unicorn/prefer-node-protocol": "error",
+
+    // The automatic JSX runtime imports what it needs; `React` is never in scope.
+    "react/react-in-jsx-scope": "off",
+    // Reports what react/exhaustive-deps already reports, one line away.
+    "react/exhaustive-effect-dependencies": "off"
+  },
+
+  "overrides": [
+    {
+      // A test asserts what it expects and lets the runner report the rest,
+      // so the two assertions that silence the checker are allowed here.
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/test/**"],
+      "rules": {
+        "typescript/no-non-null-assertion": "off",
+        "typescript/consistent-type-assertions": "off",
+        "typescript/no-unsafe-type-assertion": "off",
+        // A fake behind a promise-returning interface is written `async () => value`.
+        "typescript/require-await": "off"
+      }
+    }
+  ],
+
+  // The fixtures are deliberate violations, checked by scripts/check-lint-rules.ts.
+  "ignorePatterns": ["**/dist/**", "**/lint-fixtures/**"]
+}

@@ -42,6 +42,7 @@ Two containers, started together with Docker Compose: the application server, wh
 | **Zod schemas as the single definition of every content type** | The same schema validates an incoming request, types the server and browser code, and generates the JSON Schema and OpenAPI documents that authors read. The format cannot drift from its documentation. |
 | **React single-page app, built with Vite, served by the application server** | One container serves both the API and the interface. Nothing in the interface needs server rendering. |
 | **FSRS for review scheduling**, through its reference library | See "Review scheduling". |
+| **oxlint with tsgolint for linting** | TypeScript 7 is the compiler, and typescript-eslint supports TypeScript only below 6.1. The rules that need types — a dropped promise, a `switch` that misses a case, an `any` leaking in from a library — run here on the TypeScript 7 compiler itself, so the linter cannot disagree with the build about a type. |
 | **Docker Compose for running it** | One command starts everything, on any machine, with nothing installed but Docker. |
 
 Library versions are pinned when the skeleton is built, from each project's current release page, and recorded in the lockfile, not here.
@@ -201,6 +202,7 @@ The application is for one person on one machine, and the design keeps it that w
 
 ## Testing
 
+- **Linting** with type information from the same compiler that builds the code, and no warnings: a finding fails the run or is not a rule. The rules that matter are held by fixtures of deliberate violations, each line naming the rule that must report it, so a rule that goes silent fails the run.
 - **Unit tests** for grading, scheduling, exam drawing and validation.
 - **API tests** against a real PostgreSQL in a container — no mocked database.
 - **Contract tests**: the example pack in the repository loads cleanly, and a set of deliberately broken packs each produce the expected error.

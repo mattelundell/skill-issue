@@ -23,12 +23,15 @@ Needs Node 26 and pnpm.
 
 ```sh
 pnpm install
+pnpm run lint
 pnpm run typecheck
 pnpm run test
 
 docker-compose -f docker-compose.test.yml up -d --wait   # throwaway database
 pnpm run test:integration
 ```
+
+`pnpm run lint` does two things. It lints the code, and then it lints the deliberate violations kept in each `lint-fixtures` folder and fails unless every marked line is reported by the rule it names — so a rule that has been switched off, or has stopped working, fails the run instead of passing quietly. A rule worth relying on gets a line in a fixture.
 
 ## Documents
 
