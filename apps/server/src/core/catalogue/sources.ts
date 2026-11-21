@@ -21,6 +21,9 @@ import { err, ok, type Result } from '../result.js';
 
 export type SourcePageError = { readonly kind: 'no-subject' } | { readonly kind: 'no-source' };
 
+/** One source as the catalogue knows it. What the learner answered on a retired one is the learning record's to say. */
+export type CataloguePage = Exclude<SourcePage, { status: 'retired' }> | Omit<Extract<SourcePage, { status: 'retired' }>, 'history'>;
+
 const References = z.array(ItemIdSchema);
 /** Stored bodies carry no language: it is a column of the entry. */
 const StoredSourceSchema = SourceSchema.omit({ language: true });
@@ -183,7 +186,7 @@ export async function sourceLibrary(db: Db, subjectId: string, language: string 
   return { subjectId, sources };
 }
 
-export async function sourcePage(db: Db, subjectId: string, sourceId: string, language: string | undefined): Promise<Result<SourcePage, SourcePageError>> {
+export async function sourcePage(db: Db, subjectId: string, sourceId: string, language: string | undefined): Promise<Result<CataloguePage, SourcePageError>> {
   const held = await holdings(db, subjectId);
   if (held === undefined) {
     return err({ kind: 'no-subject' });
@@ -219,7 +222,7 @@ export async function sourcePage(db: Db, subjectId: string, sourceId: string, la
  * A source the subject held once and holds no longer: its last revision, in the
  * language asked for if it was ever held in it, else in the default language.
  */
-async function retiredSource(db: Db, subjectId: string, sourceId: string, wanted: string, defaultLanguage: string): Promise<Result<SourcePage, SourcePageError>> {
+async function retiredSource(db: Db, subjectId: string, sourceId: string, wanted: string, defaultLanguage: string): Promise<Result<CataloguePage, SourcePageError>> {
   const rows = await db.query(
     `SELECT e.language, e.retired_at, r.body
        FROM catalogue.entry e

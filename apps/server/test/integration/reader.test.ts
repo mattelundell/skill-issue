@@ -83,6 +83,16 @@ async function page(sourceId: string, query = ''): Promise<SourcePage> {
   return SourcePageSchema.parse(json);
 }
 
+/** Answers a check question, as the learner would, so the learning record holds it. */
+async function answer(questionId: string, given: unknown): Promise<void> {
+  const response = await here.app.request(`/api/v1/assessment/subjects/example-subject/questions/${questionId}/answers`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ answer: given, durationMs: 1000, timeZone: 'Europe/Stockholm' }),
+  });
+  expect(response.status).toBe(200);
+}
+
 describe('the source library', () => {
   it('lists every source in pack order, with its origin, its material and how much of the subject cites it', async () => {
     await load(pack);
@@ -284,9 +294,26 @@ describe('one source', () => {
         kind: 'excerpt',
         body: 'Andra versionen.',
       },
+      history: { questions: 0, answers: 0 },
     });
     // The database keeps microseconds and an answer milliseconds, so the two are compared as instants to the millisecond.
     expect(new Date(retiredAt).getTime()).toBe(Math.floor(new Date(String(retired?.['at'])).getTime()));
+  });
+
+  it('names what the learner answered on a retired source’s strength: the questions that cited it then, and how many answers', async () => {
+    await load(pack);
+    const pairs = { type: 'matching', pairs: [{ left: 'kilo', right: 'tusen' }, { left: 'mega', right: 'miljon' }, { left: 'giga', right: 'miljard' }] };
+    // prefix-par cites matmetoder; kilo-betyder does not, and must not be counted.
+    await answer('prefix-par', pairs);
+    await answer('prefix-par', pairs);
+    await answer('kilo-betyder', { type: 'short-text', text: 'k' });
+    const reloaded = withPrefixParSources(pack, '[exempelkalla]');
+    reloaded.delete('sources/matmetoder.md');
+    await load(reloaded);
+
+    const shown = await page('matmetoder');
+
+    expect(shown).toMatchObject({ status: 'retired', source: { id: 'matmetoder' }, history: { questions: 1, answers: 2 } });
   });
 
   it('answers 404 for a source or a subject that does not exist', async () => {

@@ -81,6 +81,8 @@ export const SourcePageSchema = z.discriminatedUnion('status', [
     source: ShownSourceSchema,
     /** When the subject stopped holding it. */
     retiredAt: z.iso.datetime({ offset: true }),
+    /** What the learner answered on its strength, from the learning record: how many questions, and how many answers to them. */
+    history: z.object({ questions: z.number().int().min(0), answers: z.number().int().min(0) }),
   }),
 ]);
 export type SourcePage = z.infer<typeof SourcePageSchema>;

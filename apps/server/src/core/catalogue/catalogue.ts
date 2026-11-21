@@ -16,14 +16,13 @@ import {
   type ShownLesson,
   type SubjectOutline,
   type SourceLibrary,
-  type SourcePage,
   type SubjectSummary,
 } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
 import type { Result } from '../result.js';
 import { shownLesson, type LessonReadError } from './lessons.js';
 import { examPlan, shownQuestions, type ExamPlan, type QuestionReadError, type ShownQuestion } from './questions.js';
-import { sourceLibrary, sourcePage, type SourcePageError } from './sources.js';
+import { sourceLibrary, sourcePage, type CataloguePage, type SourcePageError } from './sources.js';
 
 /** The catalogue as modules see it: the only way subject material is stored or read. */
 export interface Catalogue {
@@ -43,7 +42,7 @@ export interface Catalogue {
    */
   sourceLibrary(subjectId: string, language: string | undefined): Promise<SourceLibrary | undefined>;
   /** One source and what rests on it; a source the subject no longer holds as its last revision. */
-  sourcePage(subjectId: string, sourceId: string, language: string | undefined): Promise<Result<SourcePage, SourcePageError>>;
+  sourcePage(subjectId: string, sourceId: string, language: string | undefined): Promise<Result<CataloguePage, SourcePageError>>;
   /**
    * One lesson as it is taken, in `language` where translated, with its area and the sources it rests on.
    * A lesson the subject no longer holds is not offered.
