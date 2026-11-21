@@ -17,6 +17,7 @@
     "@skill-issue/pack": "workspace:*",
     "hono": "^4.13.0",
     "pg": "^8.23.0",
+    "ts-fsrs": "6.0.0",
     "zod": "^4.6.0"
   },
   "devDependencies": {

@@ -6,6 +6,7 @@ export * from './content.js';
 export * from './lessons.js';
 export * from './reader.js';
 export * from './record.js';
+export * from './review.js';
 export * from './result.js';
 
 /** Identifier of a module; also the path segment its API routes are mounted under. */
