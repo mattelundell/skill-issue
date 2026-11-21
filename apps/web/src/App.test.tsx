@@ -468,6 +468,26 @@ describe('the module contract for lessons', () => {
     expect(screen.queryByRole('navigation', { name: 'Ämnet' })).toBeNull();
   });
 
+  it('lets a page drawn alone name the browser tab', async () => {
+    const naming: WebModule = {
+      id: 'naming',
+      page: {
+        Page: () => {
+          useEffect(() => {
+            document.title = 'Eget namn';
+          }, []);
+          return <h1>Egen sida</h1>;
+        },
+      },
+    };
+    open('/subjects/example-subject/naming', [naming]);
+
+    await screen.findByRole('heading', { name: 'Egen sida' });
+    await vi.waitFor(() => expect(api.requested).toContain('/api/v1/content/subjects/example-subject'));
+    await new Promise((settle) => setTimeout(settle, 50));
+    expect(document.title).toBe('Eget namn');
+  });
+
   it('keeps the tabs on the overview with only the labelled pages in them', async () => {
     const quiet: WebModule = { id: 'quiet', page: { Page: () => <p>Tyst sida</p> } };
     open('/subjects/example-subject', [quiet]);

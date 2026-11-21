@@ -36,9 +36,13 @@ export function SubjectHome({ subjectId, page, path, modules }: SubjectHomeProps
 
   const current = outline?.subjectId === subjectId ? outline.fetched : undefined;
   const title = current?.kind === 'ok' ? current.value.title : undefined;
+  // A page drawn alone, such as a lesson or an exam, names the tab itself.
+  const alone = page !== undefined && modules.some(({ id, page: contributed }) => id === page && contributed !== undefined && contributed.label === undefined);
   useEffect(() => {
-    document.title = title === undefined ? t('app.title') : `${title} · ${t('app.title')}`;
-  }, [title, t]);
+    if (!alone) {
+      document.title = title === undefined ? t('app.title') : `${title} · ${t('app.title')}`;
+    }
+  }, [title, t, alone]);
 
   const crumb = (
     <p className="crumb">
