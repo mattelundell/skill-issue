@@ -42,7 +42,7 @@ A lesson is a sequence of steps, one on screen at a time, with a progress bar.
 - A **check step** asks one to three questions on what was just covered. The answer is graded at once, with the explanation and its source. A wrong answer brings the question back before the lesson ends, even when the lesson was left and resumed in between. A check step come back to — after leaving, or by going back a step — shows the answers already given in this pass through the lesson rather than asking them again; a pass begins when a lesson gone through to its end is opened again.
 - The lesson closes with a summary of what was covered, what was answered wrongly, and the offer to sit the lesson exam now or later.
 
-The note pane sits beside the lesson. A note is attached to the lesson, and to the step it was written at, automatically. Selecting text in a step and pressing one key quotes it into the note.
+The note pane sits beside the lesson, closed until **N** or **Anteckna** under the step opens it; **N** again, or Escape from inside it, closes it. A note is attached to the lesson, and to the step it was written at, automatically: each step has one note, the pane shows the one for the step on screen, and it is saved as it is written, with no button to press. Selecting text in a step and pressing **Q** quotes it into the note as a Markdown quote.
 
 Leaving mid-lesson is normal and needs no confirmation; the lesson says on its way out where it will take up. It resumes at the step you left, says so once, and offers a way back to the first step. A lesson already gone through to its end opens at its first step. When the subject has been reloaded and the lesson changed since you were in it, the lesson says so and resumes at the same step number — or at its last step, if it became shorter — because a step number is all that can be kept across a change.
 
@@ -74,7 +74,7 @@ The source library: every piece of raw material in the subject, searchable, each
 
 ### Notes
 
-All notes, browsable by subject, area and lesson, and searchable as text. A note links back to the step it was written at. Notes are written in Markdown and can be exported.
+All notes, browsable by subject, area and lesson in the order of the path, and searchable as text: a search finds notes in which every word given starts a word. A note links back to the step it was written at, and opens the lesson there. Notes are written in Markdown and can be exported.
 
 ### Progress
 
