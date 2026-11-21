@@ -1,0 +1,25 @@
+- id: kwh-eller-kw
+  type: single-choice
+  concepts: [effekt]
+  sources: [exempelkalla]
+  prompt: Vilken enhet anger effekt?
+  options:
+    - { id: a, text: kWh }
+    - { id: b, text: kW }
+    - { id: c, text: kWh/m² }
+  answer: b
+  explanation: Effekt är energi per tidsenhet och mäts i watt. kWh är en energimängd.
+- id: berakna-energi
+  type: numeric
+  concepts: [energi, effekt]
+  sources: [exempelkalla]
+  prompt: En motor på 2 kW går i 3 timmar. Hur mycket energi använder den?
+  answer: { value: 6, unit: kWh, tolerance: 0 }
+  explanation: Energi = effekt × tid = 2 kW × 3 h = 6 kWh.
+- id: effekt-ar-takt
+  type: true-false
+  concepts: [effekt]
+  sources: [exempelkalla]
+  prompt: Effekt anger hur fort energi används.
+  answer: true
+  explanation: Effekt är energi per tidsenhet.

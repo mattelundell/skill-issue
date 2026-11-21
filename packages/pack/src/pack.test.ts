@@ -1,0 +1,282 @@
+import { join } from 'node:path';
+import type { ContentFault, Pack } from '@skill-issue/contract';
+import { beforeAll, describe, expect, it } from 'vitest';
+import { checkPack, checkPackFiles, decodePack, encodePack, readFolder, type PackFiles } from './index.js';
+import { sortFaults } from './location.js';
+
+const EXAMPLE = join(import.meta.dirname, '..', '..', '..', 'examples', 'example-subject');
+
+const LESSON_1 = 'areas/grunder/lessons/energi-och-effekt';
+const QUESTIONS_1 = `${LESSON_1}/questions.yaml`;
+const LESSON_3 = 'areas/fordjupning/lessons/energibalans';
+
+let example: PackFiles;
+
+beforeAll(async () => {
+  const read = await readFolder(EXAMPLE);
+  if (!read.ok) {
+    throw new Error(`example pack unreadable: ${JSON.stringify(read.error)}`);
+  }
+  example = read.value;
+});
+
+const text = (files: PackFiles, path: string): string => {
+  const bytes = files.get(path);
+  if (bytes === undefined) {
+    throw new Error(`no ${path} in the example pack`);
+  }
+  return new TextDecoder().decode(bytes);
+};
+
+/** The example pack with one file's text changed; the replaced text must be there, or the case tests nothing. */
+function edited(path: string, from: string, to: string): PackFiles {
+  const before = text(example, path);
+  if (!before.includes(from)) {
+    throw new Error(`${path} does not contain ${JSON.stringify(from)}`);
+  }
+  return new Map(example).set(path, new TextEncoder().encode(before.replace(from, to)));
+}
+
+const withFile = (path: string, content: string | Uint8Array): PackFiles =>
+  new Map(example).set(path, typeof content === 'string' ? new TextEncoder().encode(content) : content);
+
+const without = (path: string): PackFiles => {
+  const files = new Map(example);
+  files.delete(path);
+  return files;
+};
+
+const faultsOf = (files: PackFiles): readonly ContentFault[] => {
+  const result = checkPackFiles(files);
+  return result.ok ? [] : result.error;
+};
+
+const f = (code: string, file: string, item: string | null, field: string, expected: string, found: string): ContentFault => ({
+  code,
+  file,
+  item,
+  field,
+  expected,
+  found,
+});
+
+describe('the example pack', () => {
+  it('passes every check, with every item in place', () => {
+    const result = checkPackFiles(example);
+
+    expect(result.ok ? [] : result.error).toEqual([]);
+    const pack = result.ok ? result.value : undefined;
+    expect(pack?.subject.map((s) => [s.language, s.title])).toEqual([
+      ['en', 'Example subject'],
+      ['sv', 'Exempelämne'],
+    ]);
+    expect(pack?.areas.map((a) => a.id)).toEqual(['fordjupning', 'grunder']);
+    expect(pack?.lessons.map((l) => `${l.id}/${l.language}`)).toEqual([
+      'energibalans/sv',
+      'energi-och-effekt/en',
+      'energi-och-effekt/sv',
+      'enhetsprefix/sv',
+    ]);
+    expect(pack?.questions.filter((q) => q.language === 'sv').map((q) => `${q.lesson}:${q.id}:${q.type}`)).toEqual([
+      'energibalans:vagar-ut:multiple-choice',
+      'energibalans:forklara-balans:free-recall',
+      'energi-och-effekt:kwh-eller-kw:single-choice',
+      'energi-och-effekt:berakna-energi:numeric',
+      'energi-och-effekt:effekt-ar-takt:true-false',
+      'enhetsprefix:prefix-ordning:ordering',
+      'enhetsprefix:prefix-par:matching',
+      'enhetsprefix:kilo-betyder:short-text',
+    ]);
+    expect(pack?.assets.map((a) => [a.path, a.mediaType])).toEqual([['assets/energiflode.png', 'image/png']]);
+  });
+
+  it('reads a lesson into its steps, with the header separated from the body', () => {
+    const result = checkPackFiles(example);
+    const lesson = result.ok ? result.value.lessons.find((l) => l.id === 'energi-och-effekt' && l.language === 'sv') : undefined;
+
+    expect(lesson?.steps).toEqual([
+      {
+        type: 'text',
+        body: '**Effekt** är hur fort energi används, och mäts i watt (W) eller kilowatt (kW).\n**Energi** är hur mycket som används totalt, och mäts i kilowattimmar (kWh).',
+      },
+      { type: 'example', body: 'En värmefläkt på 2 kW som går i 3 timmar använder 2 kW × 3 h = 6 kWh.' },
+      { type: 'check', questions: ['kwh-eller-kw', 'berakna-energi'] },
+    ]);
+  });
+
+  it('comes back unchanged after being written as files and read again', () => {
+    const first = checkPackFiles(example);
+    const pack: Pack | undefined = first.ok ? first.value : undefined;
+    expect(pack).toBeDefined();
+
+    const again = checkPackFiles(encodePack(pack!));
+
+    expect(again).toEqual({ ok: true, value: pack });
+  });
+});
+
+describe('a broken pack is rejected with every fault, each naming its file, item and field', () => {
+  const cases: readonly [string, () => PackFiles, readonly ContentFault[]][] = [
+    [
+      'a question citing a source the pack lacks',
+      () => edited(QUESTIONS_1, 'concepts: [effekt]\n  sources: [exempelkalla]\n  prompt: Vilken', 'concepts: [effekt]\n  sources: [boverket]\n  prompt: Vilken'),
+      [f('unknown-source', QUESTIONS_1, 'question kwh-eller-kw', 'sources[0]', 'the id of a source in this pack', '"boverket"')],
+    ],
+    [
+      'a check asking a question from another lesson',
+      () => edited(`${LESSON_1}/lesson.md`, 'questions: [kwh-eller-kw, berakna-energi]', 'questions: [kwh-eller-kw, prefix-par]'),
+      [f('question-not-in-bank', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[2].questions[1]', 'a question from this lesson\'s own bank; it belongs to "enhetsprefix"', '"prefix-par"')],
+    ],
+    [
+      'a check asking a question that does not exist',
+      () => edited(`${LESSON_1}/lesson.md`, 'questions: [kwh-eller-kw, berakna-energi]', 'questions: [kwh-eller-kw, saknas]'),
+      [f('unknown-question', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[2].questions[1]', "the id of a question in this lesson's questions.yaml", '"saknas"')],
+    ],
+    [
+      'a lesson exam drawing more questions than the bank holds',
+      () => edited(`${LESSON_1}/lesson.md`, 'exam:\n  questions: 2', 'exam:\n  questions: 4'),
+      [f('exam-larger-than-bank', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'exam.questions', "at most 3, the questions in this lesson's bank", '4')],
+    ],
+    [
+      'an area exam drawing more questions than its lessons hold',
+      () => edited('areas/grunder/area.yaml', 'questions: 4', 'questions: 7'),
+      [f('exam-larger-than-bank', 'areas/grunder/area.yaml', 'area grunder', 'exam.questions', "at most 6, the questions in the banks of this area's lessons", '7')],
+    ],
+    [
+      'a single-choice answer that is not one of the options',
+      () => edited(QUESTIONS_1, 'answer: b', 'answer: d'),
+      [f('unknown-option', QUESTIONS_1, 'question kwh-eller-kw', 'answer', 'one of the option ids ["a","b","c"]', '"d"')],
+    ],
+    [
+      'two options sharing an id',
+      () => edited(QUESTIONS_1, '{ id: c, text: kWh/m² }', '{ id: a, text: kWh/m² }'),
+      [f('duplicate-option', QUESTIONS_1, 'question kwh-eller-kw', 'options[2].id', 'each entry of options different from the others', '"a"')],
+    ],
+    [
+      'raw HTML in a step',
+      () => edited(`${LESSON_1}/lesson.md`, 'En värmefläkt', '<script>alert(1)</script>\n\nEn värmefläkt'),
+      [f('raw-html', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[1].body', 'Markdown without HTML tags', '"<script>alert(1)</script>"')],
+    ],
+    [
+      'an image from the web, a script link and a missing asset',
+      () =>
+        edited(
+          `${LESSON_3}/lesson.md`,
+          '![Energiflöde genom en byggnad](assets/energiflode.png)',
+          '![a](https://example.org/x.png) [b](javascript:alert(1)) ![c](assets/saknas.png) [d](https://example.org) [e](mailto:a@example.org)',
+        ),
+      [
+        f('remote-image', `${LESSON_3}/lesson.md`, 'lesson energibalans', 'steps[0].body', 'an image from the pack, as assets/<file>', '"https://example.org/x.png"'),
+        f('unknown-asset', `${LESSON_3}/lesson.md`, 'lesson energibalans', 'steps[0].body', 'a file in the pack, as assets/<file>', '"assets/saknas.png"'),
+        f('unsafe-link', `${LESSON_3}/lesson.md`, 'lesson energibalans', 'steps[0].body', 'a link to http, https, mailto or a file in assets/', '"javascript:alert(1)"'),
+      ],
+    ],
+    [
+      'a question without an explanation',
+      () => edited(QUESTIONS_1, '  explanation: Effekt är energi per tidsenhet.\n', ''),
+      [f('schema', QUESTIONS_1, 'question effekt-ar-takt', 'explanation', 'a value of type string', 'nothing')],
+    ],
+    [
+      'a misspelt field',
+      () => edited('areas/grunder/area.yaml', 'passMark: 0.75', 'passmark: 0.75'),
+      [
+        f('schema', 'areas/grunder/area.yaml', 'area grunder', 'exam.passMark', 'a value of type number', 'nothing'),
+        f('unknown-field', 'areas/grunder/area.yaml', 'area grunder', 'exam.passmark', 'no field of this name', '0.75'),
+      ],
+    ],
+    [
+      'a step of a type the format does not have',
+      () => edited(`${LESSON_1}/lesson.md`, 'type: example', 'type: video'),
+      [f('schema', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[1].type', 'one of "text", "example", "check"', '"video"')],
+    ],
+    [
+      'a lesson that no area lists',
+      () => edited('areas/grunder/area.yaml', '  - enhetsprefix\n', ''),
+      [
+        f('lesson-misfiled', 'areas/grunder/lessons/enhetsprefix/lesson.md', 'lesson enhetsprefix', '', 'a lesson folder under the area whose area.yaml lists it; areas/grunder/area.yaml does not', '"areas/grunder/lessons/enhetsprefix/lesson.md"'),
+        f('exam-larger-than-bank', 'areas/grunder/area.yaml', 'area grunder', 'exam.questions', "at most 3, the questions in the banks of this area's lessons", '4'),
+        f('lesson-not-in-area', 'areas/(not listed in any area)/lessons/enhetsprefix/lesson.md', 'lesson enhetsprefix', 'id', 'a lesson listed under "lessons" in an area.yaml', '"enhetsprefix"'),
+      ],
+    ],
+    [
+      'a translation without an original',
+      () => withFile('sources/annan.en.md', '---\nid: annan\ntitle: T\npublisher: P\naccessed: 2026-11-21\nlicence: unknown\nkind: summary\n---\n\nBody.\n'),
+      [f('missing-original', 'sources/annan.en.md', 'source annan', 'language', 'the same source also in the default language "sv"', '"en"')],
+    ],
+    [
+      'a concept no lesson teaches',
+      () => edited(QUESTIONS_1, 'concepts: [effekt]\n  sources: [exempelkalla]\n  prompt: Vilken', 'concepts: [verkningsgrad]\n  sources: [exempelkalla]\n  prompt: Vilken'),
+      [f('unknown-concept', QUESTIONS_1, 'question kwh-eller-kw', 'concepts[0]', 'the id of a concept a lesson lists under "concepts" in this pack', '"verkningsgrad"')],
+    ],
+    [
+      'areas that require each other',
+      () => edited('areas/grunder/area.yaml', 'requires: []', 'requires: [fordjupning]'),
+      [f('requires-cycle', 'areas/grunder/area.yaml', 'area grunder', 'requires', 'requirements that do not lead back to this area', 'fordjupning → grunder → fordjupning')],
+    ],
+    [
+      'a YAML syntax error',
+      () => edited('areas/grunder/area.yaml', 'title: Grunder', 'title: [Grunder'),
+      [f('invalid-yaml', 'areas/grunder/area.yaml', null, 'line 3', 'valid YAML', 'Flow sequence in block collection must be sufficiently indented and end with a ] at line 3, column 1:')],
+    ],
+    [
+      'a file the format does not describe',
+      () => withFile('areas/grunder/notes.txt', 'stray'),
+      [f('unexpected-file', 'areas/grunder/notes.txt', null, '', 'a file the pack format describes, at the place it describes', '"areas/grunder/notes.txt"')],
+    ],
+    [
+      'an id that differs from its folder',
+      () => edited('areas/fordjupning/area.yaml', 'id: fordjupning', 'id: fordjupning-2'),
+      [
+        f('id-mismatch', 'areas/fordjupning/area.yaml', null, 'id', '"fordjupning", the same as the folder name', '"fordjupning-2"'),
+        f('area-not-in-path', 'areas/fordjupning-2/area.yaml', 'area fordjupning-2', 'id', 'an area listed under "areas" in subject.yaml', '"fordjupning-2"'),
+        f('unknown-area', 'subject.en.yaml', 'subject example-subject', 'areas[1]', 'the id of an area in this pack', '"fordjupning"'),
+        f('unknown-area', 'subject.yaml', 'subject example-subject', 'areas[1]', 'the id of an area in this pack', '"fordjupning"'),
+      ],
+    ],
+    [
+      'a file stating its own language',
+      () => edited('areas/grunder/area.yaml', 'id: grunder', 'id: grunder\nlanguage: sv'),
+      [f('derived-field', 'areas/grunder/area.yaml', null, 'language', 'no "language" field: the language is the file name suffix, or the default language without one', '"sv"')],
+    ],
+    [
+      'a file that is not UTF-8',
+      () => withFile('sources/extra.md', new Uint8Array([0x2d, 0x2d, 0x2d, 0x0a, 0xff, 0xfe])),
+      [f('not-utf8', 'sources/extra.md', null, '', 'text encoded as UTF-8', 'bytes that are not UTF-8')],
+    ],
+    [
+      'a pack without subject.yaml',
+      () => without('subject.yaml'),
+      [f('missing-file', 'subject.yaml', null, '', 'a subject.yaml at the root of the pack', 'no such file')],
+    ],
+  ];
+
+  it.each(cases)('%s', (_name, broken, expected) => {
+    // Exactly these faults and no others; the cases list them in reading order, the checker sorts them.
+    expect(faultsOf(broken())).toEqual(sortFaults(expected));
+  });
+});
+
+describe('checkPack on JSON', () => {
+  it('names the file an item would live in, though no files were sent', () => {
+    const decoded = decodePack(example).pack;
+    const questions = decoded['questions'];
+    if (!Array.isArray(questions)) {
+      throw new Error('decoded pack has no questions');
+    }
+    const broken = { ...decoded, questions: questions.map((q: unknown, i) => (i === 0 ? { ...(q as object), answer: 42 } : q)) };
+
+    const result = checkPack(broken);
+
+    expect(result).toEqual({
+      ok: false,
+      error: [f('schema', `${LESSON_3}/questions.yaml`, 'question vagar-ut', 'answer', 'a value of type array', '42')],
+    });
+  });
+
+  it('rejects a format version it does not know', () => {
+    expect(checkPack({ ...decodePack(example).pack, formatVersion: 2 })).toEqual({
+      ok: false,
+      error: [f('schema', 'subject.yaml', null, 'formatVersion', '1', '2')],
+    });
+  });
+});

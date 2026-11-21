@@ -9,9 +9,9 @@
   "scripts": {
     "build": "pnpm -r run build",
     "lint": "oxlint && node scripts/check-lint-rules.ts",
-    "typecheck": "tsc -p tsconfig.json && pnpm --filter @skill-issue/contract run build && pnpm -r run typecheck",
-    "test": "pnpm --filter @skill-issue/contract run build && pnpm -r run test",
-    "test:integration": "pnpm --filter @skill-issue/contract run build && pnpm --filter @skill-issue/server run test:integration"
+    "typecheck": "tsc -p tsconfig.json && pnpm --filter \"./packages/*\" run build && pnpm -r run typecheck",
+    "test": "pnpm --filter \"./packages/*\" run build && pnpm -r run test",
+    "test:integration": "pnpm --filter \"./packages/*\" run build && pnpm --filter @skill-issue/server run test:integration"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

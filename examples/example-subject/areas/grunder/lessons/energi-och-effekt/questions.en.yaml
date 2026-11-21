@@ -1,0 +1,25 @@
+- id: kwh-eller-kw
+  type: single-choice
+  concepts: [effekt]
+  sources: [exempelkalla]
+  prompt: Which unit states power?
+  options:
+    - { id: a, text: kWh }
+    - { id: b, text: kW }
+    - { id: c, text: kWh/m² }
+  answer: b
+  explanation: Power is energy per unit of time and is measured in watts. kWh is an amount of energy.
+- id: berakna-energi
+  type: numeric
+  concepts: [energi, effekt]
+  sources: [exempelkalla]
+  prompt: A 2 kW motor runs for 3 hours. How much energy does it use?
+  answer: { value: 6, unit: kWh, tolerance: 0 }
+  explanation: Energy = power × time = 2 kW × 3 h = 6 kWh.
+- id: effekt-ar-takt
+  type: true-false
+  concepts: [effekt]
+  sources: [exempelkalla]
+  prompt: Power states how fast energy is used.
+  answer: true
+  explanation: Power is energy per unit of time.
