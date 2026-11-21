@@ -32,18 +32,33 @@ class MigrationAbort extends Error {
   }
 }
 
+/** The owner of the catalogue and the learning record, which modules' tables may refer to. */
+export const CORE_OWNER = 'core';
+
+/** Code-unit order: the same on every machine, unlike a comparison that follows the locale. */
+const byCodeUnit = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
+/** The order migrations are applied in: the core's first, then by owner, then by name. */
+export function orderMigrations(migrations: readonly Migration[]): Migration[] {
+  return migrations.toSorted((a, b) => {
+    const coreFirst = Number(b.owner === CORE_OWNER) - Number(a.owner === CORE_OWNER);
+    if (coreFirst !== 0) {
+      return coreFirst;
+    }
+    const byOwner = byCodeUnit(a.owner, b.owner);
+    return byOwner !== 0 ? byOwner : byCodeUnit(a.name, b.name);
+  });
+}
+
 /**
- * Applies every migration not yet applied, in owner-then-name order, in one
+ * Applies every migration not yet applied, in the order above, in one
  * transaction: either all of them land or none does.
  */
 export async function migrate(
   db: Db,
   migrations: readonly Migration[],
 ): Promise<Result<MigrationRun, MigrationError>> {
-  const ordered = migrations.toSorted((a, b) => {
-    const byOwner = a.owner.localeCompare(b.owner);
-    return byOwner === 0 ? a.name.localeCompare(b.name) : byOwner;
-  });
+  const ordered = orderMigrations(migrations);
 
   try {
     const applied = await db.transaction(async (tx) => {
