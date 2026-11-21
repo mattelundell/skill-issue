@@ -79,14 +79,16 @@ Rules for modules:
 
 ### The browser side
 
-The browser app is a shell that draws two screens — the start screen and a subject's home — and names no module. Everything a module shows on them it contributes through its browser manifest, listed in one file in the browser app, so removing the module removes all of it. A module may contribute:
+The browser app is a shell that draws two screens — the start screen and a subject's home — and names no module. Every other address is a module's page. Everything a module shows on them it contributes through its browser manifest, listed in one file in the browser app, so removing the module removes all of it. A module may contribute:
 
 | Contribution | Where it appears | For example |
 |---|---|---|
 | a page, with or without a tab | the page at `/subjects/<subject>/<module>`, and everything below that address is the page's own; with a label, a tab beside the subject's overview and the subject's heading above it; without one it is reached from links and drawn alone, as a lesson is | the source library, and one source at `/subjects/<subject>/reader/<source>`; one lesson at `/subjects/<subject>/lessons/<lesson>`, reached from the path |
+| a page outside the subjects | the page at `/<module>`, everything below it the page's own, under the app's header and with no tab; reached from links. `subjects` is the shell's own address and no module may take it as its id | a review of what is due in every subject, at `/review` |
 | blocks on the subject home | `lead`, above the path, or `side`, in the column beside it | what is due today; a count of notes |
 | figures on a start-screen row | beside each subject's title | reviews due, share mastered |
 | a resume panel | above the start screen's rows; while it shows a subject, the other rows go compact under "Dina andra ämnen" without that subject | where the learner left off |
+| a line across every subject | under the resume panels and above the rows, whether or not a panel shows | how many questions are due in all subjects, with a way into one session of them |
 | which subjects are begun | each start-screen row's action: "Fortsätt" where begun, "Börja" where not, "Öppna" when no module says | the subjects with a lesson begun |
 | lesson marks, in the interface language | on each lesson in the path, and wherever another module lists lessons | not started, in progress, passed, mastered |
 | a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names | the lessons module's page for one lesson |

@@ -7,7 +7,7 @@ import type { WebModule } from './shell/contract.js';
 import { ContributionsProvider } from './shell/contributions.js';
 import { I18nProvider, useI18n, type I18n } from './shell/i18n.js';
 import { usePolled } from './shell/poll.js';
-import { Link, startPath, useRoute } from './shell/router.js';
+import { appPagePath, Link, startPath, useRoute } from './shell/router.js';
 
 const LANGUAGE_STORAGE_KEY = 'skill-issue.language';
 
@@ -117,27 +117,39 @@ function Screen({
   readonly status: ServerStatus | undefined;
   readonly refreshStatus: () => void;
 }) {
-  const { t } = useI18n();
+  const { language } = useI18n();
   switch (route.kind) {
     case 'start':
       return <Start modules={modules} status={status} refreshStatus={refreshStatus} />;
     case 'subject':
       return <SubjectHome key={route.subjectId} subjectId={route.subjectId} page={route.page} path={route.path} modules={modules} />;
+    case 'app-page': {
+      const page = modules.find(({ id }) => id === route.page)?.appPage;
+      if (page === undefined) {
+        return <NotFound />;
+      }
+      return <page.Page key={route.page} language={language} path={route.path} pathTo={(below) => appPagePath(route.page, below)} />;
+    }
     case 'not-found':
-      return (
-        <div className="sheet state" role="alert">
-          <h2>{t('not-found.title')}</h2>
-          <p>{t('not-found.body')}</p>
-          <Link to={startPath()} className="btn small">
-            {t('home.missing.back')}
-          </Link>
-        </div>
-      );
+      return <NotFound />;
     default: {
       const unhandled: never = route;
       return unhandled;
     }
   }
+}
+
+function NotFound() {
+  const { t } = useI18n();
+  return (
+    <div className="sheet state" role="alert">
+      <h2>{t('not-found.title')}</h2>
+      <p>{t('not-found.body')}</p>
+      <Link to={startPath()} className="btn small">
+        {t('home.missing.back')}
+      </Link>
+    </div>
+  );
 }
 
 const capitalised = (text: string): string => text.charAt(0).toLocaleUpperCase() + text.slice(1);
