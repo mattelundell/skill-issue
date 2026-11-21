@@ -9,8 +9,8 @@ export const fetchLesson = async (subjectId: string, lessonId: string, language:
 export const fetchPositions = async (subjectId: string, signal: AbortSignal): Promise<Fetched<SubjectPositions>> =>
   getJson(`/lessons/subjects/${encodeURIComponent(subjectId)}/positions`, SubjectPositionsSchema, signal);
 
-export const fetchResume = async (language: string, signal: AbortSignal): Promise<Fetched<Resume>> =>
-  getJson(`/lessons/resume?language=${encodeURIComponent(language)}`, ResumeSchema, signal);
+/** Each offered lesson comes in its own subject's default language: content language is a choice of its own, not the interface's. */
+export const fetchResume = async (signal: AbortSignal): Promise<Fetched<Resume>> => getJson('/lessons/resume', ResumeSchema, signal);
 
 /** What saving where the learner is came to: kept, refused because the lesson changed underneath, or not reached. */
 export type Saved = 'saved' | 'changed' | 'failed';

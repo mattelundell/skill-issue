@@ -17,13 +17,14 @@ export function LessonPage({ subject, language, path }: PageProps) {
   if (lessonId === undefined || beyond.length > 0) {
     return <Missing subject={subject} lessonId={path.join('/')} />;
   }
-  return <Lesson key={`${lessonId}:${language}`} subject={subject} language={language} lessonId={lessonId} />;
+  return <Lesson key={`${lessonId}:${subject.language}`} subject={subject} language={language} lessonId={lessonId} />;
 }
 
 function Lesson({ subject, language, lessonId }: { readonly subject: SubjectOutline; readonly language: Language; readonly lessonId: string }) {
   const { t } = useMessages();
-  const load = useMemo(() => async (signal: AbortSignal) => fetchLesson(subject.id, lessonId, language, signal), [subject.id, lessonId, language]);
-  const { fetched, retry } = useFetched(`${subject.id}/${lessonId}/${language}`, load);
+  // Content is read in the language the subject is shown in, which is not the interface's: choosing it is its own setting.
+  const load = useMemo(() => async (signal: AbortSignal) => fetchLesson(subject.id, lessonId, subject.language, signal), [subject.id, lessonId, subject.language]);
+  const { fetched, retry } = useFetched(`${subject.id}/${lessonId}/${subject.language}`, load);
   // A save refused because the lesson changed fetches it again once per revision; a server that keeps refusing must not make a loop.
   const refetchedFor = useRef(new Set<number>());
   const refetchFor = useCallback(
@@ -186,7 +187,7 @@ function Taking({
         ) : null}
       </div>
       <h1 className="lesson-title">{lesson.title}</h1>
-      {lesson.language === language ? null : <p className="chip">{t('in-language', { language: languageName(lesson.language) })}</p>}
+      {lesson.language === subject.language ? null : <p className="chip">{t('in-language', { language: languageName(lesson.language) })}</p>}
       <StepBar steps={lesson.steps} at={step} goTo={moveTo} />
       {step < total ? <p className="stepcount">{t('step.of', { step: String(step + 1), steps: String(total) })}</p> : null}
     </>

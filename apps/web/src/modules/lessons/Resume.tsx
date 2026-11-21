@@ -12,7 +12,6 @@ import { useMessages } from './messages.js';
 /** Above the start screen's rows: where the learner left off, or the next lesson when the last one was gone through. */
 export function ResumePanel({
   subjects,
-  language,
   onShows,
 }: {
   readonly subjects: readonly SubjectSummary[];
@@ -20,7 +19,7 @@ export function ResumePanel({
   readonly onShows: (subjectId: string | undefined) => void;
 }) {
   const { t } = useMessages();
-  const load = useCallback(async (signal: AbortSignal) => fetchResume(language, signal), [language]);
+  const load = useCallback(async (signal: AbortSignal) => fetchResume(signal), []);
   const { value } = usePolled(load);
   const offer = value?.kind === 'ok' ? value.value.offer : null;
   const subject = offer === null ? undefined : subjects.find((candidate) => candidate.id === offer.subjectId);

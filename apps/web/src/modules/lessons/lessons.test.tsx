@@ -73,7 +73,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : String(input), 'http://app.test');
     const path = url.pathname;
-    api.requested.push(path);
+    api.requested.push(`${path}${url.search}`);
     if (init?.method === 'PUT') {
       api.saved.push({ path, body: JSON.parse(typeof init.body === 'string' ? init.body : '') });
       const status = api.saveAnswers.shift() ?? 200;
@@ -103,6 +103,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  window.localStorage.clear();
 });
 
 function open(path: string, modules: readonly WebModule[] = [lessonsModule]): void {
@@ -110,6 +111,8 @@ function open(path: string, modules: readonly WebModule[] = [lessonsModule]): vo
   render(<App modules={modules} />);
 }
 
+/** Where the app keeps the interface language between visits. */
+const LANGUAGE_KEY = 'skill-issue.language';
 const LESSON_PAGE = '/subjects/example-subject/lessons/energi-och-effekt';
 const POSITION = '/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt/position';
 const continueButton = (): HTMLElement => screen.getByRole('button', { name: /^(Fortsätt|Avsluta lektionen)$/ });
@@ -220,7 +223,7 @@ describe('a lesson', () => {
     open(LESSON_PAGE);
 
     await vi.waitFor(() => expect(screen.getByRole('note').textContent).toContain('Lektionen har ändrats sedan du var här. Du fortsätter på steg 2'));
-    expect(api.requested.filter((path) => path === '/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt')).toHaveLength(2);
+    expect(api.requested.filter((path) => path.startsWith('/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt?'))).toHaveLength(2);
     await vi.waitFor(() => expect(api.saved.map(({ body }) => body)).toEqual([{ step: 0, revision: 1 }, { step: 1, revision: 2 }]));
   });
 
@@ -230,7 +233,7 @@ describe('a lesson', () => {
     open(LESSON_PAGE);
 
     expect((await screen.findByText(/kunde inte sparas/)).textContent).toBe('Var du är i lektionen kunde inte sparas. Du kan fortsätta; det sparas när servern svarar igen.');
-    expect(api.requested.filter((path) => path === '/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt')).toHaveLength(2);
+    expect(api.requested.filter((path) => path.startsWith('/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt?'))).toHaveLength(2);
   });
 
   it('names its sources, linked when a module shows sources', async () => {
@@ -246,6 +249,15 @@ describe('a lesson', () => {
 
     expect((await screen.findByText(/Lektionen bygger på/)).textContent).toBe('Lektionen bygger på Exempelkälla (Exempelförlaget).');
     expect(screen.queryByRole('link', { name: /Exempelkälla/ })).toBeNull();
+  });
+
+  it('asks for the lesson in the language the subject is shown in, not the interface’s, and speaks the interface’s', async () => {
+    window.localStorage.setItem(LANGUAGE_KEY, 'en');
+    open(LESSON_PAGE);
+
+    expect(await screen.findByText('Step 1 of 3')).toBeTruthy();
+    expect(api.requested).toContain('/api/v1/lessons/subjects/example-subject/lessons/energi-och-effekt?language=sv');
+    expect(api.requested.filter((path) => path.includes('language=en'))).toEqual([]);
   });
 
   it('answers an address naming no lesson with “no such lesson”', async () => {
