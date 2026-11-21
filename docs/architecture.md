@@ -229,7 +229,7 @@ An **authoring guide** written for an AI assistant ships with the application. I
 - The core's migrations run before any module's, so a module's tables may refer to the catalogue. Migrations are ordered by code unit, never by the machine's locale, so that every installation applies them in the same order.
 - The learning record is one table, indexed by time and by item.
 - Each module's tables live in its own schema and are created by its own migrations.
-- Notes are indexed for full-text search.
+- Notes are indexed for full-text search. The index uses PostgreSQL's `simple` configuration, which lowercases and splits words without stemming, because a note may be written in any language and a Swedish stemmer would mangle an English note; a search matches every word given at the start of a word, which does the work stemming would. A note is stored against its lesson and step only, never its area, so a lesson moved between areas takes its notes with it; one on a lesson the subject no longer holds is kept and listed apart.
 - **Backup** is two exports: subjects as packs, and personal data — notes, settings and the learning record — as one archive. Restoring both on a fresh install reproduces the learner's state.
 
 ## Security
