@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App.js';
 import { checkModules, mergeLessonMarks, type LessonMark, type WebModule } from './shell/contract.js';
 import { Link } from './shell/router.js';
+import { useCheckStep, useLessonLink, useLessonMarks, useLessonSides } from './shell/contributions.js';
+import { useEffect } from 'react';
 
 const EXAMPLE: SubjectSummary = {
   id: 'example-subject',
@@ -411,5 +413,124 @@ describe('the subject home', () => {
     await userEvent.click(screen.getByRole('link', { name: 'Alla ämnen' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Dina ämnen' })).toBeTruthy();
+  });
+});
+
+/** Shows a panel for one subject, and says the learner has begun in another. */
+const resuming = (shows: string | undefined): WebModule => ({
+  id: 'resuming',
+  ResumePanel: ({ onShows }) => {
+    useEffect(() => onShows(shows), [onShows]);
+    return shows === undefined ? null : <section aria-label="Fixturpanel">Fortsätt i {shows}</section>;
+  },
+  startedSubjects: async () => new Set(['statistik']),
+});
+
+const rows = (): (string | null)[][] =>
+  [...document.querySelectorAll('.ledger-row')].map((row) => [row.getAttribute('data-subject'), within(row as HTMLElement).getAllByRole('link').at(-1)?.textContent ?? null]);
+
+describe('the module contract for lessons', () => {
+  beforeEach(() => {
+    api.subjects = [EXAMPLE, ENGLISH_ONLY, SWEDISH_ONLY];
+    api.outlines.set(EXAMPLE.id, OUTLINE);
+  });
+
+  it('while a panel shows a subject, lists the others compact under their own heading, each continued or begun', async () => {
+    open('/', [resuming('example-subject')]);
+
+    expect(await screen.findByRole('region', { name: 'Fixturpanel' })).toBeTruthy();
+    const others = await screen.findByRole('region', { name: 'Dina andra ämnen' });
+    await vi.waitFor(() => expect(rows()).toEqual([['cra', 'Börja'], ['statistik', 'Fortsätt']]));
+    expect(within(others).getAllByRole('link', { name: /^(Börja|Fortsätt): / }).map((link) => link.getAttribute('aria-label'))).toEqual(['Börja: CRA and NIS2', 'Fortsätt: Statistik för mätdata']);
+    expect(document.querySelector('.ledger')?.classList.contains('compact')).toBe(true);
+  });
+
+  it('while no panel shows a subject, lists every subject at full size with no heading', async () => {
+    open('/', [resuming(undefined)]);
+
+    await vi.waitFor(() => expect(rows()).toEqual([['example-subject', 'Börja'], ['cra', 'Börja'], ['statistik', 'Fortsätt']]));
+    expect(screen.queryByRole('region', { name: 'Dina andra ämnen' })).toBeNull();
+    expect(document.querySelector('.ledger')?.classList.contains('compact')).toBe(false);
+  });
+
+  it('with no module saying what has been begun, offers to open each subject', async () => {
+    open('/', []);
+
+    await vi.waitFor(() => expect(rows()).toEqual([['example-subject', 'Öppna'], ['cra', 'Öppna'], ['statistik', 'Öppna']]));
+  });
+
+  it('gives a page without a label no tab, and still opens it at its address', async () => {
+    const quiet: WebModule = { id: 'quiet', page: { Page: ({ path }) => <p>Tyst sida vid {path.join('/')}</p> } };
+    open('/subjects/example-subject/quiet/energi-och-effekt', [quiet]);
+
+    expect(await screen.findByText('Tyst sida vid energi-och-effekt')).toBeTruthy();
+    expect(within(screen.getByRole('navigation', { name: 'Ämnet' })).getAllByRole('link').map((link) => link.textContent)).toEqual(['Översikt']);
+  });
+
+  it('links each lesson on the path when a module gives lessons an address, and names them only when none does', async () => {
+    const linking: WebModule = { id: 'linking', lessonLink: (subjectId, lessonId) => `/subjects/${subjectId}/linking/${lessonId}` };
+    open('/subjects/example-subject', [linking]);
+
+    const area = await screen.findByRole('region', { name: 'Grunder' });
+    expect(within(area).getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['Energi och effekt', '/subjects/example-subject/linking/energi-och-effekt'],
+      ['Enhetsprefix', '/subjects/example-subject/linking/enhetsprefix'],
+    ]);
+  });
+
+  it('names the lessons on the path without links when no module gives lessons an address', async () => {
+    open('/subjects/example-subject', []);
+
+    const area = await screen.findByRole('region', { name: 'Grunder' });
+    expect(within(area).getByText('Energi och effekt')).toBeTruthy();
+    expect(within(area).queryAllByRole('link')).toEqual([]);
+  });
+
+  /** A page that asks the shell for what other modules put into a lesson, the way the lessons module does. */
+  const asking: WebModule = {
+    id: 'asking',
+    page: {
+      Page: ({ subject, language }) => {
+        const Check = useCheckStep();
+        const sides = useLessonSides();
+        const link = useLessonLink();
+        const marks = useLessonMarks(subject.id);
+        return (
+          <div>
+            {Check === undefined ? <p>Ingen ritar kontroller</p> : <Check subject={subject} language={language} lessonId="energi-och-effekt" questions={['kwh-eller-kw']} onSettled={() => undefined} />}
+            {sides.map(({ module, Side }) => (
+              <Side key={module} subject={subject} language={language} lessonId="energi-och-effekt" step={2} />
+            ))}
+            <p>Länk: {link?.(subject.id, 'energibalans') ?? 'ingen'}</p>
+            <p>Markering: {marks === undefined ? 'ingen markerar' : (marks.get('energibalans')?.state ?? 'okänd')}</p>
+          </div>
+        );
+      },
+    },
+  };
+  const answering: WebModule = {
+    id: 'answering',
+    steps: { check: ({ questions }) => <p>Kontroll med {questions.join(', ')}</p> },
+    LessonSide: ({ lessonId, step }) => <aside aria-label="Fixturanteckning">Anteckning i {lessonId} vid steg {step}</aside>,
+    lessonLink: (subjectId, lessonId) => `/subjects/${subjectId}/answering/${lessonId}`,
+    lessonMarks: async () => new Map([['energibalans', { state: 'in-progress' as const }]]),
+  };
+
+  it('gives a module what other modules contribute to a lesson, without it naming them', async () => {
+    open('/subjects/example-subject/asking', [asking, answering]);
+
+    expect(await screen.findByText('Kontroll med kwh-eller-kw')).toBeTruthy();
+    expect(screen.getByRole('complementary', { name: 'Fixturanteckning' }).textContent).toBe('Anteckning i energi-och-effekt vid steg 2');
+    expect(screen.getByText('Länk: /subjects/example-subject/answering/energibalans')).toBeTruthy();
+    expect(await screen.findByText('Markering: in-progress')).toBeTruthy();
+  });
+
+  it('gives a module nothing of another module that is not there', async () => {
+    open('/subjects/example-subject/asking', [asking]);
+
+    expect(await screen.findByText('Ingen ritar kontroller')).toBeTruthy();
+    expect(screen.queryByRole('complementary', { name: 'Fixturanteckning' })).toBeNull();
+    expect(screen.getByText('Länk: ingen')).toBeTruthy();
+    expect(screen.getByText('Markering: ingen markerar')).toBeTruthy();
   });
 });

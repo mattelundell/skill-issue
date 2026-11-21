@@ -4,6 +4,7 @@ import { defaultLanguage, isLanguage, languageName, languages, type Language } f
 import { Start } from './screens/Start.js';
 import { SubjectHome } from './screens/SubjectHome.js';
 import type { WebModule } from './shell/contract.js';
+import { ContributionsProvider } from './shell/contributions.js';
 import { I18nProvider, useI18n, type I18n } from './shell/i18n.js';
 import { usePolled } from './shell/poll.js';
 import { Link, startPath, useRoute } from './shell/router.js';
@@ -56,7 +57,9 @@ export function App({ modules }: { readonly modules: readonly WebModule[] }) {
 
   return (
     <I18nProvider language={language}>
-      <Shell modules={modules} setLanguage={setLanguage} />
+      <ContributionsProvider modules={modules}>
+        <Shell modules={modules} setLanguage={setLanguage} />
+      </ContributionsProvider>
     </I18nProvider>
   );
 }
