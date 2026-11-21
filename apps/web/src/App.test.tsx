@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App.js';
 import { checkModules, mergeLessonMarks, type LessonMark, type WebModule } from './shell/contract.js';
+import { Link } from './shell/router.js';
 
 const EXAMPLE: SubjectSummary = {
   id: 'example-subject',
@@ -122,6 +123,35 @@ describe('the module contract on the subject home', () => {
     expect(await screen.findByText('Fixtursidan för Exempelämne')).toBeTruthy();
     expect(within(tabs).getByRole('link', { name: 'Fixtursida' }).getAttribute('aria-current')).toBe('page');
     expect(screen.queryByRole('heading', { name: 'Vägen genom ämnet' })).toBeNull();
+  });
+
+  it('gives a module’s page the path below it, and links it builds within itself', async () => {
+    const deep: WebModule = {
+      id: 'deep',
+      page: {
+        label: { sv: 'Djup', en: 'Deep' },
+        Page: ({ path, pathTo }) => (
+          <>
+            <p>Under sidan: {path.length === 0 ? 'ingenting' : path.join(' / ')}</p>
+            <Link to={pathTo(['en källa', 'b'])}>Till b</Link>
+          </>
+        ),
+      },
+    };
+    open('/subjects/example-subject/deep/a', [deep]);
+
+    expect(await screen.findByText('Under sidan: a')).toBeTruthy();
+    const tabs = screen.getByRole('navigation', { name: 'Ämnet' });
+    expect(within(tabs).getByRole('link', { name: 'Djup' }).getAttribute('aria-current')).toBe('page');
+
+    await userEvent.click(screen.getByRole('link', { name: 'Till b' }));
+
+    expect(window.location.pathname).toBe('/subjects/example-subject/deep/en%20k%C3%A4lla/b');
+    expect(await screen.findByText('Under sidan: en källa / b')).toBeTruthy();
+
+    await userEvent.click(within(tabs).getByRole('link', { name: 'Djup' }));
+
+    expect(await screen.findByText('Under sidan: ingenting')).toBeTruthy();
   });
 
   it('without the module has no tab, no block and no page, and still draws the path', async () => {

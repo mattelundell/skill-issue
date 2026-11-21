@@ -11,11 +11,13 @@ interface SubjectHomeProps {
   readonly subjectId: string;
   /** The module whose page is open, or undefined for the overview. */
   readonly page: string | undefined;
+  /** The segments below the open page. */
+  readonly path: readonly string[];
   readonly modules: readonly WebModule[];
 }
 
 /** A subject: its overview — what modules put there, then the path — or one module's page. */
-export function SubjectHome({ subjectId, page, modules }: SubjectHomeProps) {
+export function SubjectHome({ subjectId, page, path, modules }: SubjectHomeProps) {
   const { t } = useI18n();
   const [outline, setOutline] = useState<{ readonly subjectId: string; readonly fetched: Fetched<SubjectOutline> }>();
 
@@ -82,12 +84,22 @@ export function SubjectHome({ subjectId, page, modules }: SubjectHomeProps) {
   return (
     <>
       {crumb}
-      <Subject subject={current.value} page={page} modules={modules} />
+      <Subject subject={current.value} page={page} path={path} modules={modules} />
     </>
   );
 }
 
-function Subject({ subject, page, modules }: { readonly subject: SubjectOutline; readonly page: string | undefined; readonly modules: readonly WebModule[] }) {
+function Subject({
+  subject,
+  page,
+  path,
+  modules,
+}: {
+  readonly subject: SubjectOutline;
+  readonly page: string | undefined;
+  readonly path: readonly string[];
+  readonly modules: readonly WebModule[];
+}) {
   const { t, language } = useI18n();
   const pages = modules.flatMap(({ id, page: contributed }) => (contributed === undefined ? [] : [{ id, ...contributed }]));
   const open = page === undefined ? undefined : pages.find((candidate) => candidate.id === page);
@@ -119,7 +131,7 @@ function Subject({ subject, page, modules }: { readonly subject: SubjectOutline;
         </div>
       ) : (
         <div className="module-page" data-module={open.id}>
-          <open.Page subject={subject} language={language} />
+          <open.Page subject={subject} language={language} path={path} pathTo={(below) => subjectPath(subject.id, open.id, below)} />
         </div>
       )}
     </>
