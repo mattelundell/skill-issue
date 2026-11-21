@@ -1,14 +1,12 @@
 import { checkModules, type WebModule } from '../shell/contract.js';
+import { readerModule } from './reader/index.js';
 
 /**
  * The browser side of every module that puts something on screen. This list is
  * the only place that names them: removing a line removes the module's pages,
  * tabs, blocks, figures and lesson marks, and nothing else.
- *
- * Empty until a module has a screen of its own; the shell draws the start
- * screen and the path from the catalogue alone.
  */
-export const webModules: readonly WebModule[] = [];
+export const webModules: readonly WebModule[] = [readerModule];
 
 const fault = checkModules(webModules);
 if (fault !== undefined) {

@@ -61,6 +61,11 @@ A question answered wrongly returns later in the same session.
 
 The source library: every piece of raw material in the subject, searchable, each with its title, publisher, link and the date it was read. A source shows which lessons and questions rest on it.
 
+- The library opens with the sources most of the subject rests on first, and can be ordered by title or by the date read instead, or narrowed to one publisher.
+- A search looks through titles, publishers and the material itself, and matches from the start of a word: "etal" finds Etal, not the middle of "återbetalningstid", because someone searching for a term wants the term.
+- One source has its own address. It shows its origin, the material, and what rests on it: the citing lessons by area, how many questions in each cite it, and the terms that do. The questions themselves are not shown, so reading the material does not give away answers before a lesson asks them.
+- A source the subject no longer holds still opens, as it last stood and marked as removed, so that an answer once given on its strength keeps an origin.
+
 ### Notes
 
 All notes, browsable by subject, area and lesson, and searchable as text. A note links back to the step it was written at. Notes are written in Markdown and can be exported.
