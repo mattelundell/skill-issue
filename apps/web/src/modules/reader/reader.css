@@ -5,7 +5,7 @@
 /* the library */
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 22px; }
 .search { flex: 1 1 18rem; display: flex; align-items: center; position: relative; }
-.search input { width: 100%; font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 40px 8px 34px; }
+.search input[type='search'] { width: 100%; font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 40px 8px 34px; }
 .search svg { position: absolute; left: 11px; width: 16px; height: 16px; color: var(--graphite); pointer-events: none; }
 .search kbd { position: absolute; right: 10px; font: 0.78rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--graphite); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; background: var(--paper); }
 .order { display: flex; align-items: center; gap: 8px; color: var(--graphite); font-size: 0.9rem; }
