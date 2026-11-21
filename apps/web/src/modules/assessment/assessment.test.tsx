@@ -177,7 +177,8 @@ async function answered(type: AskedQuestion['type'], act: (question: HTMLElement
   open(LESSON);
   const question = await screen.findByRole('region', { name: ASKED[type].prompt });
   const send = within(question).getByRole('button', { name: 'Svara' });
-  expect(send).toHaveProperty('disabled', true);
+  // Every input but ordering starts without a whole answer; an ordering's shown order is one.
+  expect(send).toHaveProperty('disabled', type !== 'ordering');
   await act(question);
   await userEvent.click(send);
   await vi.waitFor(() => expect(answersPosted()).toHaveLength(1));
@@ -214,6 +215,10 @@ describe('every question type’s input', () => {
   it('ordering sends the order the learner made', async () => {
     const sent = await answered('ordering', async (q) => userEvent.click(within(q).getByRole('button', { name: 'Flytta upp: kWh' })));
     expect(sent).toEqual({ answer: { type: 'ordering', items: ['kWh', 'MWh', 'GWh'] } });
+  });
+
+  it('ordering can be answered as shown, since every order is a whole answer', async () => {
+    expect(await answered('ordering', async () => undefined)).toEqual({ answer: { type: 'ordering', items: ['MWh', 'kWh', 'GWh'] } });
   });
 
   it('matching waits for every pair, then sends them', async () => {
@@ -282,6 +287,22 @@ describe('an exam', () => {
     expect(api.posted.find(({ path }) => path.endsWith(sitting.id))?.body).toEqual({ answers: [{ questionId: 'kwh-eller-kw', answer: { type: 'single-choice', option: 'b' } }] });
     const review = [...document.querySelectorAll('.review li')].map((item) => item.querySelector('.given')?.textContent);
     expect(review).toEqual(['Ditt svar: kW', 'Inget svar']);
+  });
+
+  it('takes an ordering question as shown, without asking the page to draw itself over and over', async () => {
+    api.sitting = { ...sitting, questions: [ASKED.ordering] };
+    // React reports a render loop driven by an effect as a console error rather than by throwing.
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    open('/subjects/example-subject/assessment/lesson/energi-och-effekt');
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Börja provet' }));
+    await screen.findByRole('button', { name: 'Flytta upp: kWh' });
+
+    expect(screen.queryByText(/obesvarad/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Lämna in' })).toHaveProperty('disabled', false);
+    await new Promise((settle) => setTimeout(settle, 50));
+    expect(errors.mock.calls.map((call) => String(call[0])).filter((message) => /Maximum update depth/.test(message))).toEqual([]);
+    errors.mockRestore();
   });
 
   it('says so when it cannot be started, and can be tried again', async () => {
