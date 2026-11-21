@@ -123,6 +123,17 @@ describe('load', () => {
     expect(app.sent[0]?.files).toEqual(example);
   });
 
+  it('names the archive after the folder when the pack is given as "." or with a trailing "/."', async () => {
+    const added = [{ kind: 'lesson' as const, id: 'energibalans', language: 'sv' }];
+    const app = fakeApplication(json(200, result({ created: true, added })), json(201, result({ created: true, stored: true, added })));
+
+    await load({ path: `${EXAMPLE}/.`, url: APP_URL, yes: false }, app.fetch);
+
+    // An entry named "./subject.yaml" is refused by the application as a path outside the pack.
+    expect(app.sent[0]?.files).toEqual(example);
+    expect(app.sent[1]?.files).toEqual(example);
+  });
+
   it('stores nothing in an existing subject without --yes, and shows what would change', async () => {
     const changed = [{ kind: 'question' as const, id: 'kwh-eller-kw', language: 'sv' }];
     const app = fakeApplication(json(200, result({ changed, unchanged: 3 })));
