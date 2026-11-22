@@ -133,7 +133,8 @@ function StartBody({
   }
   // An introduction gone all the way through has done its work: it leaves every list here, and one line brings it back.
   const taken = subjects.value.filter((subject) => isTaken(subject, finished));
-  const studied = subjects.value.filter((subject) => !taken.includes(subject));
+  // An introduction still to be taken comes first: it is where a new learner starts.
+  const studied = subjects.value.filter((subject) => !taken.includes(subject)).toSorted((a, b) => Number(b.role === 'introduction') - Number(a.role === 'introduction'));
   const shown = modules.map(({ id }) => shows.get(id)).find((subjectId) => subjectId !== undefined);
   const rows = studied.filter((subject) => subject.id !== shown);
   const again =
