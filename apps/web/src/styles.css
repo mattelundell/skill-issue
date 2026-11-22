@@ -122,8 +122,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 }
 .ledger-row:first-child { border-top: 0; }
 .ledger-row h2 { font-family: var(--title); font-weight: 600; font-size: 1.45rem; }
-.ledger-row h2 a { color: inherit; text-decoration: none; }
-.ledger-row h2 a:hover { color: var(--royal); text-decoration: underline; text-underline-offset: 3px; }
+.ledger-row h2 a, .resume h2 a { color: inherit; text-decoration: none; }
+.ledger-row h2 a:hover, .resume h2 a:hover { color: var(--royal); text-decoration: underline; text-underline-offset: 3px; }
 .ledger-row .summary { color: var(--graphite); margin: 4px 0 8px; max-width: 34rem; }
 .facts { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.9rem; color: var(--graphite); align-items: center; }
 .facts b { color: var(--ink); font-weight: 600; }
