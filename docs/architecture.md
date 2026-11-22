@@ -69,6 +69,7 @@ A module is a folder. It declares itself through one manifest and may contribute
 - what it shows in the browser app — see "The browser side" below
 - commands in the command-line tool
 - handlers for events in the learning record
+- an observer told of every API request the server answers, once it is answered — its method, address, status and time, the problem a refused one was given and what was thrown in a failed one — except requests to the module's own routes, so a recorder does not record its own writes. The answer waits for the observer, so what it stores is there for the next request; a failure in it is logged and never reaches the caller
 - message catalogues for its interface text
 - the tables it owns that hold what the learner did or wrote, which go into a backup
 

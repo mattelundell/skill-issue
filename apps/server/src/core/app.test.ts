@@ -4,7 +4,7 @@ import { contentModule } from '../modules/content/manifest.js';
 import { modules } from '../modules/index.js';
 import { buildApp } from './app.js';
 import type { Db } from './db.js';
-import { createRegistry, type ModuleManifest, type Registry } from './registry.js';
+import { createRegistry, type AnsweredRequest, type ModuleManifest, type Registry } from './registry.js';
 
 const workingDb: Db = {
   query: async () => [],
@@ -148,5 +148,103 @@ describe('module isolation', () => {
 
   it('the shipped modules register together', () => {
     expect(createRegistry(modules)).toMatchObject({ ok: true });
+  });
+});
+
+/** A module that keeps every request it is told of, and has one route of its own. */
+function observer(): { readonly module: ModuleManifest; readonly told: AnsweredRequest[] } {
+  const told: AnsweredRequest[] = [];
+  return {
+    told,
+    module: {
+      id: 'watcher',
+      migrations: [],
+      routes: () => {
+        const routes = new OpenAPIHono();
+        routes.get('/own', (c) => c.json({ own: true }));
+        return routes;
+      },
+      observeRequests: () => async (request) => {
+        told.push(request);
+      },
+    },
+  };
+}
+
+describe('modules observing requests', () => {
+  const thrower: ModuleManifest = {
+    id: 'thrower',
+    migrations: [],
+    routes: () => {
+      const routes = new OpenAPIHono();
+      routes.get('/boom', () => {
+        throw new Error('disk on fire at /var/lib/x');
+      });
+      return routes;
+    },
+  };
+
+  it('are told of an answered call: its method, its address with the query, and its status', async () => {
+    const { module, told } = observer();
+
+    await appWith([module]).request('/api/v1/health?verbose=1');
+
+    expect(told.map(({ method, url, status }) => ({ method, url, status }))).toEqual([{ method: 'GET', url: '/api/v1/health?verbose=1', status: 200 }]);
+    expect(told[0]?.problem).toBeUndefined();
+    expect(told[0]?.error).toBeUndefined();
+  });
+
+  it('are told the problem a refused call was given', async () => {
+    const { module, told } = observer();
+
+    await appWith([module]).request('/api/v1/nowhere');
+
+    expect(told).toMatchObject([{ method: 'GET', url: '/api/v1/nowhere', status: 404, problem: { title: 'No such endpoint' } }]);
+  });
+
+  it('are told what was thrown in a failed call, which the caller is not', async () => {
+    const { module, told } = observer();
+
+    const response = await appWith([module, thrower]).request('/api/v1/thrower/boom');
+
+    expect(response.status).toBe(500);
+    expect(await response.text()).not.toContain('disk on fire');
+    expect(told).toMatchObject([{ url: '/api/v1/thrower/boom', status: 500, problem: { title: 'Internal error' }, error: 'disk on fire at /var/lib/x' }]);
+  });
+
+  it('are not told of calls to their own routes', async () => {
+    const { module, told } = observer();
+    const app = appWith([module]);
+
+    await app.request('/api/v1/watcher/own');
+    await app.request('/api/v1/watcher');
+    await app.request('/api/v1/watchers');
+
+    expect(told.map(({ url }) => url)).toEqual(['/api/v1/watchers']);
+  });
+
+  it('are not told of the browser app’s own files', async () => {
+    const { module, told } = observer();
+
+    await appWith([module]).request('/subjects/energi');
+
+    expect(told).toEqual([]);
+  });
+
+  it('cannot fail the call they observe', async () => {
+    const failing: ModuleManifest = {
+      id: 'failing',
+      migrations: [],
+      observeRequests: () => async () => {
+        throw new Error('observer broke');
+      },
+    };
+    const { module, told } = observer();
+
+    const response = await appWith([failing, module]).request('/api/v1/health');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ status: 'ok' });
+    expect(told.map(({ url }) => url)).toEqual(['/api/v1/health']);
   });
 });
