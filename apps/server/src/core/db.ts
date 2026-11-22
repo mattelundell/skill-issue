@@ -1,4 +1,5 @@
 import { Pool, type PoolClient } from 'pg';
+import { describeThrown, log } from './log.js';
 
 export type Row = Readonly<Record<string, unknown>>;
 
@@ -33,6 +34,12 @@ function queryOn(target: Pool | PoolClient) {
 
 export function connect(settings: DbSettings): DbConnection {
   const pool = new Pool({ ...settings, max: 10 });
+  // An idle connection the database closes, as a restart does to all of them, has nobody waiting on its error.
+  // Unheard, Node would treat it as uncaught and end the server; the pool drops the connection and opens a new one
+  // for the next query, and until the database is back, the health check says it is down.
+  pool.on('error', (thrown) => {
+    log.error('database.connection-lost', { reason: describeThrown(thrown) });
+  });
 
   const transaction = async <T>(work: (tx: Db) => Promise<T>): Promise<T> => {
     const client = await pool.connect();

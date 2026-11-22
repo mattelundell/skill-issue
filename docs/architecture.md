@@ -259,6 +259,7 @@ The application is for one person on one machine, and the design keeps it that w
 
 - The server is published on the loopback interface only. It is not reachable from the network.
 - **A page on another site cannot write.** A browser sends a POST to any address unasked when its body is plain text, a form or nothing, so a page open in the learner's browser could otherwise answer questions, which the record keeps for ever. Every `POST`, `PUT` and `PATCH` is therefore refused with 415 in the core, before any module sees it, unless it is sent as `application/json` or `application/zip`. Those make the browser ask first, and the server never answers that question. A removal needs no such check, since a browser always asks before sending one.
+- **The server outlives its database.** When the database closes the server's connections, as a restart does, the server logs it and stays up. The health check reports the database down until it is back, and the next query opens a new connection.
 - Subject material is untrusted input, because it may be written by someone else's assistant. Markdown is rendered through a sanitiser with raw HTML disabled; links open in a new context; no script from a pack is ever run.
 - Images and other files in a pack are stored and served by the application. Remote images are not fetched.
 - All database access uses bound parameters.
