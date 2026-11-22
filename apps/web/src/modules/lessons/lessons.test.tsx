@@ -535,6 +535,8 @@ describe('the start screen with lessons', () => {
     expect(within(panel).getByText('Fortsätt där du slutade')).toBeTruthy();
     expect(within(panel).getByText('Grunder: Energi och effekt, steg 2 av 3')).toBeTruthy();
     expect(within(panel).getByRole('link', { name: 'Fortsätt' }).getAttribute('href')).toBe(LESSON_PAGE);
+    // The subject's name opens its overview, not the lesson.
+    expect(within(panel).getByRole('link', { name: 'Exempelämne' }).getAttribute('href')).toBe('/subjects/example-subject');
     const others = await screen.findByRole('region', { name: 'Dina andra ämnen' });
     expect(within(others).getAllByRole('link').map((link) => link.textContent)).toEqual(['Statistik för mätdata', 'Börja']);
   });
