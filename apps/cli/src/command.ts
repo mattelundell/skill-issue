@@ -1,4 +1,5 @@
 import { parseArgs } from 'node:util';
+import type { ExamScope } from '@skill-issue/contract';
 
 export const DEFAULT_URL = 'http://127.0.0.1:4747';
 
@@ -23,6 +24,7 @@ export type Command =
       readonly interfaceLanguage: HeadingLanguage;
     }
   | { readonly kind: 'review'; readonly subject: string | undefined; readonly url: string }
+  | { readonly kind: 'exam'; readonly subject: string; readonly scope: ExamScope; readonly url: string; readonly language: string | undefined }
   | { readonly kind: 'help' }
   | { readonly kind: 'invalid'; readonly message: string };
 
@@ -31,6 +33,8 @@ export const USAGE = `Usage: skill-issue <command> [options]
 Commands:
   status                          Show whether the application is up and what is due in each subject
   review [subject]                Answer the questions due today, in every subject or in one
+  exam <subject> <lesson|area> <id>
+                                  Sit a lesson or area exam; nothing is graded until you hand in
   validate <pack>                 Check a pack folder or .zip without loading it
   load <pack>                     Load a pack folder or .zip; shows what changes first
   export <subject> <target>       Write a subject as a pack: a new folder, or a file ending in .zip
@@ -42,7 +46,7 @@ Options:
   --url <url>          Where the application listens (default ${DEFAULT_URL})
   --yes                With load: store an update to an existing subject without asking again
   --dry-run            With restore: check the backup against the installation and write nothing
-  --language <code>    With export-notes: the language the subject's titles are given in (default: the subject's own)
+  --language <code>    With export-notes and exam: the language the subject is given in (default: the subject's own)
   --interface <en|sv>  With export-notes: the language of the file's own headings (default en)
   --help               Show this text
 `;
@@ -51,6 +55,7 @@ Options:
 const ARGUMENTS = {
   status: { min: 0, max: 0, needs: '' },
   review: { min: 0, max: 1, needs: '' },
+  exam: { min: 3, max: 3, needs: 'a subject id, lesson or area, and its id' },
   validate: { min: 1, max: 1, needs: 'a pack folder or .zip' },
   load: { min: 1, max: 1, needs: 'a pack folder or .zip' },
   export: { min: 2, max: 2, needs: 'a subject id and a target' },
@@ -100,15 +105,15 @@ export function parseCommand(argv: readonly string[]): Command {
     return { kind: 'invalid', message: `"${name}" needs ${needs}` };
   }
   // Each option and the one command it belongs to.
-  const owned: readonly (readonly [string, unknown, string])[] = [
-    ['yes', values.yes, 'load'],
-    ['dry-run', values['dry-run'], 'restore'],
-    ['language', values.language, 'export-notes'],
-    ['interface', values.interface, 'export-notes'],
+  const owned: readonly (readonly [string, unknown, readonly string[]])[] = [
+    ['yes', values.yes, ['load']],
+    ['dry-run', values['dry-run'], ['restore']],
+    ['language', values.language, ['export-notes', 'exam']],
+    ['interface', values.interface, ['export-notes']],
   ];
-  for (const [option, value, owner] of owned) {
-    if (value !== undefined && name !== owner) {
-      return { kind: 'invalid', message: `--${option} applies only to ${owner}` };
+  for (const [option, value, owners] of owned) {
+    if (value !== undefined && !owners.includes(name)) {
+      return { kind: 'invalid', message: `--${option} applies only to ${owners.join(' and ')}` };
     }
   }
 
@@ -122,6 +127,13 @@ export function parseCommand(argv: readonly string[]): Command {
       return { kind: 'status', url };
     case 'review':
       return { kind: 'review', subject: rest[0], url };
+    case 'exam': {
+      const [, kind = '', id = ''] = rest;
+      if (kind !== 'lesson' && kind !== 'area') {
+        return { kind: 'invalid', message: `"exam" covers a lesson or an area, not "${kind}"` };
+      }
+      return { kind: 'exam', subject: first, scope: { kind, id }, url, language: values.language };
+    }
     case 'validate':
       return { kind: 'validate', path: first };
     case 'load':

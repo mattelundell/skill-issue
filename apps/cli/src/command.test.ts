@@ -54,14 +54,23 @@ describe('parseCommand', () => {
     expect(parseCommand(['review', 'energi'])).toEqual({ kind: 'review', subject: 'energi', url: 'http://127.0.0.1:4747' });
   });
 
+  it('reads an exam of a lesson or an area, in the subject\'s own language or a given one', () => {
+    const url = 'http://127.0.0.1:4747';
+    expect(parseCommand(['exam', 'energi', 'lesson', 'effekt-och-energi'])).toEqual({ kind: 'exam', subject: 'energi', scope: { kind: 'lesson', id: 'effekt-och-energi' }, url, language: undefined });
+    expect(parseCommand(['exam', 'energi', 'area', 'grunder', '--language', 'en'])).toEqual({ kind: 'exam', subject: 'energi', scope: { kind: 'area', id: 'grunder' }, url, language: 'en' });
+  });
+
   it.each([
+    [['exam', 'energi', 'lesson'], '"exam" needs a subject id, lesson or area, and its id'],
+    [['exam', 'energi', 'chapter', 'grunder'], '"exam" covers a lesson or an area, not "chapter"'],
     [['validate'], '"validate" needs a pack folder or .zip'],
     [['backup'], '"backup" needs a file to write'],
     [['restore'], '"restore" needs a backup file'],
     [['export-notes', 'energi'], '"export-notes" needs a subject id and a file to write'],
     [['review', 'a', 'b'], 'Unexpected argument "b"'],
     [['backup', 'b.json', '--dry-run'], '--dry-run applies only to restore'],
-    [['review', '--language', 'sv'], '--language applies only to export-notes'],
+    [['review', '--language', 'sv'], '--language applies only to export-notes and exam'],
+    [['exam', 'energi', 'lesson', 'x', '--interface', 'sv'], '--interface applies only to export-notes'],
     [['export-notes', 'energi', 'n.md', '--interface', 'fi'], '--interface must be en or sv'],
     [['export', 'energi'], '"export" needs a subject id and a target'],
     [['load', 'a', 'b'], 'Unexpected argument "b"'],

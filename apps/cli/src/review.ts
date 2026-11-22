@@ -11,17 +11,10 @@ import {
   type GivenAnswer,
   type Graded,
 } from '@skill-issue/contract';
-import { drawn, expectedInWords, failed, filtered, getJson, plural, readAnswer, type Step, type Terminal } from './asking.js';
+import { drawn, expectedInWords, failed, filtered, getJson, plural, readAnswer, type SessionDependencies, type Step } from './asking.js';
 import type { Outcome } from './pack.js';
 
-export interface ReviewDependencies {
-  readonly terminal: Terminal;
-  readonly fetch: typeof fetch;
-  /** Milliseconds, for how long each answer took. */
-  readonly now: () => number;
-  /** The learner's time zone, which decides what "today" is. */
-  readonly timeZone: string;
-}
+export type ReviewDependencies = SessionDependencies;
 
 interface Due {
   readonly subjectId: string;

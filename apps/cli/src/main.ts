@@ -3,6 +3,7 @@ import { createInterface } from 'node:readline';
 import type { Terminal } from './asking.js';
 import { backup, exportNotes, restore } from './backup.js';
 import { parseCommand, USAGE } from './command.js';
+import { exam } from './exam.js';
 import { exportSubject, load, validate, type Outcome } from './pack.js';
 import { review } from './review.js';
 import { fetchStatus, report } from './status.js';
@@ -56,6 +57,15 @@ switch (command.kind) {
     const terminal = openTerminal();
     try {
       finish(await review(command, { terminal, fetch, now: () => performance.now(), timeZone }));
+    } finally {
+      terminal.close();
+    }
+    break;
+  }
+  case 'exam': {
+    const terminal = openTerminal();
+    try {
+      finish(await exam(command, { terminal, fetch, now: () => performance.now(), timeZone }));
     } finally {
       terminal.close();
     }
