@@ -4,9 +4,12 @@
 # node:26-alpine
 FROM node@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS build
 WORKDIR /src
-RUN npm install --global pnpm@12.21.0
+# pnpm from a tarball whose checksum is pinned in the script, the version package.json names.
+COPY package.json ./
+COPY scripts/install-pnpm.sh scripts/
+RUN sh scripts/install-pnpm.sh
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/contract/package.json packages/contract/
 COPY packages/pack/package.json packages/pack/
 COPY apps/server/package.json apps/server/
