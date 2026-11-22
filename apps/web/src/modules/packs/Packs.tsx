@@ -221,5 +221,9 @@ function Ready({ result, onLoad, onCancel }: { readonly result: LoadResult; read
 /** The way to the page, in the footer beside the others. */
 export function PacksFooter(_props: { readonly language: string }) {
   const { t } = useMessages();
-  return <Link to="/packs">{t('footer.link')}</Link>;
+  return (
+    <Link className="packs-link" to="/packs">
+      {t('footer.link')}
+    </Link>
+  );
 }

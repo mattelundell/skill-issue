@@ -1,3 +1,6 @@
+/* In the footer, quiet beside the server's status, as the other ways there are. */
+.packs-link { color: var(--graphite); text-decoration: none; }
+.packs-link:hover { color: var(--royal); text-decoration: underline; }
 .packs .lede { margin-bottom: 18px; }
 .packs-sheet { padding: 26px 28px; }
 .packs-sheet h2 { font-family: var(--title); font-weight: 600; font-size: 1.4rem; margin-bottom: 8px; }

@@ -54,6 +54,9 @@ body {
   color: var(--ink);
   background: var(--paper);
 }
+
+/* Every link takes the app's colour, visited or not: without it the browser draws a link it has seen in its own purple. At no specificity, so a link's own class still decides. */
+:where(a) { color: var(--royal); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 :focus-visible { outline: 3px solid var(--royal); outline-offset: 2px; border-radius: 3px; }
 /* ---------- application frame ---------- */
