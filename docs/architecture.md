@@ -163,6 +163,8 @@ A new type is added by registering these four parts. Nothing else changes.
 - Loading a changed item creates a new **revision**. The learning record refers to the revision that was answered, so a corrected question does not rewrite history.
 - Every item carries a **language**. The same identifier may exist in several languages; these are translations of one item. Progress and scheduling attach to the identifier, not the language, so switching language keeps what you have learned.
 - A subject states its default language. An item missing in the chosen language falls back to the default and says so.
+- A translation keeps its original's structure — answers, option ids, steps, exams, references — and a pack whose translation does not is rejected (`docs/content-format.md`), so an answer means the same in every language.
+- The content language is chosen per subject on its home and kept on the device. The browser shell asks for the subject's path in it, and every module reads the subject's material in the language that path comes back in. The start screen names each subject, and offers its lesson, in the subject's default language.
 - Interface text lives in message catalogues, one per module and language. Content language and interface language are chosen separately.
 
 ## Learning record

@@ -22,8 +22,8 @@ const byUse = (a: LibrarySource, b: LibrarySource): number =>
 /** The subject's source library: every source, searchable, filterable by publisher, in a chosen order. */
 export function Library({ subject, pathTo }: PageProps) {
   const { t } = useMessages();
-  const load = useMemo(() => async (signal: AbortSignal) => fetchLibrary(subject.id, signal), [subject.id]);
-  const { fetched, retry } = useFetched(subject.id, load);
+  const load = useMemo(() => async (signal: AbortSignal) => fetchLibrary(subject.id, subject.language, signal), [subject.id, subject.language]);
+  const { fetched, retry } = useFetched(`${subject.id}/${subject.language}`, load);
 
   if (fetched === undefined) {
     return (

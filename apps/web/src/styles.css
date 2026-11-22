@@ -185,6 +185,8 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 .crumb a { color: var(--royal); }
 .subject-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-top: 10px; }
 .subject-head .page-title { font-size: 2.6rem; }
+.content-language { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--graphite); }
+.content-language select { font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 4px 8px; }
 .content-lang { font-size: 0.9rem; color: var(--graphite); display: flex; gap: 8px; align-items: center; }
 .tabs { display: flex; gap: 4px; margin: 22px 0 0; border-bottom: 1px solid var(--rule); overflow-x: auto; }
 .tabs a {

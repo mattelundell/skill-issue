@@ -91,7 +91,7 @@ test('an unknown subject is answered with “no such subject”, naming its id',
 
 test('the interface switches to English and stays so after a reload', async ({ page }) => {
   await page.goto('/subjects/example-subject');
-  await page.getByRole('combobox', { name: 'Språk' }).selectOption('en');
+  await page.getByRole('combobox', { name: 'Språk', exact: true }).selectOption('en');
 
   await expect(page.getByText('2 areas')).toBeVisible();
   await page.reload();

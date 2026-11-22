@@ -63,5 +63,6 @@ const SubjectListSchema = SubjectSummarySchema.array();
 export const fetchSubjects = async (signal: AbortSignal): Promise<Fetched<readonly SubjectSummary[]>> =>
   getJson('/content/subjects', SubjectListSchema, signal);
 
-export const fetchOutline = async (subjectId: string, signal: AbortSignal): Promise<Fetched<SubjectOutline>> =>
-  getJson(`/content/subjects/${encodeURIComponent(subjectId)}`, SubjectOutlineSchema, signal);
+/** A subject's path, read in `language` where translated and in its default language where not; in the default language when none is given. */
+export const fetchOutline = async (subjectId: string, signal: AbortSignal, language?: string): Promise<Fetched<SubjectOutline>> =>
+  getJson(`/content/subjects/${encodeURIComponent(subjectId)}${language === undefined ? '' : `?language=${encodeURIComponent(language)}`}`, SubjectOutlineSchema, signal);

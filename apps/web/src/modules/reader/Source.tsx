@@ -15,8 +15,8 @@ import { useFetched } from '../../shell/useFetched.js';
 /** One source: where it came from, the material itself, and what in the subject rests on it. */
 export function Source({ subject, sourceId, pathTo }: Pick<PageProps, 'subject' | 'pathTo'> & { readonly sourceId: string }) {
   const { t } = useMessages();
-  const load = useMemo(() => async (signal: AbortSignal) => fetchSource(subject.id, sourceId, signal), [subject.id, sourceId]);
-  const { fetched, retry } = useFetched(`${subject.id}/${sourceId}`, load);
+  const load = useMemo(() => async (signal: AbortSignal) => fetchSource(subject.id, sourceId, subject.language, signal), [subject.id, sourceId, subject.language]);
+  const { fetched, retry } = useFetched(`${subject.id}/${sourceId}/${subject.language}`, load);
   const title = fetched?.kind === 'ok' ? fetched.value.source.title : undefined;
   useEffect(() => {
     if (title !== undefined) {
