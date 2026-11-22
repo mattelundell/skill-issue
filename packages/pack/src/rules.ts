@@ -50,6 +50,8 @@ class RuleCheck {
   /** The questions of each lesson's bank, in the default language. */
   private readonly bank: ReadonlyMap<string, readonly string[]>;
   private readonly questionLesson: ReadonlyMap<string, string>;
+  /** The concepts the subject declares, in the default language. */
+  private readonly declared: ReadonlySet<string>;
   /** The concepts some lesson teaches. */
   private readonly concepts: ReadonlySet<string>;
 
@@ -71,6 +73,7 @@ class RuleCheck {
     this.bank = bank;
     this.questionLesson = questionLesson;
     this.concepts = new Set(original(pack.lessons).flatMap((lesson) => lesson.concepts));
+    this.declared = new Set(original(pack.subject).flatMap((subject) => subject.concepts.map((concept) => concept.id)));
   }
 
   run(): ContentFault[] {
@@ -126,6 +129,7 @@ class RuleCheck {
         this.add('subject', entry, 'translation-mismatch', field, `the same as in the default language: ${describeValue(expected)}`, describeValue(found));
       }
     };
+    const conceptIds = (entry: (typeof this.pack.subject)[number]): string[] => entry.concepts.map((concept) => concept.id);
     for (const entry of this.pack.subject) {
       if (original === undefined || entry === original) {
         continue;
@@ -133,9 +137,19 @@ class RuleCheck {
       same(entry, 'id', original.id, entry.id);
       same(entry, 'defaultLanguage', original.defaultLanguage, entry.defaultLanguage);
       same(entry, 'areas', original.areas, entry.areas);
+      same(entry, 'concepts', conceptIds(original), conceptIds(entry));
     }
     for (const entry of this.pack.subject) {
       this.references('subject', entry, 'areas', entry.areas, this.areaIds, 'unknown-area', 'an area');
+    }
+    for (const entry of this.pack.subject) {
+      const seen = new Set<string>();
+      for (const [index, concept] of entry.concepts.entries()) {
+        if (seen.has(concept.id)) {
+          this.add('subject', entry, 'duplicate-item', `concepts[${index}].id`, 'each concept declared once', describeValue(concept.id));
+        }
+        seen.add(concept.id);
+      }
     }
   }
 
@@ -251,7 +265,7 @@ class RuleCheck {
   private checkLessons(): void {
     for (const lesson of this.pack.lessons) {
       this.references('lesson', lesson, 'sources', lesson.sources, this.sourceIds, 'unknown-source', 'a source');
-      this.references('lesson', lesson, 'concepts', lesson.concepts, this.concepts, 'unknown-concept', 'a concept');
+      this.references('lesson', lesson, 'concepts', lesson.concepts, this.declared, 'unknown-concept', 'a concept the subject declares under "concepts"');
       const own = this.bank.get(lesson.id) ?? [];
       for (const [stepIndex, step] of lesson.steps.entries()) {
         switch (step.type) {

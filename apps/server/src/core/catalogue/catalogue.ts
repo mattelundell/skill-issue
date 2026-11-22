@@ -378,10 +378,16 @@ const exportOn = async (on: Db, subjectId: string): Promise<Pack | undefined> =>
     collections[collection].push({ ...body, language: text(row, 'language') });
   }
   const assets = await on.query('SELECT path, media_type, data FROM catalogue.asset WHERE subject_id = $1 ORDER BY path', [subjectId]);
+  // A subject stored before subjects declared their concepts is given them, named by id, so its export still loads.
+  const taught = [...new Set(collections.lessons.flatMap((lesson) => BankLessonSchema.parse(lesson).concepts))].toSorted();
+  const declared = collections.subject.map((entry) =>
+    typeof entry === 'object' && entry !== null && !('concepts' in entry) ? { ...entry, concepts: taught.map((id) => ({ id, name: id.replaceAll('-', ' ') })) } : entry,
+  );
   // Parsed rather than trusted: what was stored under an earlier format must still be a valid pack.
   return PackSchema.parse({
     formatVersion: FORMAT_VERSION,
     ...collections,
+    subject: declared,
     assets: assets.map((row) => {
       const data = row['data'];
       if (!(data instanceof Buffer)) {

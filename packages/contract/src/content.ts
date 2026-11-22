@@ -30,6 +30,10 @@ export const ExamBlueprintSchema = z.strictObject({
   passMark: z.number().gt(0).max(1),
 });
 
+/** One thing a subject teaches: its identifier, and the name a learner reads. */
+export const ConceptSchema = z.strictObject({ id: ItemIdSchema, name: Text });
+export type Concept = z.infer<typeof ConceptSchema>;
+
 export const SubjectSchema = z.strictObject({
   language: LanguageSchema,
   id: ItemIdSchema,
@@ -38,6 +42,12 @@ export const SubjectSchema = z.strictObject({
   summary: Text,
   /** The areas in the order the path recommends them. */
   areas: References.min(1),
+  /**
+   * What the subject's lessons teach, each with the name a learner reads.
+   * Lessons and questions name concepts by id; a translation names the same
+   * concepts, in the same order, in its own language.
+   */
+  concepts: z.array(ConceptSchema).min(1),
 });
 
 export const SourceKindSchema = z.enum(['summary', 'excerpt', 'full']);

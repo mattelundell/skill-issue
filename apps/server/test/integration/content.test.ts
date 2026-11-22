@@ -313,6 +313,34 @@ describe('exporting a subject', () => {
     expect(await exported(empty.app)).toEqual(await exported());
   });
 
+  it('of a subject stored before subjects declared their concepts names each concept its lessons teach by its id, in id order, and loads again', async () => {
+    await loadZip(example);
+    // A subject stored under the format before it held concepts: its body has none.
+    await here.db.query("UPDATE catalogue.revision SET body = body - 'concepts' WHERE subject_id = 'example-subject' AND kind = 'subject'");
+
+    const pack = await exported();
+
+    expect(pack.subject.map((entry) => [entry.language, entry.concepts])).toEqual([
+      ['sv', [
+        { id: 'effekt', name: 'effekt' },
+        { id: 'energi', name: 'energi' },
+        { id: 'energibalans', name: 'energibalans' },
+        { id: 'forluster', name: 'forluster' },
+        { id: 'si-prefix', name: 'si prefix' },
+      ]],
+      ['en', [
+        { id: 'effekt', name: 'effekt' },
+        { id: 'energi', name: 'energi' },
+        { id: 'energibalans', name: 'energibalans' },
+        { id: 'forluster', name: 'forluster' },
+        { id: 'si-prefix', name: 'si prefix' },
+      ]],
+    ]);
+    const other = await install();
+    others.push(other);
+    expect((await post(other.app, JSON.stringify(pack), 'application/json')).status).toBe(201);
+  });
+
   it('of an unknown subject is answered 404', async () => {
     const response = await here.app.request('/api/v1/content/subjects/no-such-subject/pack');
 

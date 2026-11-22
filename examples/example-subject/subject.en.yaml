@@ -5,3 +5,9 @@ summary: Energy and power, unit prefixes and energy balance — enough to show t
 areas:
   - grunder
   - fordjupning
+concepts:
+  - { id: energi, name: Energy }
+  - { id: effekt, name: Power }
+  - { id: si-prefix, name: SI prefixes }
+  - { id: energibalans, name: Energy balance }
+  - { id: forluster, name: Losses }
