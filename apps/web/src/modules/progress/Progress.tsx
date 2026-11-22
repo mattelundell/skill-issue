@@ -23,7 +23,7 @@ function Meter({ share }: { readonly share: number }) {
 }
 
 /** Answers per day as columns and the subject's recall at each day's end as a line over them; each day is named for a screen reader. */
-function Days({ days, language }: { readonly days: readonly DayProgress[]; readonly language: Language }) {
+function Days({ days, language, target }: { readonly days: readonly DayProgress[]; readonly language: Language; readonly target: number }) {
   const { t, tc } = useMessages();
   const most = Math.max(1, ...days.map((day) => day.answers));
   const width = 100 / days.length;
@@ -37,7 +37,7 @@ function Days({ days, language }: { readonly days: readonly DayProgress[]; reado
         </svg>
         <ol className="progress-day-list">
           {days.map((day) => (
-            <li key={day.day}>{t('time.day', { day: dayWords(day.day, language), answers: tc('time.answers', day.answers), correct: String(day.correct), recall: percent(day.recall, language) })}</li>
+            <li key={day.day}>{t('time.day', { day: dayWords(day.day, language), answers: tc('time.answers', day.answers), correct: String(day.correct), recall: percent(day.recall, language, target) })}</li>
           ))}
         </ol>
       </div>
@@ -79,10 +79,10 @@ function Shown({ progress, subject, language }: { readonly progress: SubjectProg
     <>
       <section className="sheet progress-summary" aria-labelledby="progress-recall">
         <p id="progress-recall" className="progress-big">
-          <b>{percent(progress.recall ?? 0, language)}</b> {t('summary.recall')}
+          <b>{percent(progress.recall ?? 0, language, progress.target)}</b> {t('summary.recall')}
         </p>
         <p>{t('summary.met', { met: String(progress.met), questions: String(progress.questions) })}</p>
-        <p className="progress-note">{t('summary.target', { target: percent(progress.target, language) })}</p>
+        <p className="progress-note">{t('summary.target', { target: percent(progress.target, language, progress.target) })}</p>
       </section>
 
       <section className="sheet progress-mastery" aria-labelledby="progress-mastery">
@@ -91,14 +91,14 @@ function Shown({ progress, subject, language }: { readonly progress: SubjectProg
           <section key={area.areaId} className="progress-area" aria-label={titles.get(`area:${area.areaId}`) ?? area.areaId}>
             <h3>
               <span>{titles.get(`area:${area.areaId}`) ?? area.areaId}</span>
-              {area.recall === null ? <span className="progress-figure">{t('mastery.none')}</span> : <span className="progress-figure meter"><Meter share={area.recall} />{percent(area.recall, language)}</span>}
+              {area.recall === null ? <span className="progress-figure">{t('mastery.none')}</span> : <span className="progress-figure meter"><Meter share={area.recall} />{percent(area.recall, language, progress.target)}</span>}
             </h3>
             <ul>
               {area.lessons.map((lesson) => (
                 <li key={lesson.lessonId} className={lesson.mastered ? 'mastered' : lesson.passed ? 'passed' : undefined}>
                   <span className="progress-lesson">{lessonName(lesson.lessonId)}</span>
                   {lesson.mastered ? <span className="state-word mastered">{t('lesson.mastered')}</span> : lesson.passed ? <span className="state-word passed">{t('lesson.passed')}</span> : null}
-                  {lesson.recall === null ? <span className="progress-figure">{t('mastery.none')}</span> : <span className="progress-figure meter"><Meter share={lesson.recall} />{percent(lesson.recall, language)}</span>}
+                  {lesson.recall === null ? <span className="progress-figure">{t('mastery.none')}</span> : <span className="progress-figure meter"><Meter share={lesson.recall} />{percent(lesson.recall, language, progress.target)}</span>}
                 </li>
               ))}
             </ul>
@@ -113,10 +113,10 @@ function Shown({ progress, subject, language }: { readonly progress: SubjectProg
         ) : (
           <>
             <p>
-              {t('time.summary', { days: String(progress.days.length), answers: tc('time.answers', answers), correct: percent(correct / answers, language) })}{' '}
-              {t('time.recall', { from: percent(from, language), to: percent(to, language) })}
+              {t('time.summary', { days: String(progress.days.length), answers: tc('time.answers', answers), correct: percent(correct / answers, language, 1) })}{' '}
+              {t('time.recall', { from: percent(from, language, progress.target), to: percent(to, language, progress.target) })}
             </p>
-            <Days days={progress.days} language={language} />
+            <Days days={progress.days} language={language} target={progress.target} />
           </>
         )}
       </section>
@@ -178,7 +178,7 @@ export function RecallFigure({ subject, language }: { readonly subject: SubjectS
   if (value?.kind !== 'ok' || value.value.met === 0 || value.value.recall === null) {
     return null;
   }
-  return <span className="progress-figure">{t('figure.recall', { recall: percent(value.value.recall, language) })}</span>;
+  return <span className="progress-figure">{t('figure.recall', { recall: percent(value.value.recall, language, value.value.target) })}</span>;
 }
 
 /** The lessons that are mastered now. Passed and begun are for the modules that know them. */
