@@ -13,6 +13,8 @@ export interface ModuleContext {
   readonly catalogue: Catalogue;
   /** What the learner did: appended to, never changed. */
   readonly record: LearningRecord;
+  /** The largest request body, in bytes, a module takes. */
+  readonly maxBodyBytes: number;
 }
 
 /**

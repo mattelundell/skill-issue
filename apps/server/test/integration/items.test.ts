@@ -197,6 +197,17 @@ describe('a single item that cannot be taken', () => {
     expect(stored).toEqual([{ revision: 1 }]);
   });
 
+  it('larger than the installation takes is answered 413', async () => {
+    const small = await install({ maxBodyBytes: 256 });
+    try {
+      const response = await small.app.request(`${BASE}/questions/${fresh.id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...fresh, explanation: 'x'.repeat(300) }) });
+      expect(response.status).toBe(413);
+      expect(await response.json()).toMatchObject({ title: 'The item is too large', detail: 'At most 256 bytes may be sent.' });
+    } finally {
+      await small.drop();
+    }
+  });
+
   it('into a subject that does not exist is answered 404', async () => {
     const response = await here.app.request(`/api/v1/content/subjects/ingen/questions/${fresh.id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(fresh) });
     expect(response.status).toBe(404);

@@ -13,8 +13,8 @@ export interface Installation {
   readonly drop: () => Promise<void>;
 }
 
-/** A fresh database with the application's migrations applied, and the application on it. */
-export async function install(): Promise<Installation> {
+/** A fresh database with the application's migrations applied, and the application on it; `maxBodyBytes` lowers the largest body it takes, so a test need not send 64 MB. */
+export async function install(options: { readonly maxBodyBytes?: number } = {}): Promise<Installation> {
   const { db, drop } = await createScratchDatabase();
   const registry = createRegistry(modules);
   if (!registry.ok) {
@@ -24,5 +24,5 @@ export async function install(): Promise<Installation> {
   if (!migrated.ok) {
     throw new Error(`migrations failed: ${JSON.stringify(migrated.error)}`);
   }
-  return { app: buildApp({ db, registry: registry.value, version: 'test' }), db, drop };
+  return { app: buildApp({ db, registry: registry.value, version: 'test', ...options }), db, drop };
 }

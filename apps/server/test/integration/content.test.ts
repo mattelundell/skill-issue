@@ -265,6 +265,19 @@ describe('a rejected pack', () => {
     expect(json).toMatchObject({ faults: [{ code: 'unsafe-path', file: 'pack/../escape.yaml' }] });
   });
 
+  it('larger than the installation takes is answered 413, and nothing is stored', async () => {
+    const small = await install({ maxBodyBytes: 4096 });
+    others.push(small);
+    const archive = zipOf(example);
+    expect(archive.length).toBeGreaterThan(4096);
+
+    const { status, json } = await post(small.app, archive, 'application/zip');
+
+    expect(status).toBe(413);
+    expect(json).toMatchObject({ status: 413, title: 'The pack is too large', detail: 'At most 4096 bytes may be sent.' });
+    expect(await small.db.query('SELECT count(*)::int AS n FROM catalogue.subject')).toEqual([{ n: 0 }]);
+  });
+
   it('that is not JSON is answered 400', async () => {
     const { status, json } = await post(here.app, '{"formatVersion": 1,', 'application/json');
 
