@@ -364,6 +364,17 @@ describe('exporting a subject', () => {
 });
 
 describe('listing subjects', () => {
+  it('says which subject is an introduction, and says nothing of a role for any other', async () => {
+    const marked = new Map(example);
+    for (const file of ['subject.yaml', 'subject.en.yaml']) {
+      marked.set(file, new TextEncoder().encode(new TextDecoder().decode(example.get(file)).replace('id: example-subject\n', 'id: example-subject\nrole: introduction\n')));
+    }
+    expect((await loadZip(marked)).status).toBe(201);
+
+    const listed = (await (await here.app.request('/api/v1/content/subjects')).json()) as Record<string, unknown>[];
+    expect(listed.map(({ id, role }) => ({ id, role }))).toEqual([{ id: 'example-subject', role: 'introduction' }]);
+  });
+
   it('shows each subject with its languages and its title in the default language', async () => {
     await loadZip(example);
 

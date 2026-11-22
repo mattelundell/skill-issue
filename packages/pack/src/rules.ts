@@ -137,6 +137,7 @@ class RuleCheck {
       same(entry, 'id', original.id, entry.id);
       same(entry, 'defaultLanguage', original.defaultLanguage, entry.defaultLanguage);
       same(entry, 'areas', original.areas, entry.areas);
+      same(entry, 'role', original.role, entry.role);
       same(entry, 'concepts', conceptIds(original), conceptIds(entry));
     }
     for (const entry of this.pack.subject) {

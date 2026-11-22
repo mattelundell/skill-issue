@@ -34,6 +34,15 @@ export const ExamBlueprintSchema = z.strictObject({
 export const ConceptSchema = z.strictObject({ id: ItemIdSchema, name: Text });
 export type Concept = z.infer<typeof ConceptSchema>;
 
+/**
+ * What a subject is for, where it is not simply a subject to study. An
+ * `introduction` teaches the application itself: once every one of its lessons
+ * has been finished it leaves the start screen, and its questions are never in
+ * a review across subjects.
+ */
+export const SubjectRoleSchema = z.enum(['introduction']);
+export type SubjectRole = z.infer<typeof SubjectRoleSchema>;
+
 export const SubjectSchema = z.strictObject({
   language: LanguageSchema,
   id: ItemIdSchema,
@@ -48,6 +57,8 @@ export const SubjectSchema = z.strictObject({
    * concepts, in the same order, in its own language.
    */
   concepts: z.array(ConceptSchema).min(1),
+  /** Absent for an ordinary subject; a translation states the same as the default language. */
+  role: SubjectRoleSchema.optional(),
 });
 
 export const SourceKindSchema = z.enum(['summary', 'excerpt', 'full']);
@@ -249,6 +260,8 @@ export const SubjectSummarySchema = z.object({
   languages: z.array(LanguageSchema),
   title: z.string(),
   summary: z.string(),
+  /** Absent for an ordinary subject. */
+  role: SubjectRoleSchema.optional(),
 });
 export type SubjectSummary = z.infer<typeof SubjectSummarySchema>;
 
