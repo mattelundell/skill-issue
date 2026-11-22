@@ -185,6 +185,18 @@ describe('a single item that cannot be taken', () => {
     expect(await revisions(fresh.id)).toEqual([]);
   });
 
+  it('that would make a file of the subject larger than a pack may hold is refused, so the subject can always be exported and loaded again', async () => {
+    const source = (await exported()).sources.find((s) => s.id === 'exempelkalla');
+    const body = 'x'.repeat(17 * 1024 * 1024);
+
+    const { status, json } = await put('/sources/exempelkalla', { ...source, body });
+
+    expect(status).toBe(422);
+    expect((json as { faults: unknown[] }).faults).toEqual([expect.objectContaining({ code: 'pack-too-large', expected: 'a file of at most 16777216 bytes' })]);
+    const stored = await here.db.query("SELECT revision FROM catalogue.revision WHERE subject_id = 'example-subject' AND kind = 'source' AND id = 'exempelkalla'");
+    expect(stored).toEqual([{ revision: 1 }]);
+  });
+
   it('into a subject that does not exist is answered 404', async () => {
     const response = await here.app.request(`/api/v1/content/subjects/ingen/questions/${fresh.id}`, { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(fresh) });
     expect(response.status).toBe(404);
