@@ -43,7 +43,7 @@ Commands:
   restore <file>                  Restore a backup into an empty installation of the same version
 
 Options:
-  --url <url>          Where the application listens (default ${DEFAULT_URL})
+  --url <url>          Where the application listens (default: SKILL_ISSUE_URL, else ${DEFAULT_URL})
   --yes                With load: store an update to an existing subject without asking again
   --dry-run            With restore: check the backup against the installation and write nothing
   --language <code>    With export-notes and exam: the language the subject is given in (default: the subject's own)
@@ -66,8 +66,11 @@ const ARGUMENTS = {
 
 const isCommandName = (name: string): name is keyof typeof ARGUMENTS => Object.hasOwn(ARGUMENTS, name);
 
-/** Turns the arguments after the program name into a command, never throwing for bad input. */
-export function parseCommand(argv: readonly string[]): Command {
+/**
+ * Turns the arguments after the program name into a command, never throwing for bad input.
+ * The application's address is `--url`, else `SKILL_ISSUE_URL` from the environment, else the default.
+ */
+export function parseCommand(argv: readonly string[], env: Readonly<Record<string, string | undefined>> = {}): Command {
   let parsed;
   try {
     parsed = parseArgs({
@@ -117,7 +120,7 @@ export function parseCommand(argv: readonly string[]): Command {
     }
   }
 
-  const url = values.url ?? DEFAULT_URL;
+  const url = values.url ?? env['SKILL_ISSUE_URL'] ?? DEFAULT_URL;
   if (!URL.canParse(url)) {
     return { kind: 'invalid', message: `"${url}" is not a URL` };
   }
