@@ -4,7 +4,10 @@ A study application for one person. Load a subject, take its lessons, get tested
 
 The application ships with no subjects. A subject is a pack of source material, lessons and questions that you — or an AI assistant working for you — write and load through the API.
 
-**Status: in development, before 1.0.** A subject can be loaded, studied lesson by lesson with checks, examined, reviewed on a schedule, annotated and followed over time in the browser; reviewed, backed up and restored from the command line. The install guide and the guide for writing a subject with an AI assistant are not written yet.
+**Status: in development, before 1.0.** A subject can be loaded, studied lesson by lesson with checks, examined, reviewed on a schedule, annotated and followed over time in the browser; reviewed, examined, backed up and restored from the command line.
+
+- **Installing it:** [`docs/install.md`](docs/install.md) — Docker and three commands.
+- **Writing a subject**, yourself or with an AI assistant: [`docs/authoring-guide.md`](docs/authoring-guide.md); hand it to the assistant.
 
 ## Running it
 
@@ -74,4 +77,6 @@ pnpm run test:e2e                                        # builds, then drives t
 
 - [`docs/architecture.md`](docs/architecture.md) — how it is built, and why
 - [`docs/design.md`](docs/design.md) — how it behaves for the person studying
-- [`docs/content-format.md`](docs/content-format.md) — the subject pack format (draft)
+- [`docs/content-format.md`](docs/content-format.md) — the subject pack format, version 1
+- [`docs/authoring-guide.md`](docs/authoring-guide.md) — writing a subject, for a person or an AI assistant
+- [`docs/install.md`](docs/install.md) — installing, loading a subject, backing up

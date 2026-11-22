@@ -1,8 +1,8 @@
-# Subject pack format — draft of version 1
+# Subject pack format — version 1
 
 A subject pack is one subject as a folder of files. This document describes the format; the JSON Schema generated from the application's own definitions is the authority, and the application rejects anything that does not match it. A running application serves that schema at `/api/v1/content/schema/pack.json`, and `examples/example-subject/` in the repository is a complete pack that uses every part of the format.
 
-**Status: draft.** The format becomes version 1 when the first real subject has been written to it and loaded. Until then it may change.
+**Version 1.** A pack states `formatVersion: 1`. A later version of the format will be a new number, and a pack written for version 1 keeps loading. How to write a subject in this format, step by step, is in [`authoring-guide.md`](authoring-guide.md).
 
 ## Layout
 
