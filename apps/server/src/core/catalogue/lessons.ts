@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ItemIdSchema, LessonSchema, SourceSchema, type ShownLesson, type ShownStep } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
 import { err, ok, type Result } from '../result.js';
+import { LIVE_SUBJECT } from './live.js';
 
 /**
  * The read behind taking a lesson: its steps in the language asked for, its
@@ -56,7 +57,7 @@ function sameShape(original: readonly ShownStep[], translated: readonly ShownSte
 }
 
 export async function shownLesson(db: Db, subjectId: string, lessonId: string, language: string | undefined): Promise<Result<ShownLesson, LessonReadError>> {
-  const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+  const subjects = await db.query(LIVE_SUBJECT, [subjectId]);
   const subject = subjects[0];
   if (subject === undefined) {
     return err({ kind: 'no-subject' });

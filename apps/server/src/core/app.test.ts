@@ -112,7 +112,7 @@ describe('the content module', () => {
       '/backup': ['get', 'post'],
       '/content/packs': ['post'],
       '/content/subjects': ['get'],
-      '/content/subjects/{subjectId}': ['get'],
+      '/content/subjects/{subjectId}': ['get', 'delete'],
       '/content/subjects/{subjectId}/assets/{file}': ['get'],
       '/content/subjects/{subjectId}/pack': ['get'],
       '/content/subjects/{subjectId}/{collection}/{itemId}': ['put'],

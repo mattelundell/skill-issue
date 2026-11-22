@@ -241,6 +241,26 @@ export function contentRoutes({ catalogue, maxBodyBytes }: ModuleContext): OpenA
   });
 
   routes.openAPIRegistry.registerPath({
+    method: 'delete',
+    path: '/subjects/{subjectId}',
+    summary: 'Remove a subject from the application, keeping its history.',
+    description:
+      'The subject is no longer listed and reads as missing everywhere: its path, lessons, review and progress. Nothing is deleted — its items, every revision and the learner\'s history with it are kept, the record being append-only — so loading its pack again brings it back as it was.',
+    request: { params: z.object({ subjectId: ItemIdSchema }) },
+    responses: {
+      204: { description: 'Removed.' },
+      404: { description: 'No such subject, or it is already removed.', content: problemContent },
+    },
+  });
+  routes.delete('/subjects/:subjectId', async (c) => {
+    const subjectId = c.req.param('subjectId');
+    if (!ItemIdSchema.safeParse(subjectId).success || !(await catalogue.remove(subjectId))) {
+      return c.json(problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`), 404);
+    }
+    return c.body(null, 204);
+  });
+
+  routes.openAPIRegistry.registerPath({
     method: 'get',
     path: '/subjects/{subjectId}/pack',
     summary: 'Export a subject as a pack: JSON, or with format=zip the pack folder as a zip archive.',

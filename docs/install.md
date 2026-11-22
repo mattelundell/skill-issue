@@ -54,6 +54,8 @@ It says what will be added, or lists every fault, each naming the file and field
 
 A new installation opens on a short introduction to the application, loaded on its first start; once taken, it leaves the start page. To see a fuller subject before writing one of your own, load the example: `docker compose run --rm cli load examples/example-subject`.
 
+A subject you no longer want is removed with `curl -X DELETE http://127.0.0.1:4747/api/v1/content/subjects/<subject-id>`. It leaves the application, but nothing is deleted: loading its pack again brings it back with your history.
+
 Without the command-line tool, a pack can be sent as a zip archive of its folder: `curl -X POST -H 'content-type: application/zip' --data-binary @my-subject.zip http://127.0.0.1:4747/api/v1/content/packs`.
 
 ## 5. Study in the terminal, and keep a backup

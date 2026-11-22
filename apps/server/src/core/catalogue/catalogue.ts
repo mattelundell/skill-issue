@@ -27,6 +27,7 @@ import { shownLesson, type LessonReadError } from './lessons.js';
 import { examPlan, shownQuestions, type ExamPlan, type QuestionReadError, type ShownQuestion } from './questions.js';
 import { glossary } from './glossary.js';
 import { sourceLibrary, sourcePage, type CataloguePage, type SourcePageError } from './sources.js';
+import { LIVE_SUBJECT } from './live.js';
 
 /** Why one item could not be put into a subject. */
 export type UpdateError = { readonly kind: 'no-subject' } | { readonly kind: 'faults'; readonly faults: readonly ContentFault[] };
@@ -51,6 +52,13 @@ export interface Catalogue {
     options: { readonly dryRun: boolean },
   ): Promise<Result<ItemLoadResult, UpdateError>>;
   listSubjects(): Promise<readonly SubjectSummary[]>;
+  /**
+   * Takes a subject out of the application by retiring its own entry: it is no
+   * longer listed and reads as missing, and everything else — its items, every
+   * revision, the learner's history with it — is kept, so loading its pack again
+   * brings it back as it was. False when there is no such live subject.
+   */
+  remove(subjectId: string): Promise<boolean>;
   /**
    * The subject's path in `language`, each entry falling back to the default
    * language where it has no translation; undefined when there is no such subject.
@@ -357,7 +365,7 @@ const loadOn = async (on: Db, pack: Pack, { dryRun }: { readonly dryRun: boolean
 
 /** The subject's current items as a pack, read on `on`. */
 const exportOn = async (on: Db, subjectId: string): Promise<Pack | undefined> => {
-  const subjects = await on.query('SELECT default_language, format_version FROM catalogue.subject WHERE id = $1', [subjectId]);
+  const subjects = await on.query(LIVE_SUBJECT, [subjectId]);
   const subject = subjects[0];
   if (subject === undefined) {
     return undefined;
@@ -457,7 +465,7 @@ export function createCatalogue(db: Db): Catalogue {
   };
 
   const outline = async (subjectId: string, language: string | undefined): Promise<SubjectOutline | undefined> => {
-    const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+    const subjects = await db.query(LIVE_SUBJECT, [subjectId]);
     const subject = subjects[0];
     if (subject === undefined) {
       return undefined;
@@ -520,7 +528,7 @@ export function createCatalogue(db: Db): Catalogue {
   };
 
   const banks = async (subjectId: string): Promise<readonly LessonBank[] | undefined> => {
-    const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+    const subjects = await db.query(LIVE_SUBJECT, [subjectId]);
     const subject = subjects[0];
     if (subject === undefined) {
       return undefined;
@@ -551,8 +559,12 @@ export function createCatalogue(db: Db): Catalogue {
     });
   };
 
+  const remove = async (subjectId: string): Promise<boolean> =>
+    (await db.query("UPDATE catalogue.entry SET retired_at = now() WHERE subject_id = $1 AND kind = 'subject' AND retired_at IS NULL RETURNING id", [subjectId])).length > 0;
+
   return {
     load,
+    remove,
     exportPack,
     update,
     listSubjects,
