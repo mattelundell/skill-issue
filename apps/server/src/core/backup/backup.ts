@@ -1,7 +1,7 @@
 import { BACKUP_FORMAT, BACKUP_FORMAT_VERSION, type Backup, type BackupTable, type RestoreResult } from '@skill-issue/contract';
 import { z } from 'zod';
 import type { Db } from '../db.js';
-import { describeThrown } from '../log.js';
+import { describeThrown, log } from '../log.js';
 import { APPEND_LOCK } from '../record/record.js';
 import type { Registry } from '../registry.js';
 import { err, ok, type Result } from '../result.js';
@@ -94,6 +94,38 @@ function differingOwners(backup: Backup, here: Record<string, string[]>, owners:
 }
 
 /**
+ * A new installation is given the introduction on its first start, so one that
+ * holds nothing else is as good as empty: when every subject in it is an
+ * introduction and nothing of the learner's is held — no answer, no lesson
+ * begun, no note — the introduction is removed to make way for the backup. An
+ * introduction the learner has begun is their history, and is left for the
+ * emptiness check to refuse.
+ */
+async function clearUntouchedIntroduction(tx: Db, declared: readonly OwnedTable[]): Promise<void> {
+  const subjects = await tx.query(
+    `SELECT s.id, r.body->>'role' AS role
+       FROM catalogue.subject s
+       JOIN catalogue.entry e ON e.subject_id = s.id AND e.kind = 'subject' AND e.language = s.default_language
+       JOIN catalogue.revision r ON r.subject_id = e.subject_id AND r.kind = e.kind AND r.id = e.id
+                                AND r.language = e.language AND r.revision = e.current_revision`,
+  );
+  if (subjects.length === 0 || subjects.some((subject) => subject['role'] !== 'introduction')) {
+    return;
+  }
+  for (const { table } of declared.filter(({ table: name }) => !name.startsWith('catalogue.'))) {
+    const held = await tx.query(`SELECT EXISTS (SELECT 1 FROM ${table}) AS held`);
+    if (held[0]?.['held'] === true) {
+      return;
+    }
+  }
+  // Revisions first: an entry's tie to its current revision is checked only at commit.
+  for (const table of ['catalogue.revision', 'catalogue.entry', 'catalogue.item', 'catalogue.asset', 'catalogue.subject']) {
+    await tx.query(`DELETE FROM ${table}`);
+  }
+  log.info('restore.introduction-cleared', { subjects: subjects.map((subject) => String(subject['id'])) });
+}
+
+/**
  * Restores a backup into an empty installation, in one transaction: either all
  * of it is written or none of it is. A dry run does the same and rolls back, so
  * it finds every fault a real restore would, the database's own checks included.
@@ -114,6 +146,7 @@ export async function restoreBackup(db: Db, registry: Registry, backup: Backup, 
       if (differing.length > 0) {
         throw new RestoreAbort({ kind: 'other-migrations', owners: differing });
       }
+      await clearUntouchedIntroduction(tx, declared);
       for (const { table } of declared) {
         const held = await tx.query(`SELECT EXISTS (SELECT 1 FROM ${table}) AS held`);
         if (held[0]?.['held'] === true) {
