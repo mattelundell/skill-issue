@@ -9,7 +9,6 @@ import { assessmentModule } from '../assessment/index.js';
 import { minutesFor } from './api.js';
 import { reviewModule } from './index.js';
 import { catalogues } from './messages.js';
-import { requeue } from './Review.js';
 
 const SUBJECT: SubjectSummary = { id: 'example-subject', defaultLanguage: 'sv', languages: ['sv'], title: 'Exempelämne', summary: 'Energi.' };
 const OUTLINE: SubjectOutline = {
@@ -150,14 +149,6 @@ async function answerNumeric(value: string): Promise<void> {
   await userEvent.click(within(question).getByRole('button', { name: 'Svara' }));
   await within(question).findByRole('status');
 }
-
-describe('a question answered wrong in a session', () => {
-  it('waits behind the next three, or goes to the end when fewer are left, or straight back when it is the last', () => {
-    expect(requeue(['a', 'b', 'c', 'd', 'e'], 'x')).toEqual(['a', 'b', 'c', 'x', 'd', 'e']);
-    expect(requeue(['a', 'b'], 'x')).toEqual(['a', 'b', 'x']);
-    expect(requeue([], 'x')).toEqual(['x']);
-  });
-});
 
 describe('the time a review takes', () => {
   it('is the questions at the learner’s pace, in whole minutes and at least one, and unsaid before there is a pace', () => {

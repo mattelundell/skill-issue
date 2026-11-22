@@ -30,3 +30,18 @@ export const DueCountsSchema = z.object({
   questions: z.array(z.object({ subjectId: ItemIdSchema, questionId: ItemIdSchema })),
 });
 export type DueCounts = z.infer<typeof DueCountsSchema>;
+
+/** How many other questions a question answered wrong waits behind before it is asked again in the same session. */
+export const AGAIN_AFTER = 3;
+
+/**
+ * Where a question answered wrong goes back into a review session's queue:
+ * behind the next three, or at the end when fewer are left. With nothing else
+ * left it comes straight back — the learner has just read why, and the session
+ * ends only when every question in it has been answered right once. Every front
+ * end that runs a session uses this one rule.
+ */
+export function requeue<T>(rest: readonly T[], wrong: T): readonly T[] {
+  const at = Math.min(AGAIN_AFTER, rest.length);
+  return [...rest.slice(0, at), wrong, ...rest.slice(at)];
+}
