@@ -286,7 +286,7 @@ describe('restoring', () => {
     // text/plain is a type a page on any site may send without the browser asking the application first.
     const response = await target.app.request('/api/v1/backup', { method: 'POST', headers: { 'content-type': 'text/plain' }, body: JSON.stringify(backup) });
 
-    expect({ status: response.status, title: ((await response.json()) as { title: string }).title }).toEqual({ status: 415, title: 'Send a backup as application/json' });
+    expect({ status: response.status, title: ((await response.json()) as { title: string }).title }).toEqual({ status: 415, title: 'Send the request as application/json' });
     expect(await rowsOf(target, 'catalogue.subject')).toEqual([]);
   });
 });

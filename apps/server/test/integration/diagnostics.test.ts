@@ -26,7 +26,8 @@ afterEach(async () => {
 async function call(path: string, init: { method?: string; body?: unknown } = {}): Promise<{ status: number; json: unknown }> {
   const response = await here.app.request(path, {
     method: init.method ?? 'GET',
-    ...(init.body === undefined ? {} : { headers: { 'content-type': 'application/json' }, body: JSON.stringify(init.body) }),
+    // A write always goes as JSON, as the browser sends it; one with no body of its own sends an empty object.
+    ...(init.method === 'POST' || init.body !== undefined ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(init.body ?? {}) } : {}),
   });
   const text = await response.text();
   return { status: response.status, json: text === '' ? undefined : JSON.parse(text) };

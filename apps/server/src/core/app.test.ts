@@ -248,3 +248,45 @@ describe('modules observing requests', () => {
     expect(told.map(({ url }) => url)).toEqual(['/api/v1/health']);
   });
 });
+
+/** Every route that changes something, as the application with every module mounts it, with each parameter filled. */
+const writes = (): readonly { method: string; path: string }[] => {
+  const seen = new Set<string>();
+  return appWith(modules)
+    .routes.filter(({ method, path }) => ['POST', 'PUT', 'PATCH'].includes(method) && path.startsWith('/api/v1/'))
+    .map(({ method, path }) => ({ method, path: path.replace(/:[A-Za-z]+(\{[^}]*\})?/g, '1') }))
+    .filter(({ method, path }) => !seen.has(`${method} ${path}`) && Boolean(seen.add(`${method} ${path}`)));
+};
+
+describe('writes from another site', () => {
+  it('are found on every module that writes', () => {
+    const owners = new Set(writes().map(({ path }) => path.split('/')[3]));
+    expect([...owners].toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))).toEqual(['assessment', 'backup', 'content', 'diagnostics', 'lessons', 'notes']);
+  });
+
+  it.each(writes().map(({ method, path }) => [`${method} ${path}`, method, path]))('%s refuses a body sent as plain text, a form or nothing', async (_name, method, path) => {
+    const app = appWith(modules);
+    const sent: { label: string; init: RequestInit }[] = [
+      ...['text/plain', 'application/x-www-form-urlencoded', 'multipart/form-data; boundary=x'].map((type) => ({ label: type, init: { method, headers: { 'content-type': type }, body: '{}' } })),
+      // A string body is labelled text/plain by the Request itself; bytes, or no body, carry no type at all.
+      { label: 'bytes with no type', init: { method, body: new TextEncoder().encode('{}') } },
+      { label: 'no body', init: { method } },
+    ];
+    for (const { label, init } of sent) {
+      const response = await app.request(path, init);
+      const body: unknown = await response.json();
+      expect({ label, status: response.status, body }).toMatchObject({ label, status: 415, body: { title: 'Send the request as application/json' } });
+    }
+  });
+
+  it('lets JSON and a zip archive through to the route, and a removal, which a browser never sends unasked', async () => {
+    const app = appWith(modules);
+
+    const json = await app.request('/api/v1/diagnostics/recordings', { method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' }, body: 'not json' });
+    const zip = await app.request('/api/v1/content/packs', { method: 'POST', headers: { 'content-type': 'application/zip' }, body: 'not a zip' });
+    const removal = await app.request('/api/v1/diagnostics/recordings/1', { method: 'DELETE' });
+
+    // Each reached its route, which judged the body itself.
+    expect([json.status, zip.status, removal.status]).toEqual([400, 422, 404]);
+  });
+});
