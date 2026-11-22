@@ -99,6 +99,10 @@
 
   .lesson[data-reading="focus"] .lesson-head, .lesson[data-reading="focus"] .lesson-grid { max-width: calc(var(--measure) + 62px); margin-left: auto; margin-right: auto; }
   .lesson[data-reading="focus"] .lesson-grid { grid-template-columns: minmax(0, 1fr); }
+  /* The end of a lesson stands where its text stood: the text column's width, under the heading's column. */
+  /* Both are set in the reading type, so --measure is the text column's width; the sources line inside keeps its own type. */
+  .lesson .end, .lesson .lesson-foot { max-width: calc(var(--measure) + 62px); margin-left: auto; margin-right: auto; font-size: var(--read); }
+  .lesson[data-reading="bench"] .end, .lesson[data-reading="bench"] .lesson-foot { position: relative; left: calc((24px + 21rem) / -2); }
   /* In focus mode what is open beside the lesson is a drawer at the window's edge, and never narrows the text. */
   .lesson[data-reading="focus"] .lesson-sides { position: fixed; top: 0; right: 0; bottom: 0; width: min(26rem, 32vw); padding: 18px; overflow: auto; background: var(--paper); border-left: 1px solid var(--rule); box-shadow: -10px 0 30px rgb(0 0 0 / 8%); z-index: 15; }
   .lesson[data-reading="focus"]:has(.lesson-sides) .lesson-head,
@@ -115,6 +119,7 @@
   .lesson[data-reading="bench"] .lesson-head { max-width: calc(13rem + 24px + var(--measure) + 62px + 24px + 21rem); padding-left: calc(13rem + 24px); padding-right: calc(21rem + 24px); }
   /* The lesson's sources stand in the rail on the workbench, so not again at its foot. */
   .lesson[data-reading="bench"] .lesson-sources { display: none; }
+  .lesson[data-reading="bench"] .end, .lesson[data-reading="bench"] .lesson-foot { left: calc((13rem - 21rem) / 2); }
 }
 @media (max-width: 760px) {
   .reading-switch { display: none; }
