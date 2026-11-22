@@ -7,4 +7,5 @@ export const notesModule: ModuleManifest = {
   id: 'notes',
   migrations: noteMigrations,
   routes: notesRoutes,
+  personalData: ['notes.note'],
 };

@@ -26,12 +26,20 @@ export interface ModuleManifest {
   readonly migrations: readonly { readonly name: string; readonly sql: string }[];
   /** The module's API, mounted under `/api/v1/<id>`. */
   readonly routes?: (context: ModuleContext) => OpenAPIHono;
+  /**
+   * The tables in the module's own schema that hold what the learner did or
+   * wrote, as `<id>.<table>`, in the order they are restored: a table after the
+   * tables it refers to. They go into a backup. A table the module can rebuild
+   * from the learning record is left out, and rebuilt after a restore.
+   */
+  readonly personalData?: readonly string[];
 }
 
 export type RegistryError =
   | { readonly kind: 'invalid-id'; readonly id: string }
   | { readonly kind: 'reserved-id'; readonly id: string }
-  | { readonly kind: 'duplicate-id'; readonly id: string };
+  | { readonly kind: 'duplicate-id'; readonly id: string }
+  | { readonly kind: 'foreign-table'; readonly id: string; readonly table: string };
 
 export interface Registry {
   readonly modules: readonly ModuleManifest[];
@@ -39,7 +47,13 @@ export interface Registry {
 }
 
 /** Path segments and migration owners the core keeps for itself. */
-const RESERVED_IDS: ReadonlySet<string> = new Set(['core', 'platform', 'health', 'openapi']);
+const RESERVED_IDS: ReadonlySet<string> = new Set(['core', 'platform', 'health', 'openapi', 'backup']);
+
+/** A table in the module's own schema, named so that it can stand in SQL as written. */
+const ownTable = (id: string, table: string): boolean => {
+  const [schema, name, ...rest] = table.split('.');
+  return schema === id && name !== undefined && rest.length === 0 && /^[a-z][a-z0-9_]*$/.test(name);
+};
 
 export function createRegistry(modules: readonly ModuleManifest[]): Result<Registry, RegistryError> {
   const seen = new Set<string>();
@@ -54,6 +68,12 @@ export function createRegistry(modules: readonly ModuleManifest[]): Result<Regis
       return err({ kind: 'duplicate-id', id });
     }
     seen.add(id);
+  }
+  for (const { id, personalData = [] } of modules) {
+    const foreign = personalData.find((table) => !ownTable(id, table));
+    if (foreign !== undefined) {
+      return err({ kind: 'foreign-table', id, table: foreign });
+    }
   }
   return ok({
     modules,

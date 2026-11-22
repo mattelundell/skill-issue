@@ -103,7 +103,7 @@ export interface LearningRecord {
 }
 
 /** The advisory lock every append holds until its transaction ends. Any number no other code locks; this one spells "record". */
-const APPEND_LOCK = 0x7265636f7264;
+export const APPEND_LOCK = 0x7265636f7264;
 
 const ANSWER_COLUMNS = 'seq, at, time_zone, subject_id, item_id, language, revision, setting, concepts, question_type, options, given, correct';
 

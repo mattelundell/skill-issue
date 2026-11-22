@@ -7,4 +7,5 @@ export const lessonsModule: ModuleManifest = {
   id: 'lessons',
   migrations: positionMigrations,
   routes: lessonsRoutes,
+  personalData: ['lessons.position'],
 };

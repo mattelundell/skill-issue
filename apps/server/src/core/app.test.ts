@@ -93,12 +93,12 @@ describe('errors', () => {
 });
 
 describe('OpenAPI document', () => {
-  it('describes the health endpoint', async () => {
+  it('describes the core’s own endpoints: health and backup', async () => {
     const response = await appWith([]).request('/api/v1/openapi.json');
     const document = (await response.json()) as { info: unknown; paths: Record<string, unknown> };
 
     expect(document.info).toEqual({ title: 'Skill Issue', version: '9.9.9' });
-    expect(Object.keys(document.paths)).toEqual(['/health']);
+    expect(Object.keys(document.paths)).toEqual(['/health', '/backup']);
   });
 });
 
@@ -109,6 +109,7 @@ describe('the content module', () => {
 
     expect(Object.fromEntries(Object.entries(document.paths).map(([path, methods]) => [path, Object.keys(methods)]))).toEqual({
       '/health': ['get'],
+      '/backup': ['get', 'post'],
       '/content/packs': ['post'],
       '/content/subjects': ['get'],
       '/content/subjects/{subjectId}': ['get'],

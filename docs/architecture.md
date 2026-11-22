@@ -70,6 +70,7 @@ A module is a folder. It declares itself through one manifest and may contribute
 - commands in the command-line tool
 - handlers for events in the learning record
 - message catalogues for its interface text
+- the tables it owns that hold what the learner did or wrote, which go into a backup
 
 Rules for modules:
 
@@ -219,6 +220,7 @@ Progress owns no tables: every figure is computed from the record and the catalo
 - **Validation is strict and the errors are written to be acted on.** A rejected request returns a problem document listing every fault with the path to the offending field, what was expected and what was found. An AI assistant should be able to correct its output from the response alone.
 - A **dry-run** flag validates without storing.
 - **Export** returns a subject in the same format it is loaded in.
+- **Backup** returns the whole installation as one file, and restores it into an empty one (see "Storage").
 
 ## Subject packs
 
@@ -229,7 +231,7 @@ A subject pack is a subject in file form: a folder of YAML and Markdown that mir
 A pack is made to be handed to someone else.
 
 - Export writes a pack as a folder or as a single zip archive. Load accepts either.
-- **A pack holds the subject and nothing about the person who studied it.** Notes, answers, progress and settings are never part of a pack; they belong to the personal backup.
+- **A pack holds the subject and nothing about the person who studied it.** Notes, answers and progress are never part of a pack; they belong to the backup.
 - A pack names its format version and carries its own sources and assets, so it loads on any installation that supports that version, with no network access.
 - Loading a pack whose subject identifier already exists is treated as an update of that subject and shows what would change before anything is stored. To keep both, the subject is loaded under a new identifier.
 - An archive is unpacked defensively: entries that would land outside the pack folder are refused, and size and file count are bounded.
@@ -245,7 +247,8 @@ An **authoring guide** written for an AI assistant ships with the application. I
 - The learning record is one table, indexed by time and by item.
 - Each module's tables live in its own schema and are created by its own migrations.
 - Notes are indexed for full-text search. The index uses PostgreSQL's `simple` configuration, which lowercases and splits words without stemming, because a note may be written in any language and a Swedish stemmer would mangle an English note; a search matches every word given at the start of a word, which does the work stemming would. A note is stored against its lesson and step only, never its area, so a lesson moved between areas takes its notes with it; one on a lesson the subject no longer holds is kept and listed apart.
-- **Backup** is two exports: subjects as packs, and personal data — notes, settings and the learning record — as one archive. Restoring both on a fresh install reproduces the learner's state.
+- **Backup** is one JSON file of the whole installation, written and restored through `/api/v1/backup`: every subject with every revision it has held, the learning record, and each module's tables that hold what the learner did or wrote — notes, where each lesson was left, exam sittings. Packs are not enough for it, because a pack carries only each item's current revision and the record names the revision that was answered; a backup made of packs could not be restored. A table a module rebuilds from the record, such as review's memory, is left out and rebuilt on its first read. Settings the browser keeps — interface language, content language, reading mode — belong to the device and are not in it.
+- **A backup restores only into an empty installation of the version that wrote it**, in one transaction, with the record's row numbers kept. Empty, because merging two learners' records, or a record into subjects loaded since, has no answer that is right every time. The same version, because a row's shape is set by the migrations applied when it was written: the backup names them per owner, and a restore whose migrations differ for any owner it holds tables of is refused. A table that no owner here names as its own is refused too, so a backup cannot write into any table it likes. A dry run does the whole restore and rolls it back, so it finds every fault the database's own checks would.
 
 ## Security
 

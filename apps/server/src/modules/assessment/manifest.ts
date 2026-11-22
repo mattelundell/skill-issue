@@ -7,4 +7,5 @@ export const assessmentModule: ModuleManifest = {
   id: 'assessment',
   migrations: sittingMigrations,
   routes: assessmentRoutes,
+  personalData: ['assessment.sitting'],
 };
