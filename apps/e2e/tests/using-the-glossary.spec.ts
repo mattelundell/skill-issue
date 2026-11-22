@@ -84,3 +84,31 @@ test('a term opens from the keyboard and closes with Escape, back on the term', 
   await expect(page.locator('.term-card')).toHaveCount(0);
   await expect(step.getByRole('button', { name: 'energi' })).toBeFocused();
 });
+
+test('a card near the foot of the window opens above its term, so it is never cut off', async ({ page }) => {
+  await page.goto(`${LESSON}/1`);
+  const step = page.locator('article.step');
+  const mark = step.getByRole('button', { name: 'Effekt' });
+  await expect(mark).toBeVisible();
+
+  // A window that ends just under the term leaves no room below it.
+  const at = await mark.boundingBox();
+  expect(at).toBeTruthy();
+  if (at === null) {
+    return;
+  }
+  await page.setViewportSize({ width: 1280, height: Math.ceil(at.y + at.height + 40) });
+  await mark.hover();
+
+  const card = page.locator('.term-card');
+  await expect(card).toBeVisible();
+  const box = await card.boundingBox();
+  const now = await mark.boundingBox();
+  const height = page.viewportSize()?.height ?? 0;
+  expect(box && now).toBeTruthy();
+  if (box && now) {
+    expect(box.y + box.height).toBeLessThanOrEqual(now.y);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.y + box.height).toBeLessThanOrEqual(height);
+  }
+});
