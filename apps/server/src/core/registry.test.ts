@@ -30,11 +30,30 @@ describe('createRegistry', () => {
     });
   });
 
-  it.each(['core', 'platform', 'health', 'openapi'])('refuses the reserved id %j', (id) => {
+  it.each(['core', 'platform', 'health', 'openapi', 'backup'])('refuses the reserved id %j', (id) => {
     expect(createRegistry([moduleNamed(id)])).toEqual({ ok: false, error: { kind: 'reserved-id', id } });
   });
 
   it.each(['Notes', 'my_module', '../etc', ''])('refuses the malformed id %j', (id) => {
     expect(createRegistry([moduleNamed(id)])).toEqual({ ok: false, error: { kind: 'invalid-id', id } });
+  });
+
+  it('keeps the tables a module names as the learner\'s own, in its own schema', () => {
+    const notes: ModuleManifest = { ...moduleNamed('notes'), personalData: ['notes.note'] };
+    const result = createRegistry([notes]);
+
+    expect(result.ok && result.value.modules[0]?.personalData).toEqual(['notes.note']);
+  });
+
+  it.each([
+    ['another module\'s schema', 'review.memory'],
+    ['the core\'s', 'record.event'],
+    ['no schema', 'note'],
+    ['a name SQL would read as more than a table', 'notes.note; DROP TABLE x'],
+  ])('refuses a module naming as its own a table in %s', (_case, table) => {
+    expect(createRegistry([{ ...moduleNamed('notes'), personalData: [table] }])).toEqual({
+      ok: false,
+      error: { kind: 'foreign-table', id: 'notes', table },
+    });
   });
 });

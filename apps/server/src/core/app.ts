@@ -1,6 +1,7 @@
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { API_PREFIX, HealthResponseSchema } from '@skill-issue/contract';
+import { backupRoutes } from './backup/routes.js';
 import { createCatalogue } from './catalogue/catalogue.js';
 import type { Db } from './db.js';
 import { createLearningRecord } from './record/record.js';
@@ -44,6 +45,8 @@ export function buildApp({ db, registry, version, webDir }: AppDependencies): Op
     const modules = registry.modules.map((module) => module.id);
     return c.json({ status: 'ok' as const, version, database: 'up' as const, modules }, 200);
   });
+
+  api.route('/', backupRoutes(db, registry, version));
 
   const context = { db, catalogue: createCatalogue(db), record: createLearningRecord(db) };
   for (const module of registry.modules) {
