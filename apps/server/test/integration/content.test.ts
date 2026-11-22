@@ -193,10 +193,20 @@ describe('loading a pack', () => {
   it('on a dry run reports what would change and stores nothing', async () => {
     await loadZip(example);
 
-    const { status, json } = await loadZip(edited(QUESTIONS_1, 'answer: b', 'answer: a'), here.app, '?dryRun=true');
+    // The answer changes in the original and its translation alike, as a translation must keep it.
+    const both = new Map(edited(QUESTIONS_1, 'answer: b', 'answer: a'));
+    const english = QUESTIONS_1.replace('questions.yaml', 'questions.en.yaml');
+    both.set(english, new TextEncoder().encode(new TextDecoder().decode(both.get(english)).replace('answer: b', 'answer: a')));
+    const { status, json } = await loadZip(both, here.app, '?dryRun=true');
 
     expect(status).toBe(200);
-    expect(json).toMatchObject({ stored: false, changed: [{ kind: 'question', id: 'kwh-eller-kw', language: 'sv' }] });
+    expect(json).toMatchObject({
+      stored: false,
+      changed: [
+        { kind: 'question', id: 'kwh-eller-kw', language: 'en' },
+        { kind: 'question', id: 'kwh-eller-kw', language: 'sv' },
+      ],
+    });
     expect(await here.db.query("SELECT count(*)::int AS n FROM catalogue.revision WHERE id = 'kwh-eller-kw' AND language = 'sv'")).toEqual([{ n: 1 }]);
     expect((await exported()).questions.find((q) => q.id === 'kwh-eller-kw' && q.language === 'sv')).toMatchObject({ answer: 'b' });
   });
@@ -229,8 +239,17 @@ describe('a rejected pack', () => {
       type: 'about:blank',
       title: 'The pack was not loaded',
       status: 422,
-      detail: '1 fault; correct each and send the pack again.',
+      detail: '2 faults; correct each and send the pack again.',
       faults: [
+        // The translation was not changed with its original, so it no longer matches it.
+        {
+          code: 'translation-mismatch',
+          file: QUESTIONS_1.replace('questions.yaml', 'questions.en.yaml'),
+          item: 'question kwh-eller-kw',
+          field: 'answer',
+          expected: 'the same as in the default language: "d"',
+          found: '"b"',
+        },
         { code: 'unknown-option', file: QUESTIONS_1, item: 'question kwh-eller-kw', field: 'answer', expected: 'one of the option ids ["a","b","c"]', found: '"d"' },
       ],
     });

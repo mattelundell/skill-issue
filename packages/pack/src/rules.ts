@@ -156,6 +156,24 @@ class RuleCheck {
           this.add(kind, item, 'missing-original', 'language', `the same ${kind} also in the default language ${describeValue(this.defaultLanguage)}`, describeValue(item.language));
         }
       }
+      if (kind === 'subject') {
+        // The subject entry's own fields are checked with the subject.
+        continue;
+      }
+      const original = new Map(items.filter((item) => item.language === this.defaultLanguage).map((item) => [item.id, item]));
+      for (const item of items) {
+        const source = original.get(item.id);
+        if (item.language === this.defaultLanguage || source === undefined) {
+          continue;
+        }
+        const theirs = new Map(structureOf(source));
+        for (const [field, value] of structureOf(item)) {
+          const expected = theirs.get(field);
+          if (theirs.has(field) && JSON.stringify(expected) !== JSON.stringify(value)) {
+            this.add(kind, item, 'translation-mismatch', field, `the same as in the default language: ${describeValue(expected)}`, describeValue(value));
+          }
+        }
+      }
     }
   }
 
@@ -375,4 +393,77 @@ class RuleCheck {
       this.add(kind, item, 'unknown-asset', field, 'a file in the pack, as assets/<file>', describeValue(target));
     }
   }
+}
+
+/**
+ * What a translation must keep from its original: everything but its words.
+ * A translation that gave another answer, other option ids, other steps or
+ * another exam would grade, schedule and resume differently by language,
+ * while progress attaches to the id and not the language. Each entry is a
+ * field and its value; a field the original lacks is not compared, so a
+ * question translated as another type is named once, by its type.
+ */
+/** An object's fields by name; nothing for anything else. */
+function fieldsOf(value: unknown): ReadonlyMap<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? new Map(Object.entries(value)) : new Map();
+}
+
+function structureOf(item: { readonly id: string; readonly language: string }): readonly (readonly [string, unknown])[] {
+  const fields: [string, unknown][] = [];
+  const read = fieldsOf(item);
+  const keep = (...names: readonly string[]): void => {
+    for (const name of names) {
+      if (read.has(name)) {
+        fields.push([name, read.get(name)]);
+      }
+    }
+  };
+  const examFields = (): void => {
+    if (read.has('exam')) {
+      const blueprint = fieldsOf(read.get('exam'));
+      fields.push(['exam.questions', blueprint.get('questions')], ['exam.passMark', blueprint.get('passMark')]);
+    }
+  };
+  const list = (name: string): readonly unknown[] => {
+    const value = read.get(name);
+    return Array.isArray(value) ? value : [];
+  };
+  if (read.has('body') && read.has('accessed')) {
+    // A source: where it came from, not what it is called.
+    keep('url', 'accessed', 'kind');
+  } else if (read.has('definition')) {
+    keep('sources');
+  } else if (read.has('steps')) {
+    keep('concepts', 'sources');
+    examFields();
+    const steps = list('steps').map(fieldsOf);
+    fields.push(['steps', steps.map((step) => step.get('type'))]);
+    for (const [index, step] of steps.entries()) {
+      if (step.get('type') === 'check') {
+        fields.push([`steps[${String(index)}].questions`, step.get('questions')]);
+      }
+    }
+  } else if (read.has('lessons')) {
+    keep('requires', 'lessons');
+    examFields();
+  } else if (read.has('prompt')) {
+    keep('type', 'lesson', 'concepts', 'sources');
+    const type = read.get('type');
+    const answer = read.get('answer');
+    if (type === 'single-choice' || type === 'multiple-choice') {
+      fields.push(['options', list('options').map((option) => fieldsOf(option).get('id'))], ['answer', answer]);
+    } else if (type === 'true-false') {
+      fields.push(['answer', answer]);
+    } else if (type === 'numeric') {
+      const numeric = fieldsOf(answer);
+      fields.push(['answer.value', numeric.get('value')], ['answer.tolerance', numeric.get('tolerance')]);
+    } else if (type === 'short-text') {
+      keep('caseSensitive');
+    } else if (type === 'ordering') {
+      fields.push(['items.length', list('items').length]);
+    } else if (type === 'matching') {
+      fields.push(['pairs.length', list('pairs').length]);
+    }
+  }
+  return fields;
 }
