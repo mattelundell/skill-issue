@@ -4,9 +4,10 @@ import type { RecordedAnswer } from '../record/record.js';
 
 /**
  * What the learner is expected to remember, from the learning record: the
- * scheduling model and which answers count. It is the core's so that every
- * module that reads it reads one model, rather than each keeping a copy that
- * could drift from the one review schedules with.
+ * scheduling model, which answers count, and the chance of recall a memory
+ * gives at a moment. It is the core's so that every module that reads it —
+ * review scheduling questions, progress showing mastery — reads one model, and
+ * a lesson is never called mastered while its questions are due.
  *
  * FSRS through its reference library, with everything that changes a due date
  * pinned. FSRS-6 is the model current Anki schedules with. Fuzz is off so that
@@ -125,4 +126,21 @@ export function remember(scheduler: Scheduler, answer: Pick<RecordedAnswer, 'at'
   }
   const card = last?.card ?? scheduler.newCard({ now: answer.at });
   return { card: scheduler.review({ card, grade: ratingOf(answer), now: answer.at }).card, countedAt: answer.at };
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The chance of recalling a question at a moment, from its memory: the model's
+ * forgetting curve at the time elapsed since it was last answered, in days and
+ * fractions of a day. It is the target, 90 %, at the moment the question falls
+ * due, and 0 for a question never answered.
+ */
+export function recallAt(scheduler: Scheduler, remembered: Remembered | undefined, at: Date): number {
+  const last = remembered?.card.lastReviewAt;
+  if (remembered === undefined || last === null || last === undefined) {
+    return 0;
+  }
+  const elapsedDays = Math.max(0, (at.getTime() - last.getTime()) / DAY_MS);
+  return scheduler.model.forgettingCurve(remembered.card, elapsedDays);
 }

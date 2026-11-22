@@ -6,6 +6,7 @@ export * from './content.js';
 export * from './glossary.js';
 export * from './lessons.js';
 export * from './notes.js';
+export * from './progress.js';
 export * from './reader.js';
 export * from './record.js';
 export * from './review.js';

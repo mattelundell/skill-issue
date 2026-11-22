@@ -59,8 +59,24 @@ export interface Catalogue {
   questions(subjectId: string, ids: readonly string[], language: string | undefined): Promise<Result<readonly ShownQuestion[], QuestionReadError>>;
   /** What an exam on a lesson or an area draws from, and how it is passed. */
   examPlan(subjectId: string, scope: ExamScope, language: string | undefined): Promise<Result<ExamPlan, QuestionReadError>>;
+  /**
+   * Every lesson the subject holds, in the order of its path, with its area, the
+   * concepts it teaches and the ids of the questions in its bank; undefined when
+   * there is no such subject. Ids only, with no text, so it reads the same in
+   * every language.
+   */
+  banks(subjectId: string): Promise<readonly LessonBank[] | undefined>;
   /** A file the subject currently carries, at its path in the pack such as `assets/figur.png`; undefined when it carries none there. */
   asset(subjectId: string, path: string): Promise<StoredAsset | undefined>;
+}
+
+/** One lesson's place in its subject and what it is examined on. */
+export interface LessonBank {
+  readonly areaId: string;
+  readonly lessonId: string;
+  readonly concepts: readonly string[];
+  /** In pack order. */
+  readonly questions: readonly string[];
 }
 
 /** A file as stored: its bytes, its media type, and a digest of the bytes that changes whenever they do. */
@@ -92,6 +108,10 @@ const StoredSubjectSchema = SubjectSchema.omit({ language: true });
 const StoredAreaSchema = AreaSchema.omit({ language: true });
 /** Only what the path shows of a lesson; its steps and bank are not read here. */
 const StoredLessonSchema = z.object({ title: LessonSchema.shape.title, summary: LessonSchema.shape.summary });
+
+const BankSubjectSchema = z.object({ areas: z.array(z.string()) });
+const BankAreaSchema = z.object({ lessons: z.array(z.string()) });
+const BankLessonSchema = z.object({ concepts: LessonSchema.shape.concepts });
 
 /** JSON with object keys sorted, so equal content always gives the same digest. */
 function canonical(value: unknown): string {
@@ -440,10 +460,43 @@ export function createCatalogue(db: Db): Catalogue {
     };
   };
 
+  const banks = async (subjectId: string): Promise<readonly LessonBank[] | undefined> => {
+    const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+    const subject = subjects[0];
+    if (subject === undefined) {
+      return undefined;
+    }
+    const rows = await db.query(
+      `SELECT e.kind, e.id, i.parent_id, i.position, r.body
+         FROM catalogue.entry e
+         JOIN catalogue.item i USING (subject_id, kind, id)
+         JOIN catalogue.revision r USING (subject_id, kind, id, language)
+        WHERE e.subject_id = $1 AND e.language = $2 AND e.kind IN ('subject', 'area', 'lesson', 'question')
+          AND r.revision = e.current_revision AND e.retired_at IS NULL
+        ORDER BY i.position, e.id`,
+      [subjectId, text(subject, 'default_language')],
+    );
+    const bodies = new Map(rows.map((row) => [`${text(row, 'kind')}\u0000${text(row, 'id')}`, row['body']]));
+    const questionsOf = Map.groupBy(rows.filter((row) => row['kind'] === 'question'), (row) => row['parent_id']);
+    const root = BankSubjectSchema.parse(bodies.get(`subject\u0000${subjectId}`));
+    return root.areas.flatMap((areaId) => {
+      const area = bodies.get(`area\u0000${areaId}`);
+      return area === undefined
+        ? []
+        : BankAreaSchema.parse(area).lessons.flatMap((lessonId) => {
+            const lesson = bodies.get(`lesson\u0000${lessonId}`);
+            return lesson === undefined
+              ? []
+              : [{ areaId, lessonId, concepts: BankLessonSchema.parse(lesson).concepts, questions: (questionsOf.get(lessonId) ?? []).map((row) => text(row, 'id')) }];
+          });
+    });
+  };
+
   return {
     load,
     exportPack,
     listSubjects,
+    banks,
     outline,
     sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
     sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),
