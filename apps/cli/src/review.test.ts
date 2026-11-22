@@ -203,6 +203,22 @@ describe('a review session in the terminal', () => {
     expect(terminal.shown()).toContain('✗ Wrong. The answer: 0,71 kWh/m² (± 0,005)\n');
   });
 
+  it('prints no control character from the subject’s material, so a pack cannot move the cursor, clear the screen or retitle the terminal', async () => {
+    const hostile: AskedQuestion = { ...single, prompt: 'Vilken enhet?\u001b[2J\u001b]0;pwned\u0007', options: [{ id: 'a', text: 'kWh\u009b31m' }, { id: 'b', text: 'kW\r' }] };
+    const app = fakeApplication({ subjectId: 'energi', questions: ['kwh-eller-kw'], scheduled: 1, next: null, typicalAnswerMs: null }, { energi: [hostile] }, (questionId) => ({
+      ...gradeByKey(questionId, { type: 'single-choice', option: 'a' }),
+      explanation: 'Därför.\u001b[1A',
+    }));
+    const terminal = scriptedTerminal('1');
+
+    await review({ subject: 'energi', url: APP_URL }, { terminal, fetch: app.fetch, now: steppingClock(), timeZone: ZONE });
+
+    expect(terminal.shown()).toContain('Vilken enhet?[2J]0;pwned\n  1  kWh31m\n  2  kW\n');
+    expect(terminal.shown()).toContain('  Därför.[1A\n');
+    const controls = Array.from(terminal.shown().matchAll(/[^]/gu), ([char]) => char.codePointAt(0) ?? 0).filter((code) => (code <= 0x1f && code !== 0x09 && code !== 0x0a) || (code >= 0x7f && code <= 0x9f));
+    expect(controls).toEqual([]);
+  });
+
   it('asks again, without sending anything, when what is typed is not an answer', async () => {
     const app = fakeApplication({ subjectId: 'energi', questions: ['kwh-eller-kw'], scheduled: 1, next: null, typicalAnswerMs: null }, { energi: [single] }, gradeByKey);
     const terminal = scriptedTerminal('kW', '2');
