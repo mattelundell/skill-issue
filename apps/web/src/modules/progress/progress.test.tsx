@@ -111,15 +111,21 @@ describe('the Progress tab', () => {
     open('/subjects/example-subject/progress');
 
     const summary = await screen.findByText('av ämnets frågor minns du just nu');
-    expect(summary.closest('p')?.textContent).toBe(`${percent(0.4129, 'sv')} av ämnets frågor minns du just nu`);
-    expect(percent(0.4129, 'sv')).toBe('41 %');
+    expect(summary.closest('p')?.textContent).toBe(`${percent(0.4129, 'sv', 0.9)} av ämnets frågor minns du just nu`);
+    expect(percent(0.4129, 'sv', 0.9)).toBe('41 %');
+    // To the nearest percent: every question remembered, a moment after, is 100 %, not 99 %.
+    expect(percent(0.996, 'sv', 0.9)).toBe('100 %');
+    expect(percent(0.4171, 'sv', 0.9)).toBe('42 %');
+    // But never up to the target from below it: 89.96 % of a 90 % target is not on it.
+    expect(percent(0.8996, 'sv', 0.9)).toBe('89 %');
+    expect(percent(0.9, 'sv', 0.9)).toBe('90 %');
     expect(screen.getByText('Du har svarat på 5 av 8 frågor.')).toBeTruthy();
     expect(screen.getByText(/minst 90 % av dess frågor/)).toBeTruthy();
     // The tab is named in the subject's tabs.
     expect(screen.getByRole('link', { name: 'Framsteg' }).getAttribute('href')).toBe('/subjects/example-subject/progress');
   });
 
-  it('gives each area and lesson its share remembered, rounded down so a lesson short of the target never reads as on it, with which are passed and mastered, each lesson linked', async () => {
+  it('gives each area and lesson its share remembered, to the nearest percent but never up to the target from below, so a lesson short of it never reads as on it, with which are passed and mastered, each lesson linked', async () => {
     open('/subjects/example-subject/progress');
 
     const grunder = await screen.findByRole('region', { name: 'Grunder' });

@@ -12,11 +12,15 @@ export const fetchProgress = async (subjectId: string, language: string | undefi
   );
 
 /**
- * A share as a whole percentage, rounded down: a lesson at 89.6 % is short of
- * a 90 % target, and saying "90 %" beside it would be the one number that lies.
+ * A share as a whole percentage, to the nearest one — every question remembered
+ * a moment ago reads 100 %, not 99 % — but never rounded up to the target from
+ * below it: a lesson at 89.6 % is short of a 90 % target, and "90 %" beside it
+ * would be the one number that lies.
  */
-export function percent(share: number, language: 'sv' | 'en'): string {
-  return new Intl.NumberFormat(language === 'sv' ? 'sv-SE' : 'en-GB', { style: 'percent', maximumFractionDigits: 0 }).format(Math.floor(share * 100 + 1e-9) / 100);
+export function percent(share: number, language: 'sv' | 'en', target: number): string {
+  const nearest = Math.round(share * 100);
+  const whole = share < target && nearest >= target * 100 ? Math.ceil(target * 100) - 1 : nearest;
+  return new Intl.NumberFormat(language === 'sv' ? 'sv-SE' : 'en-GB', { style: 'percent', maximumFractionDigits: 0 }).format(whole / 100);
 }
 
 /** A concept as its id names it, words apart: the content format gives concepts no names of their own. */

@@ -48,7 +48,11 @@ test.afterEach(({ page }) => {
  * subject loaded, the resume panel offers it and its row is hidden.
  */
 
-const percent = (share: number): string => `${String(Math.floor(share * 100 + 1e-9))} %`;
+/** As the page writes a share: to the nearest percent, but never up to the target from below it. */
+const percent = (share: number, target: number): string => {
+  const nearest = Math.round(share * 100);
+  return `${String(share < target && nearest >= target * 100 ? Math.ceil(target * 100) - 1 : nearest)} %`;
+};
 
 test('the Progress tab shows what is remembered by area and lesson, the last days and the weak spots, as the server counts them', async ({ page, request }) => {
   const response = await request.get('/api/v1/progress/subjects/example-subject?timeZone=Europe/Stockholm');
@@ -60,14 +64,14 @@ test('the Progress tab shows what is remembered by area and lesson, the last day
   await page.getByRole('link', { name: 'Framsteg' }).click();
   await expect(page).toHaveURL('/subjects/example-subject/progress');
 
-  await expect(page.locator('#progress-recall')).toHaveText(`${percent(progress.recall ?? 0)} av ämnets frågor minns du just nu`.replace(' %', ' %'));
+  await expect(page.locator('#progress-recall')).toHaveText(`${percent(progress.recall ?? 0, progress.target)} av ämnets frågor minns du just nu`.replace(' %', ' %'));
   await expect(page.getByText(`Du har svarat på ${String(progress.met)} av 8 frågor.`)).toBeVisible();
 
   const grunder = page.getByRole('region', { name: 'Grunder' });
   await expect(grunder.getByRole('listitem')).toHaveCount(2);
   const energibalans = progress.areas[1]?.lessons[0];
   const state = energibalans?.mastered === true ? 'Behärskad' : energibalans?.passed === true ? 'Godkänd' : '';
-  await expect(page.getByRole('region', { name: 'Fördjupning' }).getByRole('listitem')).toHaveText([`Energibalans${state}${percent(energibalans?.recall ?? 0)}`.replace(' %', '\u00a0%')]);
+  await expect(page.getByRole('region', { name: 'Fördjupning' }).getByRole('listitem')).toHaveText([`Energibalans${state}${percent(energibalans?.recall ?? 0, progress.target)}`.replace(' %', '\u00a0%')]);
   const lesson = progress.areas[0]?.lessons[0];
   expect(lesson?.passed).toBe(true);
   await expect(grunder.getByRole('listitem').first()).toContainText(lesson?.mastered === true ? 'Behärskad' : 'Godkänd');
