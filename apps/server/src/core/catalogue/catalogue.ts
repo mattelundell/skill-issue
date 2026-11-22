@@ -15,6 +15,7 @@ import {
   type Pack,
   type ShownLesson,
   type SubjectOutline,
+  type Glossary,
   type SourceLibrary,
   type SubjectSummary,
 } from '@skill-issue/contract';
@@ -22,6 +23,7 @@ import type { Db, Row } from '../db.js';
 import type { Result } from '../result.js';
 import { shownLesson, type LessonReadError } from './lessons.js';
 import { examPlan, shownQuestions, type ExamPlan, type QuestionReadError, type ShownQuestion } from './questions.js';
+import { glossary } from './glossary.js';
 import { sourceLibrary, sourcePage, type CataloguePage, type SourcePageError } from './sources.js';
 
 /** The catalogue as modules see it: the only way subject material is stored or read. */
@@ -43,6 +45,11 @@ export interface Catalogue {
   sourceLibrary(subjectId: string, language: string | undefined): Promise<SourceLibrary | undefined>;
   /** One source and what rests on it; a source the subject no longer holds as its last revision. */
   sourcePage(subjectId: string, sourceId: string, language: string | undefined): Promise<Result<CataloguePage, SourcePageError>>;
+  /**
+   * The subject's glossary terms in pack order, each in `language` where translated,
+   * with the titles of the sources it rests on; undefined when there is no such subject.
+   */
+  glossary(subjectId: string, language: string | undefined): Promise<Glossary | undefined>;
   /**
    * One lesson as it is taken, in `language` where translated, with its area and the sources it rests on.
    * A lesson the subject no longer holds is not offered.
@@ -440,6 +447,7 @@ export function createCatalogue(db: Db): Catalogue {
     outline,
     sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
     sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),
+    glossary: async (subjectId, language) => glossary(db, subjectId, language),
     lesson: async (subjectId, lessonId, language) => shownLesson(db, subjectId, lessonId, language),
     questions: async (subjectId, ids, language) => shownQuestions(db, subjectId, ids, language),
     examPlan: async (subjectId, scope, language) => examPlan(db, subjectId, scope, language),

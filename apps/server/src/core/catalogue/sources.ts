@@ -56,8 +56,8 @@ interface Held {
   readonly bodies: ReadonlyMap<string, unknown>;
 }
 
-/** Everything a subject currently holds of the kinds the reader shows, keyed by kind and id. */
-class Holdings {
+/** Everything a subject currently holds of the kinds the reader and the glossary show, keyed by kind and id. */
+export class Holdings {
   readonly #items: ReadonlyMap<string, Held>;
   readonly defaultLanguage: string;
 
@@ -98,7 +98,7 @@ class Holdings {
   }
 }
 
-async function holdings(db: Db, subjectId: string): Promise<Holdings | undefined> {
+export async function holdings(db: Db, subjectId: string): Promise<Holdings | undefined> {
   const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
   const subject = subjects[0];
   if (subject === undefined) {
