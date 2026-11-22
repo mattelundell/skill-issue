@@ -7,6 +7,7 @@ import {
   type SubjectOutline,
   type SubjectSummary,
 } from '@skill-issue/contract';
+import { reportFault } from './shell/faults.js';
 
 export type ServerStatus =
   | { readonly kind: 'answered'; readonly health: HealthResponse }
@@ -25,23 +26,40 @@ interface Parser<T> {
 
 /** Reads JSON from the API and checks it against the contract. A module's own reads go through this too. */
 export async function getJson<T>(path: string, parser: Parser<T>, signal: AbortSignal): Promise<Fetched<T>> {
+  const request = `${API_PREFIX}${path}`;
   let response: Response;
+  try {
+    response = await fetch(request, { signal, headers: { accept: 'application/json' } });
+  } catch {
+    // No connection, or an aborted request, which nobody is waiting for and is no fault.
+    if (!signal.aborted) {
+      reportFault({ request, reason: 'network' });
+    }
+    return { kind: 'failed' };
+  }
   let body: unknown;
   try {
-    response = await fetch(`${API_PREFIX}${path}`, { signal, headers: { accept: 'application/json' } });
     body = await response.json();
   } catch {
-    // No connection, an aborted request, or an answer that is not JSON.
+    // An answer that is not JSON: an error page from something in between, or a body cut short.
+    if (!signal.aborted) {
+      reportFault({ request, reason: 'contract' });
+    }
     return { kind: 'failed' };
   }
   if (response.status === 404) {
     return { kind: 'not-found' };
   }
   if (!response.ok) {
+    // The server saw this one, and a recording has it from there.
     return { kind: 'failed' };
   }
   const parsed = parser.safeParse(body);
-  return parsed.success ? { kind: 'ok', value: parsed.data } : { kind: 'failed' };
+  if (!parsed.success) {
+    reportFault({ request, reason: 'contract' });
+    return { kind: 'failed' };
+  }
+  return { kind: 'ok', value: parsed.data };
 }
 
 /** Asks the server how it is. The health endpoint answers 503 with a body when the database is down. */

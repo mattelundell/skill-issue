@@ -71,17 +71,25 @@ export function navigate(path: string): void {
   window.scrollTo(0, 0);
 }
 
+/**
+ * Calls `listener` whenever the app's address changes, by a link or by back and
+ * forward, until the returned function is called.
+ */
+export function onNavigation(listener: () => void): () => void {
+  window.addEventListener('popstate', listener);
+  window.addEventListener(NAVIGATED, listener);
+  return () => {
+    window.removeEventListener('popstate', listener);
+    window.removeEventListener(NAVIGATED, listener);
+  };
+}
+
 /** The current route, following links, back and forward. */
 export function useRoute(): Route {
   const [route, setRoute] = useState(() => parseRoute(window.location.pathname));
   useEffect(() => {
     const follow = (): void => setRoute(parseRoute(window.location.pathname));
-    window.addEventListener('popstate', follow);
-    window.addEventListener(NAVIGATED, follow);
-    return () => {
-      window.removeEventListener('popstate', follow);
-      window.removeEventListener(NAVIGATED, follow);
-    };
+    return onNavigation(follow);
   }, []);
   return route;
 }
