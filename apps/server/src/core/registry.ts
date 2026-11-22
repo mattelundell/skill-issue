@@ -15,6 +15,23 @@ export interface ModuleContext {
   readonly record: LearningRecord;
   /** The largest request body, in bytes, a module takes. */
   readonly maxBodyBytes: number;
+  /** The application's version, as the health endpoint gives it. */
+  readonly version: string;
+}
+
+/** An API request the server has answered, as a module observing requests is told of it. */
+export interface AnsweredRequest {
+  /** When it arrived. */
+  readonly at: Date;
+  readonly method: string;
+  /** The address called, with its query. */
+  readonly url: string;
+  readonly status: number;
+  readonly durationMs: number;
+  /** For an answer of 400 or above, the problem it gave. */
+  readonly problem?: { readonly title: string; readonly detail?: string };
+  /** For a request that failed inside the server, what was thrown; the caller is only told it failed. */
+  readonly error?: string;
 }
 
 /**
@@ -35,6 +52,14 @@ export interface ModuleManifest {
    * from the learning record is left out, and rebuilt after a restore.
    */
   readonly personalData?: readonly string[];
+  /**
+   * Told of every API request the server answers, once it is answered, except
+   * those to the module's own routes: a recorder would otherwise record every
+   * write of its own recording. The answer waits for it, so whatever it stores is
+   * there for the next request to read; a failure in it is logged and never
+   * reaches the caller.
+   */
+  readonly observeRequests?: (context: ModuleContext) => (request: AnsweredRequest) => Promise<void>;
 }
 
 export type RegistryError =
