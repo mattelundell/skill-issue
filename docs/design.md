@@ -37,7 +37,7 @@ The path is a recommendation. Nothing is locked: a learner who already knows an 
 
 A lesson is a sequence of steps, one on screen at a time, with a progress bar.
 
-- A **text step** teaches one idea. Terms from the glossary are marked and show their definition on hover.
+- A **text step** teaches one idea. Terms from the glossary are marked and show their definition, the other names they go by and the sources they rest on, on hover, on focus or on a press. A term is marked once per step, the first time the step names it, so the text is not strewn with marks; an example step applies what a text step marked and is not marked again.
 - An **example step** works through a case.
 - A **check step** asks one to three questions on what was just covered. The answer is graded at once, with the explanation and its source. A wrong answer brings the question back before the lesson ends, even when the lesson was left and resumed in between. A check step come back to — after leaving, or by going back a step — shows the answers already given in this pass through the lesson rather than asking them again; a pass begins when a lesson gone through to its end is opened again.
 - The lesson closes with a summary of what was covered, what was answered wrongly, and the offer to sit the lesson exam now or later.

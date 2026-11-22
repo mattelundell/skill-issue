@@ -1,0 +1,8 @@
+/* The glossary module's own styles: what a marked term's card holds. Where the card sits, and how a mark looks, is the shell's. */
+.term-entry dfn { display: block; font-style: normal; font-weight: 700; margin-bottom: 2px; }
+.term-entry .term-definition > :first-child { margin-top: 0; }
+.term-entry .term-definition > :last-child { margin-bottom: 0; }
+.term-entry .term-definition p { margin: 0 0 6px; }
+.term-entry .term-also,
+.term-entry .term-sources { margin: 6px 0 0; color: var(--graphite); font-size: 0.85rem; }
+.term-entry .term-sources a { color: var(--royal); font-weight: 600; }
