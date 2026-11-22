@@ -1,3 +1,4 @@
+import { DEFAULT_LIMITS } from '@skill-issue/pack';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
 import { API_PREFIX, HealthResponseSchema } from '@skill-issue/contract';
@@ -15,6 +16,8 @@ export interface AppDependencies {
   readonly version: string;
   /** Folder with the built browser app; omitted when only the API is served. */
   readonly webDir?: string;
+  /** The largest request body taken, in bytes: by default what a pack may hold. */
+  readonly maxBodyBytes?: number;
 }
 
 
@@ -31,7 +34,7 @@ const healthRoute = createRoute({
   },
 });
 
-export function buildApp({ db, registry, version, webDir }: AppDependencies): OpenAPIHono {
+export function buildApp({ db, registry, version, webDir, maxBodyBytes = DEFAULT_LIMITS.maxTotalBytes }: AppDependencies): OpenAPIHono {
   const api = new OpenAPIHono();
 
   api.openapi(healthRoute, async (c) => {
@@ -48,7 +51,7 @@ export function buildApp({ db, registry, version, webDir }: AppDependencies): Op
 
   api.route('/', backupRoutes(db, registry, version));
 
-  const context = { db, catalogue: createCatalogue(db), record: createLearningRecord(db) };
+  const context = { db, catalogue: createCatalogue(db), record: createLearningRecord(db), maxBodyBytes };
   for (const module of registry.modules) {
     if (module.routes !== undefined) {
       api.route(`/${module.id}`, module.routes(context));

@@ -15,14 +15,11 @@ import {
   type Problem,
   type Result,
 } from '@skill-issue/contract';
-import { checkPack, checkPackFiles, DEFAULT_LIMITS, encodePack, limitFaults, readZip, writeZip } from '@skill-issue/pack';
+import { checkPack, checkPackFiles, encodePack, limitFaults, readZip, writeZip } from '@skill-issue/pack';
 import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { problem, problemContent } from '../../core/problem.js';
 import type { ModuleContext } from '../../core/registry.js';
-
-/** A zip archive is at most this large on the wire; unpacked, the pack limits apply. */
-const MAX_BODY_BYTES = DEFAULT_LIMITS.maxTotalBytes;
 
 const DryRunSchema = z.enum(['true', 'false']).optional();
 
@@ -88,7 +85,7 @@ function withItem(current: Pack, collection: SingleCollection, item: unknown, la
 }
 
 /** Accepts, validates, versions and exports subject material. */
-export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
+export function contentRoutes({ catalogue, maxBodyBytes }: ModuleContext): OpenAPIHono {
   const routes = new OpenAPIHono();
 
   routes.openAPIRegistry.registerPath({
@@ -119,8 +116,8 @@ export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
   routes.post(
     '/packs',
     bodyLimit({
-      maxSize: MAX_BODY_BYTES,
-      onError: (c) => c.json(problem(413, 'The pack is too large', `At most ${MAX_BODY_BYTES} bytes may be sent.`), 413),
+      maxSize: maxBodyBytes,
+      onError: (c) => c.json(problem(413, 'The pack is too large', `At most ${maxBodyBytes} bytes may be sent.`), 413),
     }),
     async (c) => {
       const dryRun = DryRunSchema.safeParse(c.req.query('dryRun'));
@@ -160,8 +157,8 @@ export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
   routes.put(
     '/subjects/:subjectId/:collection/:itemId',
     bodyLimit({
-      maxSize: MAX_BODY_BYTES,
-      onError: (c) => c.json(problem(413, 'The item is too large', `At most ${MAX_BODY_BYTES} bytes may be sent.`), 413),
+      maxSize: maxBodyBytes,
+      onError: (c) => c.json(problem(413, 'The item is too large', `At most ${maxBodyBytes} bytes may be sent.`), 413),
     }),
     async (c) => {
       const subjectId = c.req.param('subjectId');
