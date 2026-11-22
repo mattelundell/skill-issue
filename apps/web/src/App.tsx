@@ -100,6 +100,7 @@ function Shell({ modules, setLanguage }: { readonly modules: readonly WebModule[
         </main>
         <footer className="footer">
           <output>{statusMessage(status, t)}</output>
+          {modules.map(({ id, Footer }) => (Footer === undefined ? null : <Footer key={id} language={language} />))}
         </footer>
       </div>
     </div>

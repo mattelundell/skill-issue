@@ -121,6 +121,12 @@ export interface WebModule {
    * each with the card it opens. Read in the language the subject is shown in.
    */
   readonly textMarks?: (subject: SubjectOutline, signal: AbortSignal) => Promise<readonly TextMark[]>;
+  /**
+   * Something in the app's footer, on every screen, such as a sign that a
+   * session is being recorded. It is drawn for as long as the app is open, so
+   * it is also where a module that must follow the whole session listens.
+   */
+  readonly Footer?: ComponentType<{ readonly language: Language }>;
 }
 
 /**

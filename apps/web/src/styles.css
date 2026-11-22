@@ -78,7 +78,7 @@ select, input:not([type='radio'], [type='checkbox']) {
   font: inherit; color: var(--ink); background: var(--sheet);
   border: 1px solid var(--rule); border-radius: 6px; padding: 4px 8px;
 }
-.footer { color: var(--graphite); font-size: 0.85rem; padding-top: 24px; }
+.footer { color: var(--graphite); font-size: 0.85rem; padding-top: 24px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; }
 
 h1, h2, h3 { margin: 0; line-height: 1.2; }
 .page-title { font-family: var(--title); font-weight: 600; font-size: 2.25rem; letter-spacing: -0.01em; }
