@@ -258,6 +258,11 @@ describe('a broken pack is rejected with every fault, each naming its file, item
       [mismatch(QUESTIONS_1_EN, 'question kwh-eller-kw', 'concepts', '["verkningsgrad"]', '["effekt"]'), f('unknown-concept', QUESTIONS_1, 'question kwh-eller-kw', 'concepts[0]', 'the id of a concept a lesson lists under "concepts" in this pack', '"verkningsgrad"')],
     ],
     [
+      'a translation of the subject with its areas in another order, reported on the translation',
+      () => edited('subject.en.yaml', 'areas:\n  - grunder\n  - fordjupning', 'areas:\n  - fordjupning\n  - grunder'),
+      [mismatch('subject.en.yaml', 'subject example-subject', 'areas', '["grunder","fordjupning"]', '["fordjupning","grunder"]')],
+    ],
+    [
       'areas that require each other',
       () => edited('areas/grunder/area.yaml', 'requires: []', 'requires: [fordjupning]'),
       [f('requires-cycle', 'areas/grunder/area.yaml', 'area grunder', 'requires', 'requirements that do not lead back to this area', 'fordjupning → grunder → fordjupning')],
