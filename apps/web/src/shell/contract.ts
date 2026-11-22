@@ -190,6 +190,15 @@ export interface LessonSide {
   /** One lower-case letter that opens and closes it, pressed outside a text field. */
   readonly key: string;
   readonly Side: ComponentType<LessonSideProps>;
+  /**
+   * How it is drawn: `beside`, in the column next to the step, the default; or
+   * `spread`, a wide drawer from the window's right edge with a button of its
+   * own at the window's corner, which leaves that column to the step's terms and
+   * moves the text aside rather than covering it. A spread that acts on Escape
+   * itself, such as to stop writing, calls `preventDefault`, and the lesson then
+   * leaves it open.
+   */
+  readonly presentation?: 'beside' | 'spread';
 }
 
 /** What a contribution beside a lesson is given: the lesson and the step on screen, the text selected in that step, and a way to close itself. */

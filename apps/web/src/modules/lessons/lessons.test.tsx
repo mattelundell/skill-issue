@@ -522,6 +522,90 @@ describe('what a module puts beside a lesson', () => {
   });
 });
 
+describe('a spread beside a lesson', () => {
+  const spread: WebModule = {
+    id: 'spread',
+    lessonSide: {
+      label: { sv: { open: 'Boken', close: 'Stäng boken', hint: 'boken' }, en: { open: 'Book', close: 'Close the book', hint: 'book' } },
+      key: 'n',
+      presentation: 'spread',
+      Side: () => (
+        <div>
+          <textarea
+            aria-label="Skriv"
+            onKeyDown={(event) => {
+              // A spread that acts on Escape itself takes it.
+              if (event.key === 'Escape') {
+                event.preventDefault();
+              }
+            }}
+          />
+        </div>
+      ),
+    },
+  };
+
+  it('is drawn as a drawer of its own with a button at the corner, not under the step, and leaves the terms’ column alone', async () => {
+    open(LESSON_PAGE, [lessonsModule, spread]);
+    await screen.findByText('Steg 1 av 3');
+    expect(screen.getByRole('button', { name: 'Boken N', expanded: false }).classList.contains('spread-button')).toBe(true);
+    expect(document.querySelector('.go .side-toggle')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Boken N' }));
+
+    expect(screen.getByRole('region', { name: 'Boken' })).toBeTruthy();
+    expect(document.querySelector('.lesson')?.getAttribute('data-spread')).toBe('open');
+    expect(document.querySelector('.lesson-sides')).toBeNull();
+    // Open, the spread covers the corner, so its button is not left there behind it.
+    expect(document.querySelector('.spread-button')).toBeNull();
+  });
+
+  it('stays open when it takes Escape for itself, and closes on Escape from anywhere else', async () => {
+    open(LESSON_PAGE, [lessonsModule, spread]);
+    await screen.findByText('Steg 1 av 3');
+    await userEvent.keyboard('n');
+
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Skriv' }), { key: 'Escape' });
+    expect(screen.getByRole('region', { name: 'Boken' })).toBeTruthy();
+
+    fireEvent.keyDown(document.body, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Boken' })).toBeNull();
+  });
+});
+
+describe('where the learner is in a long lesson', () => {
+  let report: ((entries: { isIntersecting: boolean }[]) => void) | undefined;
+  beforeEach(() => {
+    report = undefined;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+          report = callback;
+        }
+        observe(): void {}
+        disconnect(): void {}
+      },
+    );
+  });
+
+  it('shows the subject, area, lesson and step once the lesson’s heading has scrolled away, and not before', async () => {
+    open(LESSON_PAGE);
+    await screen.findByText('Steg 1 av 3');
+    expect(screen.queryByRole('region', { name: 'Var du är' })).toBeNull();
+
+    act(() => report?.([{ isIntersecting: false }]));
+
+    const card = screen.getByLabelText('Var du är');
+    expect(within(card).getByText('Energi och effekt')).toBeTruthy();
+    expect(card.querySelector('.crumb')?.textContent).toBe('Exempelämne › Grunder');
+    expect(card.querySelector('small')?.textContent).toMatch(/^Steg 1 av 3 · /);
+
+    act(() => report?.([{ isIntersecting: true }]));
+    expect(screen.queryByLabelText('Var du är')).toBeNull();
+  });
+});
+
 describe('the start screen with lessons', () => {
   it('offers to continue the lesson left midway, and lists the other subjects compact under their heading', async () => {
     api.resume = {

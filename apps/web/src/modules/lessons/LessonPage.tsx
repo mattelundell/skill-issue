@@ -188,6 +188,18 @@ function Taking({
     setOpened((before) => (before.has(module) ? new Set([...before].filter((each) => each !== module)) : before));
   }, []);
   const stepHolder = useRef<HTMLDivElement>(null);
+  // Whether the lesson's own heading has scrolled out of the window, so where the learner is must be shown another way.
+  const headRef = useRef<HTMLDivElement>(null);
+  const [headGone, setHeadGone] = useState(false);
+  useEffect(() => {
+    const target = headRef.current;
+    if (target === null || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+    const watch = new IntersectionObserver(([entry]) => setHeadGone(entry !== undefined && !entry.isIntersecting));
+    watch.observe(target);
+    return () => watch.disconnect();
+  }, [step]);
   const selection = useCallback((): string | undefined => {
     const selected = window.getSelection();
     const holder = stepHolder.current;
@@ -266,8 +278,8 @@ function Taking({
         moveTo(step - 1);
         return;
       }
-      if (event.key === 'Escape' && opened.size > 0) {
-        // Escape closes what is open beside the lesson, even from inside it, where its own key would be typed.
+      if (event.key === 'Escape' && opened.size > 0 && !event.defaultPrevented) {
+        // Escape closes what is open beside the lesson, even from inside it, where its own key would be typed — unless it took the key for itself.
         setOpened(new Set());
         return;
       }
@@ -309,7 +321,7 @@ function Taking({
   );
 
   const head = (
-    <div className="lesson-head">
+    <div className="lesson-head" ref={headRef}>
       <div className="lesson-top">
         <p className="crumb">
           <Link to={home}>{subject.title}</Link> › {lesson.area.title}
@@ -348,22 +360,42 @@ function Taking({
   }
 
   const sideBlocks = sides
-    .filter(({ module }) => opened.has(module))
+    .filter(({ module, presentation }) => opened.has(module) && presentation !== 'spread')
     .map(({ module, Side }) => (
       <div key={module} className="lesson-side" data-module={module}>
         <Side subject={subject} language={language} lessonId={lesson.id} step={step} selection={selection} close={() => closeSide(module)} />
       </div>
     ));
   // On the workbench: the lesson's steps and sources to the left of the text, and the step's terms to its right.
+  const stepName = (index: number): string => {
+    const each = lesson.steps[index];
+    const heading = each === undefined || each.type === 'check' ? undefined : stepHeading(each.body);
+    return heading === undefined ? t(`kind.${each?.type ?? 'text'}`) : plainText(heading);
+  };
+  // Where the learner is, kept in view once the lesson's own heading has scrolled away: above the steps on the workbench, a slim bar above the step otherwise.
+  const where = headGone && again === undefined ? (
+    <div className="sheet where-card" aria-label={t('where')}>
+      <p className="crumb">
+        <Link to={home}>{subject.title}</Link> › {lesson.area.title}
+      </p>
+      <b>{lesson.title}</b>
+      <span className="where-bar" aria-hidden="true">
+        {lesson.steps.map((_, index) => (
+          <i key={index} className={index <= step ? 'on' : undefined} />
+        ))}
+      </span>
+      <small>{t('where.step', { step: String(step + 1), steps: String(total), title: stepName(step) })}</small>
+    </div>
+  ) : null;
   const rail =
     reading === 'bench' ? (
       <div className="lesson-rail">
+        {where}
         <nav className="sheet rail-box" aria-label={t('steps')}>
           <h2>{t('steps')}</h2>
           <ol>
-            {lesson.steps.map((each, index) => {
-              const heading = each.type === 'check' ? undefined : stepHeading(each.body);
-              const title = heading === undefined ? t(`kind.${each.type}`) : plainText(heading);
+            {lesson.steps.map((_, index) => {
+              const title = stepName(index);
               return (
                 // The steps never change order within one revision, and the list is redrawn for a new one.
                 <li key={index} className={index < step ? 'done' : index === step ? 'now' : undefined} aria-current={index === step ? 'step' : undefined}>
@@ -406,12 +438,20 @@ function Taking({
         ))}
       </section>
     );
+  const spreads = sides.filter(({ presentation }) => presentation === 'spread');
+  const spreadOpen = spreads.find(({ module }) => opened.has(module));
   return (
-    <div className="lesson" data-reading={reading}>
+    <div className="lesson" data-reading={reading} data-spread={spreadOpen === undefined ? undefined : 'open'}>
       {head}
       <div className="lesson-grid">
         {rail}
         <div className="lesson-main">
+          {where === null ? null : (
+            <p className="where-strip" aria-hidden="true">
+              <b>{lesson.title}</b>
+              <span>{t('where.strip', { area: lesson.area.title, step: String(step + 1), steps: String(total) })}</span>
+            </p>
+          )}
           {welcome === undefined ? null : (
             <div className={welcome === 'resumed' ? 'banner info' : 'banner warn'} role="note">
               <span>
@@ -482,7 +522,7 @@ function Taking({
               </span>
             </span>
             <span className="go">
-              {sides.map(({ module, label }) => (
+              {sides.filter(({ presentation }) => presentation !== 'spread').map(({ module, label }) => (
                 <button key={module} type="button" className="side-toggle" aria-expanded={opened.has(module)} onClick={() => toggleSide(module)}>
                   {opened.has(module) ? label[language].close : label[language].open}
                 </button>
@@ -502,6 +542,21 @@ function Taking({
           </aside>
         ) : null}
       </div>
+      {spreads.map(({ module, Side, label, key }) => (
+        <div key={module} className="spread-corner" data-module={module}>
+          {opened.has(module) ? (
+            <section className="lesson-spread" aria-label={label[language].open}>
+              <Side subject={subject} language={language} lessonId={lesson.id} step={step} selection={selection} close={() => closeSide(module)} />
+            </section>
+          ) : null}
+          {/* Only while closed: open, the spread covers the corner and closes from its own header. */}
+          {opened.has(module) ? null : (
+            <button type="button" className="btn spread-button" aria-expanded={false} onClick={() => toggleSide(module)}>
+              {label[language].open} <kbd>{key.toUpperCase()}</kbd>
+            </button>
+          )}
+        </div>
+      ))}
     </div>
   );
 }

@@ -124,3 +124,50 @@
 @media (max-width: 760px) {
   .reading-switch { display: none; }
 }
+
+/* ---------- where the learner is, once the lesson's heading has scrolled away ---------- */
+.where-card { padding: 14px 16px; font-size: 0.85rem; animation: where-in 0.15s ease; }
+@keyframes where-in { from { opacity: 0; transform: translateY(-4px); } }
+.where-card .crumb { font-size: 0.8rem; color: var(--graphite); margin: 0; }
+.where-card .crumb a { color: var(--graphite); }
+.where-card b { display: block; font: 600 1.05rem/1.25 var(--title); margin: 3px 0 6px; }
+.where-bar { display: flex; gap: 3px; }
+.where-bar i { flex: 1; height: 4px; border-radius: 2px; background: var(--rule); }
+.where-bar i.on { background: var(--royal); }
+.where-card small { display: block; color: var(--graphite); margin-top: 4px; }
+.where-strip { position: sticky; top: 0; z-index: 12; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; margin: 0 0 10px; padding: 8px 14px; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; font-size: 0.85rem; box-shadow: 0 4px 12px rgb(0 0 0 / 6%); }
+.where-strip b { font-family: var(--title); font-weight: 600; }
+.where-strip span { color: var(--graphite); }
+/* On the wide workbench the card stands above the steps instead. */
+@media (min-width: 1280px) {
+  .lesson[data-reading="bench"] .where-strip { display: none; }
+}
+
+/* ---------- a spread: a wide drawer from the window's right edge, and its button at the corner ---------- */
+.lesson { --spread-w: min(48rem, 56vw); }
+.spread-button { position: fixed; right: 18px; bottom: 18px; z-index: 25; box-shadow: 0 6px 20px rgb(0 0 0 / 15%); }
+.spread-button kbd { background: transparent; color: inherit; border-color: currentColor; }
+.lesson-spread { position: fixed; top: 0; right: 0; bottom: 0; z-index: 30; width: var(--spread-w); display: flex; flex-direction: column; background: var(--paper); border-left: 1px solid var(--rule); box-shadow: -10px 0 30px rgb(0 0 0 / 10%); animation: spread-in 0.18s ease; }
+@keyframes spread-in { from { transform: translateX(24px); opacity: 0; } }
+@media (min-width: 761px) {
+  /* The text moves aside rather than under the spread, narrowing if it must; the terms' column, which the spread would cover, steps aside with it. */
+  .wrap:has(.lesson[data-spread="open"]) { max-width: none; }
+  .lesson[data-spread="open"] .lesson-head,
+  .lesson[data-spread="open"] .lesson-grid { margin-left: 0; margin-right: calc(var(--spread-w) + 16px); max-width: none; padding-right: 0; justify-content: end; }
+  .lesson[data-spread="open"] .lesson-sides { display: none; }
+  .lesson[data-spread="open"][data-reading="bench"] .lesson-grid { grid-template-columns: minmax(0, calc(var(--measure) + 62px)); }
+}
+/* The steps' rail stays beside the text only where the spread leaves room for both at the full measure; elsewhere it steps aside, and the slim bar says where the learner is. */
+@media (min-width: 1680px) {
+  .lesson[data-spread="open"][data-reading="bench"] .lesson-grid { grid-template-columns: 13rem minmax(0, calc(var(--measure) + 62px)); }
+  .lesson[data-spread="open"][data-reading="bench"] .lesson-head { padding-left: calc(13rem + 24px); }
+}
+@media (min-width: 1280px) and (max-width: 1679px) {
+  .lesson[data-spread="open"][data-reading="bench"] .lesson-rail { display: none; }
+  .lesson[data-spread="open"][data-reading="bench"] .lesson-head { padding-left: 0; }
+  .lesson[data-spread="open"][data-reading="bench"] .where-strip { display: flex; }
+}
+@media (max-width: 760px) {
+  .lesson { --spread-w: 100vw; }
+  .spread-button { right: 12px; bottom: 12px; }
+}
