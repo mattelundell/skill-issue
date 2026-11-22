@@ -304,6 +304,21 @@ describe('a lesson', () => {
     await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 3, revision: 1, timeZone: 'Europe/Stockholm' } }));
   });
 
+  it('goes back a step with the left arrow, to read it again, and on with the right', async () => {
+    open(LESSON_PAGE);
+    await screen.findByText('Steg 1 av 3');
+
+    await userEvent.keyboard('{Enter}');
+    expect(screen.getByText('Steg 2 av 3')).toBeTruthy();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(screen.getByText('Steg 1 av 3')).toBeTruthy();
+    // Not before the first step.
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(screen.getByText('Steg 1 av 3')).toBeTruthy();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(screen.getByText('Steg 2 av 3')).toBeTruthy();
+  });
+
   it('goes on with Enter', async () => {
     open(LESSON_PAGE);
     await screen.findByText('Steg 1 av 3');

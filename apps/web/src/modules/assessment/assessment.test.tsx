@@ -314,6 +314,80 @@ describe('every question type’s input', () => {
   });
 });
 
+/** The check opened with these questions, and the region of the first, whose name ends in its prompt. */
+async function asked(...types: AskedQuestion['type'][]): Promise<HTMLElement> {
+  api.questions = types.map((type) => ASKED[type]);
+  open(LESSON);
+  const prompt = ASKED[types[0] ?? 'single-choice'].prompt;
+  return screen.findByRole('region', { name: (name) => name.endsWith(prompt) });
+}
+
+describe('answering with the keys', () => {
+
+  it('chooses an option by its number, and sends it with Enter', async () => {
+    await asked('single-choice');
+
+    await userEvent.keyboard('2');
+    await userEvent.keyboard('{Enter}');
+
+    await vi.waitFor(() => expect(answersPosted()).toEqual([recorded({ type: 'single-choice', option: 'b' })]));
+  });
+
+  it('ticks each option whose number is pressed, and sends them all', async () => {
+    await asked('multiple-choice');
+
+    await userEvent.keyboard('1');
+    await userEvent.keyboard('3');
+    await userEvent.keyboard('{Enter}');
+
+    await vi.waitFor(() => expect(answersPosted()).toEqual([recorded({ type: 'multiple-choice', options: ['a', 'c'] })]));
+  });
+
+  it('sends nothing on Enter before an option is chosen', async () => {
+    await asked('true-false');
+
+    await userEvent.keyboard('{Enter}');
+
+    expect(answersPosted()).toEqual([]);
+  });
+
+  it('answers the questions of a check in turn: the keys go to the first not yet answered', async () => {
+    const first = await asked('true-false', 'single-choice');
+    const second = screen.getByRole('region', { name: (name) => name.endsWith(ASKED['single-choice'].prompt) });
+
+    await userEvent.keyboard('1');
+    await userEvent.keyboard('{Enter}');
+    await within(first).findByRole('status');
+    await userEvent.keyboard('2');
+    await userEvent.keyboard('{Enter}');
+    await within(second).findByRole('status');
+
+    expect(answersPosted().map((sent) => (sent as { answer: unknown }).answer)).toEqual([
+      { type: 'true-false', value: true },
+      { type: 'single-choice', option: 'b' },
+    ]);
+  });
+
+  it('sends a number typed in its field with Enter, where the digits are the answer and choose nothing', async () => {
+    const question = await asked('numeric');
+
+    await userEvent.type(within(question).getByRole('textbox', { name: 'Svar i kWh' }), '6,5{Enter}');
+
+    await vi.waitFor(() => expect(answersPosted()).toEqual([recorded({ type: 'numeric', value: 6.5 })]));
+  });
+
+  it('shows a free-recall answer with Enter, then takes the learner’s own grade by its number', async () => {
+    const question = await asked('free-recall');
+
+    await userEvent.keyboard('{Enter}');
+    expect(within(question).getByText('Tillförd energi är lika med bortförd.')).toBeTruthy();
+    await userEvent.keyboard('2');
+    await userEvent.keyboard('{Enter}');
+
+    await vi.waitFor(() => expect(answersPosted()).toEqual([recorded({ type: 'free-recall', knew: false })]));
+  });
+});
+
 describe('an exam', () => {
   const sitting: Sitting = {
     id: '3f1c1a52-9c55-4d3f-9a3e-0e6f2a7c1b11',
@@ -356,6 +430,20 @@ describe('an exam', () => {
     expect(api.posted.find(({ path }) => path.endsWith(sitting.id))?.body).toEqual({ answers: [{ questionId: 'kwh-eller-kw', answer: { type: 'single-choice', option: 'b' }, durationMs: 0 }], timeZone: 'Europe/Stockholm' });
     const review = [...document.querySelectorAll('.review li')].map((item) => item.querySelector('.given')?.textContent);
     expect(review).toEqual(['Ditt svar: kW', 'Inget svar']);
+  });
+
+  it('chooses by number and goes on to the next question with Enter, keeping the answer', async () => {
+    api.sitting = sitting;
+    open('/subjects/example-subject/assessment/lesson/energi-och-effekt');
+    await userEvent.click(await screen.findByRole('button', { name: 'Börja provet' }));
+    await screen.findByText('Fråga 1 av 2', { selector: '.stepcount' });
+
+    await userEvent.keyboard('2');
+    await userEvent.keyboard('{Enter}');
+
+    expect(screen.getByText('Fråga 2 av 2', { selector: '.stepcount' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'Lämna in' }));
+    await vi.waitFor(() => expect(api.posted.find(({ path }) => path.endsWith(sitting.id))?.body).toMatchObject({ answers: [{ questionId: 'kwh-eller-kw', answer: { type: 'single-choice', option: 'b' } }] }));
   });
 
   it('sends each answer with the time its question was on screen, over every visit to it', async () => {

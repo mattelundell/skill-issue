@@ -1,5 +1,5 @@
 import type { AskedQuestion, ExpectedAnswer, GivenAnswer } from '@skill-issue/contract';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState, type RefObject } from 'react';
 import { useMessages } from './messages.js';
 
 /**
@@ -9,6 +9,47 @@ import { useMessages } from './messages.js';
  */
 
 type Of<T extends AskedQuestion['type']> = Extract<AskedQuestion, { type: T }>;
+
+/**
+ * Keys for the question drawn in `holder`, while it is the one being answered:
+ * a digit chooses that option, as numbered beside it, and Enter does `enter` —
+ * which says whether it did something, so a key it has no use for goes on to
+ * the page around it. Digits are left alone in a field that takes text, where
+ * they are the answer; Enter in such a field of this question counts.
+ */
+export function useAnswerKeys(holder: RefObject<HTMLElement | null>, active: boolean, enter: () => boolean): void {
+  useEffect(() => {
+    if (!active) {
+      return undefined;
+    }
+    const onKey = (event: KeyboardEvent): void => {
+      const box = holder.current;
+      if (box === null || event.metaKey || event.ctrlKey || event.altKey) {
+        return;
+      }
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const choosing = target instanceof HTMLInputElement && (target.type === 'radio' || target.type === 'checkbox');
+      const typing = target !== null && !choosing && target.closest('input, textarea, select, [contenteditable="true"]') !== null;
+      // A focused button or link takes Enter itself.
+      const pressing = target !== null && target.closest('button, a') !== null;
+      if (/^[1-9]$/.test(event.key) && !typing) {
+        const choice = box.querySelectorAll<HTMLInputElement>('input[type="radio"], input[type="checkbox"]')[Number(event.key) - 1];
+        if (choice !== undefined && !choice.disabled) {
+          event.preventDefault();
+          choice.click();
+        }
+        return;
+      }
+      const ownField = typing && target.matches('input') && box.contains(target);
+      if (event.key === 'Enter' && !pressing && (!typing || ownField) && enter()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [holder, active, enter]);
+}
 
 interface InputProps<Q extends AskedQuestion> {
   readonly question: Q;
@@ -201,7 +242,7 @@ function FreeRecall({ question, onChange, disabled }: InputProps<Of<'free-recall
     return (
       <div className="recall">
         <p className="hint">{t('recall.think')}</p>
-        <button type="button" className="btn quiet small" disabled={disabled} onClick={() => setShown(true)}>
+        <button type="button" className="btn quiet small" data-reveal="" disabled={disabled} onClick={() => setShown(true)}>
           {t('recall.show')}
         </button>
       </div>

@@ -1,12 +1,12 @@
 import type { AskedQuestion, EarlierAnswer, GivenAnswer, Graded, SubjectOutline } from '@skill-issue/contract';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CheckStepProps } from '../../shell/contract.js';
 import { useSourceLink } from '../../shell/contributions.js';
 import { Markdown } from '../../shell/markdown.js';
 import { Link } from '../../shell/router.js';
 import { useFetched } from '../../shell/useFetched.js';
 import { fetchEarlierAnswers, fetchQuestions, postAnswer } from './api.js';
-import { AnswerInput, initialAnswer, useWords } from './inputs.js';
+import { AnswerInput, initialAnswer, useAnswerKeys, useWords } from './inputs.js';
 import { useMessages } from './messages.js';
 
 /** A check inside a lesson, or a question in a review: each question answered and graded at once, with why, and where that comes from. */
@@ -61,11 +61,14 @@ export function CheckStep({ subject, questions: ids, setting = 'lesson-check', a
     );
   }
   const { questions } = fetched.value;
+  // The keys answer the first question not yet answered.
+  const active = questions.find((question) => !graded.has(question.id) && !earlier.has(question.id))?.id;
   return (
     <div className="questions">
       {questions.map((question, index) => (
         <AskedOne
           key={question.id}
+          active={question.id === active}
           subject={subject}
           question={question}
           n={index + 1}
@@ -89,6 +92,7 @@ function AskedOne({
   graded,
   earlier,
   onGraded,
+  active,
 }: {
   readonly subject: SubjectOutline;
   readonly question: AskedQuestion;
@@ -99,16 +103,19 @@ function AskedOne({
   /** Answered before the learner left the step: shown with that answer, not asked again. */
   readonly earlier: EarlierAnswer | undefined;
   readonly onGraded: (graded: Graded) => void;
+  /** The question the keys answer. */
+  readonly active: boolean;
 }) {
   const { t } = useMessages();
   const words = useWords();
+  const holder = useRef<HTMLElement>(null);
   const [answer, setAnswer] = useState<GivenAnswer | undefined>(() => initialAnswer(question));
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
   // From the question being shown to the answer being sent: the learning record's "how long it took".
   const [shownAt] = useState(() => Date.now());
   const imageText = useCallback((alt: string) => alt, []);
-  const send = async (): Promise<void> => {
+  const send = useCallback(async (): Promise<void> => {
     if (answer === undefined) {
       return;
     }
@@ -119,10 +126,26 @@ function AskedOne({
     if (result !== undefined) {
       onGraded(result);
     }
-  };
+  }, [answer, subject.id, subject.language, question.id, shownAt, setting, onGraded]);
+  const enter = useCallback((): boolean => {
+    if (answer !== undefined) {
+      if (!sending) {
+        void send();
+      }
+      return true;
+    }
+    // Free recall: Enter shows the answer first.
+    const reveal = holder.current?.querySelector<HTMLButtonElement>('[data-reveal]');
+    if (reveal !== null && reveal !== undefined && !reveal.disabled) {
+      reveal.click();
+      return true;
+    }
+    return false;
+  }, [answer, sending, send]);
+  useAnswerKeys(holder, active && graded === undefined && earlier === undefined, enter);
   const shown = graded ?? earlier?.graded;
   return (
-    <section className="q" aria-labelledby={`q-${question.id}`} data-question={question.id}>
+    <section ref={holder} className="q" aria-labelledby={`q-${question.id}`} data-question={question.id}>
       <div id={`q-${question.id}`} className="prompt">
         {total > 1 ? <span className="qn">{t('question.of', { n: String(n), total: String(total) })}</span> : null}
         <Markdown source={question.prompt} subjectId={subject.id} imageText={imageText} />
