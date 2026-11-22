@@ -52,6 +52,8 @@ export type DayProgress = z.infer<typeof DayProgressSchema>;
 /** A concept the learner has answered wrongly, with the first lesson on the path that teaches it. */
 export const WeakSpotSchema = z.object({
   concept: ItemIdSchema,
+  /** The name the subject gives the concept, in the language asked for where translated. */
+  name: z.string(),
   wrong: z.number().int().min(1),
   answers: z.number().int().min(1),
   lessonId: ItemIdSchema,

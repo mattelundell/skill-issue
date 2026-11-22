@@ -6,7 +6,7 @@ import { useLessonLink } from '../../shell/contributions.js';
 import { usePolled } from '../../shell/poll.js';
 import { Link } from '../../shell/router.js';
 import { useFetched } from '../../shell/useFetched.js';
-import { conceptWords, fetchProgress, percent } from './api.js';
+import { fetchProgress, percent } from './api.js';
 import { useMessages } from './messages.js';
 
 /** A day as YYYY-MM-DD, said short the way the interface language says it. */
@@ -129,7 +129,7 @@ function Shown({ progress, subject, language }: { readonly progress: SubjectProg
           <ol>
             {progress.weakSpots.map((spot) => (
               <li key={spot.concept}>
-                <b>{conceptWords(spot.concept)}</b>
+                <b>{spot.name}</b>
                 <span className="progress-figure">{t('weak.line', { wrong: String(spot.wrong), answers: tc('time.answers', spot.answers) })}</span>
                 <span className="progress-lesson">{lessonName(spot.lessonId)}</span>
               </li>
@@ -144,8 +144,9 @@ function Shown({ progress, subject, language }: { readonly progress: SubjectProg
 /** The Progress tab: what the learner remembers, by area and lesson, how it has moved, and where they go wrong most. */
 export function ProgressPage({ subject, language }: PageProps) {
   const { t } = useMessages();
-  const load = useCallback(async (signal: AbortSignal) => fetchProgress(subject.id, signal), [subject.id]);
-  const { fetched, retry } = useFetched(subject.id, load);
+  // Asked in the language the subject is read in, so its weak spots are named in it, and asked again when that changes.
+  const load = useCallback(async (signal: AbortSignal) => fetchProgress(subject.id, subject.language, signal), [subject.id, subject.language]);
+  const { fetched, retry } = useFetched(`${subject.id}/${subject.language}`, load);
 
   if (fetched === undefined) {
     return <p className="progress-loading">{t('loading')}</p>;
@@ -171,7 +172,8 @@ export function ProgressPage({ subject, language }: PageProps) {
 /** On a subject's row on the start screen: how much of the subject the learner remembers now. Nothing before a question has been answered. */
 export function RecallFigure({ subject, language }: { readonly subject: SubjectSummary; readonly language: Language }) {
   const { t } = useMessages();
-  const load = useCallback(async (signal: AbortSignal) => fetchProgress(subject.id, signal), [subject.id]);
+  // Figures only: no concept is named here, so the subject's own language serves.
+  const load = useCallback(async (signal: AbortSignal) => fetchProgress(subject.id, undefined, signal), [subject.id]);
   const { value } = usePolled(load);
   if (value?.kind !== 'ok' || value.value.met === 0 || value.value.recall === null) {
     return null;
@@ -181,7 +183,7 @@ export function RecallFigure({ subject, language }: { readonly subject: SubjectS
 
 /** The lessons that are mastered now. Passed and begun are for the modules that know them. */
 export async function masteredMarks(subjectId: string, signal: AbortSignal): Promise<ReadonlyMap<string, LessonMark>> {
-  const progress = await fetchProgress(subjectId, signal);
+  const progress = await fetchProgress(subjectId, undefined, signal);
   if (progress.kind !== 'ok') {
     throw new Error('progress could not be read');
   }

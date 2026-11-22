@@ -66,6 +66,8 @@ function memoriesAt(scheduler: Scheduler, answers: readonly RecordedAnswer[], mo
 export interface ProgressInput {
   readonly subjectId: string;
   readonly banks: readonly LessonBank[];
+  /** The name the subject gives each concept, in the language asked for. */
+  readonly conceptNames: ReadonlyMap<string, string>;
   /** Every answer in the subject, in the order written. */
   readonly answers: readonly RecordedAnswer[];
   readonly passed: ReadonlySet<string>;
@@ -74,7 +76,7 @@ export interface ProgressInput {
 }
 
 /** A subject's progress, computed from its answers and what it holds now. */
-export function progressOf(scheduler: Scheduler, { subjectId, banks, answers, passed, now, timeZone }: ProgressInput): SubjectProgress {
+export function progressOf(scheduler: Scheduler, { subjectId, banks, conceptNames, answers, passed, now, timeZone }: ProgressInput): SubjectProgress {
   const target = SCHEDULER.desiredRetention;
   const held = banks.flatMap((bank) => bank.questions);
 
@@ -127,7 +129,8 @@ export function progressOf(scheduler: Scheduler, { subjectId, banks, answers, pa
   }
   const weakSpots = [...tally].flatMap(([concept, counted]): WeakSpot[] => {
     const lessonId = teaching.get(concept);
-    return lessonId === undefined || counted.wrong === 0 ? [] : [{ concept, ...counted, lessonId }];
+    // A concept the subject gives no name is called by its id, its hyphens read as spaces.
+    return lessonId === undefined || counted.wrong === 0 ? [] : [{ concept, name: conceptNames.get(concept) ?? concept.replaceAll('-', ' '), ...counted, lessonId }];
   });
   weakSpots.sort((a, b) => {
     if (a.wrong !== b.wrong) {

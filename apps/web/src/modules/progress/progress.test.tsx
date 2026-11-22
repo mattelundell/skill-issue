@@ -57,7 +57,7 @@ const PROGRESS: SubjectProgress = {
     { areaId: 'fordjupning', recall: 0, questions: 2, met: 0, lessons: [{ lessonId: 'energibalans', recall: 0, questions: 2, met: 0, passed: false, mastered: false }] },
   ],
   days: days({ 27: { answers: 4, correct: 3, recall: 0.2 }, 28: { answers: 2, correct: 1, recall: 0.35 }, 29: { answers: 1, correct: 1, recall: 0.4129 } }),
-  weakSpots: [{ concept: 'si-prefix', wrong: 2, answers: 3, lessonId: 'enhetsprefix' }],
+  weakSpots: [{ concept: 'si-prefix', name: 'SI-prefix', wrong: 2, answers: 3, lessonId: 'enhetsprefix' }],
 };
 
 const NOTHING_YET: SubjectProgress = {
@@ -146,7 +146,9 @@ describe('the Progress tab', () => {
     open('/subjects/example-subject/progress');
 
     const weak = await screen.findByRole('region', { name: 'Svaga punkter' });
-    expect(within(weak).getAllByRole('listitem').map((spot) => spot.textContent)).toEqual(['si prefix2 fel av 3 svarEnhetsprefix']);
+    expect(within(weak).getAllByRole('listitem').map((spot) => spot.textContent)).toEqual(['SI-prefix2 fel av 3 svarEnhetsprefix']);
+    // Asked in the language the subject is read in, so the weak spots are named in it.
+    expect(api.requested).toContain(`/api/v1/progress/subjects/example-subject?timeZone=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}&language=sv`);
     expect(within(weak).getByRole('link', { name: 'Enhetsprefix' }).getAttribute('href')).toBe('/subjects/example-subject/lessons/enhetsprefix');
   });
 

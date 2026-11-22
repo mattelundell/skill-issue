@@ -3,8 +3,13 @@ import { getJson, type Fetched } from '../../api.js';
 import { learnerTimeZone } from '../../shell/timeZone.js';
 
 /** What the learner can recall in a subject, with the days counted in their own time zone. */
-export const fetchProgress = async (subjectId: string, signal: AbortSignal): Promise<Fetched<SubjectProgress>> =>
-  getJson(`/progress/subjects/${encodeURIComponent(subjectId)}?timeZone=${encodeURIComponent(learnerTimeZone())}`, SubjectProgressSchema, signal);
+/** A subject's progress; with a language, its weak spots are named in it. */
+export const fetchProgress = async (subjectId: string, language: string | undefined, signal: AbortSignal): Promise<Fetched<SubjectProgress>> =>
+  getJson(
+    `/progress/subjects/${encodeURIComponent(subjectId)}?timeZone=${encodeURIComponent(learnerTimeZone())}${language === undefined ? '' : `&language=${encodeURIComponent(language)}`}`,
+    SubjectProgressSchema,
+    signal,
+  );
 
 /**
  * A share as a whole percentage, rounded down: a lesson at 89.6 % is short of
@@ -15,4 +20,3 @@ export function percent(share: number, language: 'sv' | 'en'): string {
 }
 
 /** A concept as its id names it, words apart: the content format gives concepts no names of their own. */
-export const conceptWords = (concept: string): string => concept.replaceAll('-', ' ');

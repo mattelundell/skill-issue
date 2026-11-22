@@ -1,5 +1,5 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { ItemIdSchema, SubjectProgressSchema, TimeZoneSchema } from '@skill-issue/contract';
+import { ItemIdSchema, LanguageSchema, SubjectProgressSchema, TimeZoneSchema } from '@skill-issue/contract';
 import { createScheduler } from '../../core/memory/memory.js';
 import { problem, problemContent } from '../../core/problem.js';
 import type { ModuleContext } from '../../core/registry.js';
@@ -18,7 +18,7 @@ export function progressRoutes({ catalogue, record }: ModuleContext): OpenAPIHon
     path: '/subjects/{subjectId}',
     summary: 'What the learner can recall in a subject: per area and lesson, which lessons are mastered, the last days, and the concepts most often answered wrongly.',
     description: `An expected recall is the scheduling model's chance of recalling a question now, from every answer given to it; a share over several questions is the mean, a question never answered counting as 0. A lesson is mastered while its exam has been passed and the expected recall of its questions is at or above the target. The days are the last ${String(DAYS)} in the time zone given, UTC when none is, each with the answers given and the subject's expected recall at its end. At most ${String(WEAK_SPOTS)} weak spots are named, each with the first lesson on the path that teaches it.`,
-    request: { params: z.object({ subjectId: ItemIdSchema }), query: z.object({ timeZone: TimeZoneSchema.optional() }) },
+    request: { params: z.object({ subjectId: ItemIdSchema }), query: z.object({ timeZone: TimeZoneSchema.optional(), language: LanguageSchema.optional() }) },
     responses: {
       200: { description: 'The subject’s progress.', content: { 'application/json': { schema: SubjectProgressSchema } } },
       400: { description: 'The time zone is not one.', content: problemContent },
@@ -31,12 +31,16 @@ export function progressRoutes({ catalogue, record }: ModuleContext): OpenAPIHon
     if (!zone.success) {
       return c.json(badZone, 400);
     }
+    const language = LanguageSchema.optional().safeParse(c.req.query('language'));
+    if (!language.success) {
+      return c.json(problem(400, 'language must be a language code such as sv, en or en-GB'), 400);
+    }
     const banks = ItemIdSchema.safeParse(subjectId).success ? await catalogue.banks(subjectId) : undefined;
     if (banks === undefined) {
       return c.json(noSubject(subjectId), 404);
     }
-    const [answers, passed] = await Promise.all([record.answersIn(subjectId), record.passedLessons(subjectId)]);
-    return c.json(progressOf(await scheduler, { subjectId, banks, answers, passed, now: new Date(), timeZone: zone.data ?? 'UTC' }), 200);
+    const [answers, passed, conceptNames] = await Promise.all([record.answersIn(subjectId), record.passedLessons(subjectId), catalogue.conceptNames(subjectId, language.data)]);
+    return c.json(progressOf(await scheduler, { subjectId, banks, conceptNames, answers, passed, now: new Date(), timeZone: zone.data ?? 'UTC' }), 200);
   });
 
   return routes;

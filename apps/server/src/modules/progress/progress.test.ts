@@ -67,8 +67,17 @@ beforeAll(async () => {
   scheduler = await createScheduler();
 });
 
+/** The names the example subject gives its concepts, in Swedish. */
+const NAMES: ReadonlyMap<string, string> = new Map([
+  ['energi', 'Energi'],
+  ['effekt', 'Effekt'],
+  ['si-prefix', 'SI-prefix'],
+  ['energibalans', 'Energibalans'],
+  ['forluster', 'Förluster'],
+]);
+
 const progress = (answers: readonly RecordedAnswer[], passed: readonly string[] = [], timeZone = 'UTC') =>
-  progressOf(scheduler, { subjectId: 'example-subject', banks: BANKS, answers, passed: new Set(passed), now: NOW, timeZone });
+  progressOf(scheduler, { subjectId: 'example-subject', banks: BANKS, conceptNames: NAMES, answers, passed: new Set(passed), now: NOW, timeZone });
 
 /** The lesson's three questions all answered right, `days` ago. */
 const allRightAgo = (days: number) => [answer('kwh-eller-kw', ago(days), true), answer('berakna-energi', ago(days), true), answer('effekt-ar-takt', ago(days), true)];
@@ -125,6 +134,7 @@ describe('mastery per lesson and area', () => {
     const shown = progressOf(scheduler, {
       subjectId: 'example-subject',
       banks: [{ areaId: 'grunder', lessonId: 'utan-fragor', concepts: ['energi'], questions: [] }],
+      conceptNames: NAMES,
       answers: [],
       passed: new Set(['utan-fragor']),
       now: NOW,
@@ -195,16 +205,16 @@ describe('weak spots', () => {
 
     expect(progress(answers).weakSpots).toEqual([
       // Two wrong of two.
-      { concept: 'si-prefix', wrong: 2, answers: 2, lessonId: 'enhetsprefix' },
+      { concept: 'si-prefix', name: 'SI-prefix', wrong: 2, answers: 2, lessonId: 'enhetsprefix' },
       // Two wrong of five: kwh-eller-kw once, berakna-energi once; right three times.
-      { concept: 'effekt', wrong: 2, answers: 5, lessonId: 'energi-och-effekt' },
-      { concept: 'energi', wrong: 1, answers: 2, lessonId: 'energi-och-effekt' },
+      { concept: 'effekt', name: 'Effekt', wrong: 2, answers: 5, lessonId: 'energi-och-effekt' },
+      { concept: 'energi', name: 'Energi', wrong: 1, answers: 2, lessonId: 'energi-och-effekt' },
     ]);
   });
 
   it('leaves out a concept no lesson in the subject teaches any longer', () => {
     const banks = BANKS.map((bank) => (bank.lessonId === 'enhetsprefix' ? { ...bank, concepts: ['enheter'] } : bank));
-    const shown = progressOf(scheduler, { subjectId: 'example-subject', banks, answers: [answer('prefix-ordning', ago(1), false)], passed: new Set(), now: NOW, timeZone: 'UTC' });
+    const shown = progressOf(scheduler, { subjectId: 'example-subject', banks, conceptNames: NAMES, answers: [answer('prefix-ordning', ago(1), false)], passed: new Set(), now: NOW, timeZone: 'UTC' });
     expect(shown.weakSpots).toEqual([]);
   });
 
@@ -212,7 +222,14 @@ describe('weak spots', () => {
     const many = ['a', 'b', 'c', 'd', 'e', 'f'];
     const banks: LessonBank[] = [{ areaId: 'grunder', lessonId: 'energi-och-effekt', concepts: many, questions: ['berakna-energi'] }];
     const answers = many.map((concept) => ({ ...answer('berakna-energi', ago(1), false), concepts: [concept] }));
-    const shown = progressOf(scheduler, { subjectId: 'example-subject', banks, answers, passed: new Set(), now: NOW, timeZone: 'UTC' });
+    const shown = progressOf(scheduler, { subjectId: 'example-subject', banks, conceptNames: NAMES, answers, passed: new Set(), now: NOW, timeZone: 'UTC' });
     expect(shown.weakSpots.map((spot) => spot.concept)).toEqual(['a', 'b', 'c', 'd', 'e']);
+  });
+
+  it('calls a concept the subject gives no name by its id with spaces for hyphens', () => {
+    const banks: LessonBank[] = [{ areaId: 'grunder', lessonId: 'energi-och-effekt', concepts: ['namnlost-begrepp'], questions: ['berakna-energi'] }];
+    const answers = [{ ...answer('berakna-energi', ago(1), false), concepts: ['namnlost-begrepp'] }];
+    const shown = progressOf(scheduler, { subjectId: 'example-subject', banks, conceptNames: NAMES, answers, passed: new Set(), now: NOW, timeZone: 'UTC' });
+    expect(shown.weakSpots.map((spot) => spot.name)).toEqual(['namnlost begrepp']);
   });
 });
