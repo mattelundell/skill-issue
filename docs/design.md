@@ -113,7 +113,7 @@ Interface language and content language are separate settings. A subject availab
 The command-line tool is a second front end on the same API.
 
 - **Content**: validate a pack, load it, export a subject, export a subject's notes as Markdown, back up the whole installation and restore it into an empty one.
-- **Study**: run a review session in the terminal — across every subject or in one, the questions drawn with numbered options and items, a wrong answer asked again by the same rule as in the browser, `q` to stop — and sit an exam (not built yet).
+- **Study**: run a review session in the terminal — across every subject or in one, the questions drawn with numbered options and items, a wrong answer asked again by the same rule as in the browser, `q` to stop — and sit a lesson or area exam, as the browser's exam page does: nothing graded until the hand-in, `-` to leave a question unanswered, `q` before the hand-in to leave without handing in, then the mark and every answer reviewed. The terminal asks the questions in order; moving back to an earlier one is the browser's.
 - **Status**: whether the application is up, and what is due in each subject with about how long it takes.
 
 Nothing the terminal prints from a subject's material can steer the terminal: control characters are taken out.

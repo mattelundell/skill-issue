@@ -179,6 +179,35 @@ export function expectedInWords(question: AskedQuestion, expected: ExpectedAnswe
   }
 }
 
+/** The learner's answer in words, using the question's own option texts, as a teacher would read it back. */
+export function givenInWords(question: AskedQuestion, given: GivenAnswer): string {
+  const optionText = (id: string): string => (question.type === 'single-choice' || question.type === 'multiple-choice' ? (question.options.find((o) => o.id === id)?.text ?? id) : id);
+  switch (given.type) {
+    case 'single-choice':
+      return optionText(given.option);
+    case 'multiple-choice':
+      return given.options.map(optionText).join('; ');
+    case 'true-false':
+      return given.value ? 'true' : 'false';
+    case 'numeric': {
+      const value = new Intl.NumberFormat(question.language, { maximumFractionDigits: 10, useGrouping: false }).format(given.value);
+      return question.type === 'numeric' && question.unit !== '' ? `${value} ${question.unit}` : value;
+    }
+    case 'short-text':
+      return given.text;
+    case 'ordering':
+      return given.items.join(' → ');
+    case 'matching':
+      return given.pairs.map(({ left, right }) => `${left} → ${right}`).join('; ');
+    case 'free-recall':
+      return given.knew ? 'knew it' : 'did not know it';
+    default: {
+      const unhandled: never = given;
+      return unhandled;
+    }
+  }
+}
+
 export const STOP = new Set(['q', 'quit']);
 
 /**
@@ -199,8 +228,17 @@ export type Step<T> = { readonly kind: 'ok'; readonly value: T } | { readonly ki
 export const failed = (text: string): Step<never> => ({ kind: 'failed', outcome: { text, exitCode: 1 } });
 
 export async function getJson(fetchImpl: typeof fetch, url: string, path: string): Promise<Step<{ readonly status: number; readonly body: unknown }>> {
+  return requestJson(fetchImpl, url, path, { signal: AbortSignal.timeout(30_000) });
+}
+
+/** Posts a body as JSON, the only form the application takes a change in. */
+export async function postJson(fetchImpl: typeof fetch, url: string, path: string, body: unknown): Promise<Step<{ readonly status: number; readonly body: unknown }>> {
+  return requestJson(fetchImpl, url, path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(30_000) });
+}
+
+async function requestJson(fetchImpl: typeof fetch, url: string, path: string, init: RequestInit): Promise<Step<{ readonly status: number; readonly body: unknown }>> {
   try {
-    const response = await fetchImpl(new URL(`${API_PREFIX}${path}`, url), { signal: AbortSignal.timeout(30_000) });
+    const response = await fetchImpl(new URL(`${API_PREFIX}${path}`, url), init);
     return { kind: 'ok', value: { status: response.status, body: await response.json().catch(() => undefined) } };
   } catch {
     // Not propagated: refused or timed out, the advice is the same.
@@ -210,12 +248,32 @@ export async function getJson(fetchImpl: typeof fetch, url: string, path: string
 
 export const plural = (count: number, one: string, many: string): string => `${count} ${count === 1 ? one : many}`;
 
+/** What a session in the terminal needs from outside it. */
+export interface SessionDependencies {
+  readonly terminal: Terminal;
+  readonly fetch: typeof fetch;
+  /** Milliseconds, for how long each answer took. */
+  readonly now: () => number;
+  /** The learner's time zone, which decides what "today" is. */
+  readonly timeZone: string;
+}
+
+/** Typed to leave a question unanswered, where a session allows it. */
+export const SKIP = '-';
+
 /** Reads an answer to one question, asking again until what is typed is one; undefined when the learner stops. */
-export async function readAnswer(question: AskedQuestion, terminal: Terminal): Promise<GivenAnswer | undefined> {
+export async function readAnswer(question: AskedQuestion, terminal: Terminal): Promise<GivenAnswer | undefined>;
+/** As above, and null when the learner leaves the question unanswered by typing {@link SKIP}. */
+export async function readAnswer(question: AskedQuestion, terminal: Terminal, options: { readonly skippable: true }): Promise<GivenAnswer | null | undefined>;
+export async function readAnswer(question: AskedQuestion, terminal: Terminal, options?: { readonly skippable: true }): Promise<GivenAnswer | null | undefined> {
+  const skipped = (typed: string): boolean => options?.skippable === true && typed.trim() === SKIP;
   if (question.type === 'free-recall') {
     const shown = await terminal.read('Press Enter to see the answer. ');
     if (shown === undefined || STOP.has(shown.trim().toLowerCase())) {
       return undefined;
+    }
+    if (skipped(shown)) {
+      return null;
     }
     terminal.write(`Answer: ${question.answer}\n`);
   }
@@ -223,6 +281,9 @@ export async function readAnswer(question: AskedQuestion, terminal: Terminal): P
     const typed = await terminal.read(promptFor(question));
     if (typed === undefined || STOP.has(typed.trim().toLowerCase())) {
       return undefined;
+    }
+    if (skipped(typed)) {
+      return null;
     }
     const answer = parseAnswer(question, typed);
     if (answer.ok) {
