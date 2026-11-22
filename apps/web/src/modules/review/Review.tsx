@@ -1,4 +1,4 @@
-import { requeue, type Due, type DueCounts, type SubjectOutline, type SubjectSummary } from '@skill-issue/contract';
+import { minutesFor, minutesForAll, requeue, type Due, type DueCounts, type SubjectOutline, type SubjectSummary } from '@skill-issue/contract';
 import { useCallback, useMemo, useState } from 'react';
 import { fetchOutline, type Fetched } from '../../api.js';
 import type { Language } from '../../i18n/index.js';
@@ -8,7 +8,7 @@ import { useCheckStep } from '../../shell/contributions.js';
 import { usePolled } from '../../shell/poll.js';
 import { Link, appPagePath, startPath, subjectPath } from '../../shell/router.js';
 import { useFetched } from '../../shell/useFetched.js';
-import { fetchDue, fetchDueEverywhere, minutesFor, minutesForAll } from './api.js';
+import { fetchDue, fetchDueEverywhere } from './api.js';
 import { useMessages } from './messages.js';
 
 /** A day as YYYY-MM-DD, said the way the interface language says a date. */
