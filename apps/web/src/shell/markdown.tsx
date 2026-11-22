@@ -200,7 +200,11 @@ function MarkedText({
     const within = frame.current.getBoundingClientRect();
     const at = anchor.getBoundingClientRect();
     const width = card.current.offsetWidth;
-    card.current.style.top = `${at.bottom - within.top + 6}px`;
+    const height = card.current.offsetHeight;
+    // Under the mark, unless the window ends before the card does and there is more room above it.
+    const below = window.innerHeight - at.bottom;
+    const above = at.top - height - 6 >= 0 && below < height + 6 && at.top > below;
+    card.current.style.top = `${(above ? at.top - height - 6 : at.bottom + 6) - within.top}px`;
     card.current.style.left = `${Math.max(0, Math.min(at.left - within.left, within.width - width))}px`;
   }, [open, drawn]);
   useLayoutEffect(() => () => current.current?.slot.remove(), []);
