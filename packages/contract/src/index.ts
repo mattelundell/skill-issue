@@ -3,6 +3,7 @@ import { ContentFaultSchema } from './content.js';
 
 export * from './assessment.js';
 export * from './content.js';
+export * from './glossary.js';
 export * from './lessons.js';
 export * from './notes.js';
 export * from './reader.js';

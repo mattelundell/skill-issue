@@ -2,6 +2,7 @@ import type { ModuleManifest } from '../core/registry.js';
 import { assessmentModule } from './assessment/manifest.js';
 import { contentModule } from './content/manifest.js';
 import { diagnosticsModule } from './diagnostics/manifest.js';
+import { glossaryModule } from './glossary/manifest.js';
 import { lessonsModule } from './lessons/manifest.js';
 import { notesModule } from './notes/manifest.js';
 import { progressModule } from './progress/manifest.js';
@@ -15,6 +16,7 @@ import { reviewModule } from './review/manifest.js';
 export const modules: readonly ModuleManifest[] = [
   contentModule,
   readerModule,
+  glossaryModule,
   lessonsModule,
   assessmentModule,
   reviewModule,
