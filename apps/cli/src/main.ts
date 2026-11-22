@@ -40,7 +40,7 @@ function openTerminal(): Terminal & { readonly close: () => void } {
   };
 }
 
-const command = parseCommand(process.argv.slice(2));
+const command = parseCommand(process.argv.slice(2), process.env);
 
 switch (command.kind) {
   case 'help':

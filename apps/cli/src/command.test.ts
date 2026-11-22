@@ -22,6 +22,13 @@ describe('parseCommand', () => {
     expect(parseCommand(['status', 'now'])).toEqual({ kind: 'invalid', message: 'Unexpected argument "now"' });
   });
 
+  it('takes its default address from SKILL_ISSUE_URL, which --url still overrides', () => {
+    const env = { SKILL_ISSUE_URL: 'http://app:4747' };
+    expect(parseCommand(['status'], env)).toEqual({ kind: 'status', url: 'http://app:4747' });
+    expect(parseCommand(['status', '--url', 'http://localhost:9000'], env)).toEqual({ kind: 'status', url: 'http://localhost:9000' });
+    expect(parseCommand(['status'], { SKILL_ISSUE_URL: 'not a url' })).toEqual({ kind: 'invalid', message: '"not a url" is not a URL' });
+  });
+
   it('names an address that is not a URL', () => {
     expect(parseCommand(['status', '--url', 'not a url'])).toEqual({ kind: 'invalid', message: '"not a url" is not a URL' });
   });
