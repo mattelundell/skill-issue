@@ -1,6 +1,8 @@
 import { err, ok, PackSchema, type ContentFault, type Pack, type Result } from '@skill-issue/contract';
 import { decodePack, type PackFiles } from './decode.js';
-import { sortFaults } from './location.js';
+import { encodePack } from './encode.js';
+import { fault, sortFaults } from './location.js';
+import { DEFAULT_LIMITS, type PackLimits } from './zip.js';
 import { ruleFaults } from './rules.js';
 import { schemaFaults } from './schema-faults.js';
 
@@ -35,4 +37,26 @@ export function checkPackFiles(files: PackFiles): Result<Pack, ContentFault[]> {
   }
   // A fault in the files often causes schema faults downstream; both are reported.
   return err(sortFaults([...decoded.faults, ...(checked.ok ? [] : checked.error)]));
+}
+
+/**
+ * Whether a pack, written out as a folder, stays within the limits a pack is
+ * read under: so that what is stored can always be exported and loaded again,
+ * here or anywhere else. A pack sent whole is bounded by its size on the wire;
+ * a subject grown an item at a time is not, and is measured here.
+ */
+export function limitFaults(pack: Pack, limits: PackLimits = DEFAULT_LIMITS): ContentFault[] {
+  const faults: ContentFault[] = [];
+  let total = 0;
+  const files = encodePack(pack);
+  for (const [path, bytes] of files) {
+    total += bytes.length;
+    if (bytes.length > limits.maxFileBytes) {
+      faults.push(fault('pack-too-large', path, null, '', `a file of at most ${limits.maxFileBytes} bytes`, `${bytes.length} bytes`));
+    }
+  }
+  if (files.size > limits.maxFiles || total > limits.maxTotalBytes) {
+    faults.push(fault('pack-too-large', '(pack)', null, '', `at most ${limits.maxFiles} files and ${limits.maxTotalBytes} bytes`, `${files.size} files and ${total} bytes`));
+  }
+  return faults;
 }

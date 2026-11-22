@@ -15,7 +15,7 @@ import {
   type Problem,
   type Result,
 } from '@skill-issue/contract';
-import { checkPack, checkPackFiles, DEFAULT_LIMITS, encodePack, readZip, writeZip } from '@skill-issue/pack';
+import { checkPack, checkPackFiles, DEFAULT_LIMITS, encodePack, limitFaults, readZip, writeZip } from '@skill-issue/pack';
 import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { problem, problemContent } from '../../core/problem.js';
@@ -73,12 +73,18 @@ function stringField(value: unknown, field: string): string | undefined {
   return typeof found === 'string' ? found : undefined;
 }
 
-/** The subject with `item` in place of the entry of the same id and language, or added after the others; then checked whole. */
+/** The subject with `item` in place of the entry of the same id and language, or added after the others; then checked whole, and against the limits a pack is read under. */
 function withItem(current: Pack, collection: SingleCollection, item: unknown, language: string, id: string): Result<Pack, readonly ContentFault[]> {
   const entries: readonly { readonly id: string; readonly language: string }[] = current[collection];
   const at = entries.findIndex((entry) => entry.id === id && entry.language === language);
   const items: unknown[] = at === -1 ? [...entries, item] : entries.map((entry, index) => (index === at ? item : entry));
-  return checkPack({ ...current, [collection]: items });
+  const checked = checkPack({ ...current, [collection]: items });
+  if (!checked.ok) {
+    return checked;
+  }
+  // A subject grown an item at a time must still fit in a pack, or it could never be exported and loaded again.
+  const tooLarge = limitFaults(checked.value);
+  return tooLarge.length > 0 ? { ok: false, error: tooLarge } : checked;
 }
 
 /** Accepts, validates, versions and exports subject material. */
@@ -148,7 +154,7 @@ export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
       404: { description: 'No such subject, or no such collection.', content: problemContent },
       413: { description: 'The body is larger than a pack may be.', content: problemContent },
       415: { description: 'Not JSON.', content: problemContent },
-      422: { description: 'The subject would break the format; `faults` lists every fault.', content: problemContent },
+      422: { description: 'The subject would break the format, or no longer fit in a pack; `faults` lists every fault.', content: problemContent },
     },
   });
   routes.put(
