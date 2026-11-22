@@ -93,6 +93,10 @@ All notes, browsable by subject, area and lesson in the order of the path, and s
 
 Each subject's row on the start screen gives the share of it remembered now, once a question has been answered. A share is rounded down where it is shown, so a lesson short of the target never reads as on it.
 
+## Loading a subject
+
+*Ladda in ämne*, at the foot of every page, opens a page where a subject pack is dropped or chosen as a zip file. It is checked before anything is stored: a pack with faults is answered with every one, each naming its file, item and field, and nothing is kept; a good one says whether it is a new subject or an update, and what an update adds, changes and takes out, with the learner's history kept. *Ladda in* stores it; *Avbryt* leaves everything as it was.
+
 ## Mastery
 
 A lesson has four states.

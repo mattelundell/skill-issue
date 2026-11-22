@@ -21,7 +21,7 @@ export const en: Catalogue = {
   'start.empty.title': 'No subjects yet',
   'start.empty.body':
     'A subject is a subject pack — a folder of sources, lessons and questions — that you load. It appears here straight away, without a restart.',
-  'start.empty.example': 'Put the pack’s folder in the app’s folder and load it:',
+  'start.empty.example': 'Drop the pack as a zip file under Load a subject at the foot of the page. Or put the pack’s folder in the app’s folder and load it:',
   'start.empty.api': 'Or send a pack of your own to the API:',
   'start.unreachable.title': 'The server cannot be reached',
   'start.unreachable.body': 'The app got no answer from the server, so your subjects cannot be shown. Your data is still in the database.',

@@ -20,7 +20,7 @@ export const sv = {
   'start.empty.title': 'Inga ämnen än',
   'start.empty.body':
     'Ett ämne är ett ämnespaket — en mapp med källor, lektioner och frågor — som du laddar in. Det dyker upp här direkt, utan omstart.',
-  'start.empty.example': 'Lägg paketets mapp i appens mapp och ladda in den:',
+  'start.empty.example': 'Släpp paketet som en zip-fil under Ladda in ämne längst ner på sidan. Eller lägg paketets mapp i appens mapp och ladda in den:',
   'start.empty.api': 'Eller skicka ett eget paket till API:et:',
   'start.unreachable.title': 'Servern går inte att nå',
   'start.unreachable.body': 'Appen fick inget svar från servern, så ämnena kan inte visas. Dina data finns kvar i databasen.',
