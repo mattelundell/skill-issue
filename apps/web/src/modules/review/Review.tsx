@@ -1,4 +1,4 @@
-import type { Due, DueCounts, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
+import { requeue, type Due, type DueCounts, type SubjectOutline, type SubjectSummary } from '@skill-issue/contract';
 import { useCallback, useMemo, useState } from 'react';
 import { fetchOutline, type Fetched } from '../../api.js';
 import type { Language } from '../../i18n/index.js';
@@ -10,20 +10,6 @@ import { Link, appPagePath, startPath, subjectPath } from '../../shell/router.js
 import { useFetched } from '../../shell/useFetched.js';
 import { fetchDue, fetchDueEverywhere, minutesFor, minutesForAll } from './api.js';
 import { useMessages } from './messages.js';
-
-/** How many other questions a question answered wrong waits behind before it is asked again in the same session. */
-export const AGAIN_AFTER = 3;
-
-/**
- * Where a question answered wrong goes back into the queue: behind the next
- * three, or at the end when fewer are left. With nothing else left it comes
- * straight back — the learner has just read why, and the session ends only
- * when every question in it has been answered right once.
- */
-export function requeue<T>(rest: readonly T[], wrong: T): readonly T[] {
-  const at = Math.min(AGAIN_AFTER, rest.length);
-  return [...rest.slice(0, at), wrong, ...rest.slice(at)];
-}
 
 /** A day as YYYY-MM-DD, said the way the interface language says a date. */
 const dayWords = (day: string, language: Language): string =>

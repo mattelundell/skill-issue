@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HealthResponseSchema, ModuleIdSchema } from './index.js';
+import { HealthResponseSchema, ModuleIdSchema, requeue } from './index.js';
 
 describe('HealthResponseSchema', () => {
   it('accepts a healthy answer with its module list', () => {
@@ -26,5 +26,13 @@ describe('ModuleIdSchema', () => {
 
   it.each(['content', 'learning-record', 'v2'])('accepts %j', (id) => {
     expect(ModuleIdSchema.parse(id)).toBe(id);
+  });
+});
+
+describe('a question answered wrong in a review session', () => {
+  it('waits behind the next three, or goes to the end when fewer are left, or straight back when it is the last', () => {
+    expect(requeue(['a', 'b', 'c', 'd', 'e'], 'x')).toEqual(['a', 'b', 'c', 'x', 'd', 'e']);
+    expect(requeue(['a', 'b'], 'x')).toEqual(['a', 'b', 'x']);
+    expect(requeue([], 'x')).toEqual(['x']);
   });
 });
