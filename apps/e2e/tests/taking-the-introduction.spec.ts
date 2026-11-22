@@ -34,6 +34,10 @@ test('the introduction is listed first, taken in a few steps without studying, a
   await page.getByRole('button', { name: 'Fortsätt' }).click();
   await page.getByRole('button', { name: 'Avsluta lektionen' }).click();
   await expect(page.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeVisible();
+  // The end of the lesson stands in the text's column, under the lesson's title, not across the page.
+  const title = await page.locator('.lesson-head h1').boundingBox();
+  const end = await page.locator('.lesson .end').boundingBox();
+  expect({ left: Math.round(end?.x ?? -1), width: Math.round(end?.width ?? -1) }).toEqual({ left: Math.round(title?.x ?? 0), width: Math.round(title?.width ?? 0) });
 
   // The second: free recall, graded by the learner.
   await page.getByRole('link', { name: 'Nästa lektion: Det som händer sen' }).click();
@@ -48,7 +52,8 @@ test('the introduction is listed first, taken in a few steps without studying, a
   await page.getByRole('button', { name: 'Avsluta lektionen' }).click();
   await expect(page.getByRole('heading', { name: 'Lektionen är genomgången' })).toBeVisible();
 
-  await page.goto('/');
+  // Back to the start page through the app, not a reload: what it shows must already know the lesson was finished.
+  await page.getByRole('link', { name: 'Skill Issue' }).click();
   const back = page.getByRole('link', { name: 'Visa introduktionen igen: Kom igång' });
   await expect(back).toBeVisible();
   await expect(page.locator('.ledger-row[data-subject="kom-igang"]')).toHaveCount(0);

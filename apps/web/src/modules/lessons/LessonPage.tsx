@@ -336,7 +336,7 @@ function Taking({
             </div>
           ))}
         </End>
-        {sourcesLine}
+        {sourcesLine === null ? null : <div className="lesson-foot">{sourcesLine}</div>}
       </div>
     );
   }
