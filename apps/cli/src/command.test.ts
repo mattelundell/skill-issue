@@ -3,7 +3,7 @@ import { parseCommand } from './command.js';
 
 describe('parseCommand', () => {
   it('reads status against the default address', () => {
-    expect(parseCommand(['status'])).toEqual({ kind: 'status', url: 'http://127.0.0.1:4747' });
+    expect(parseCommand(['status'])).toEqual({ kind: 'status', url: 'http://planted.invalid:1' });
   });
 
   it('reads status against a given address', () => {
