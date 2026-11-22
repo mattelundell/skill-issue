@@ -1,5 +1,5 @@
 import type { Glossary, LessonView, SubjectOutline, SubjectSummary } from '@skill-issue/contract';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../App.js';
@@ -126,9 +126,12 @@ describe('glossary terms in a lesson', () => {
     const article = await step();
     await vi.waitFor(() => expect(marksIn(article)).toContain('Effekten'));
 
-    fireEvent.pointerOver(within(article).getByRole('button', { name: 'Effekten' }));
-
-    const card = article.ownerDocument.querySelector('.term-card') as HTMLElement;
+    // On the workbench, the lesson's default way of reading, a term's card stands beside the text, in the step's terms.
+    const card = await vi.waitFor(() => {
+      const entry = document.getElementById('term-effekt');
+      expect(entry).not.toBeNull();
+      return entry as HTMLElement;
+    });
     expect(within(card).getByText('Effekt', { selector: 'dfn' })).toBeTruthy();
     expect(within(card).getByText('tidsenhet', { selector: 'strong' })).toBeTruthy();
     expect(within(card).getAllByRole('link').map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
@@ -158,9 +161,12 @@ describe('glossary terms in a lesson', () => {
     const article = await step();
     await vi.waitFor(() => expect(marksIn(article)).toContain('Effekten'));
 
-    fireEvent.click(within(article).getByRole('button', { name: 'Effekten' }));
-
-    const card = article.ownerDocument.querySelector('.term-card') as HTMLElement;
+    // On the workbench, the lesson's default way of reading, a term's card stands beside the text, in the step's terms.
+    const card = await vi.waitFor(() => {
+      const entry = document.getElementById('term-effekt');
+      expect(entry).not.toBeNull();
+      return entry as HTMLElement;
+    });
     expect(within(card).queryAllByRole('link')).toEqual([]);
     expect(card.textContent).toContain('Exempelkälla om energi och effekt');
     expect(card.textContent).toContain('Mätmetoder');

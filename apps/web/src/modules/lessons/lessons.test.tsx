@@ -130,7 +130,7 @@ describe('a lesson', () => {
     await userEvent.click(continueButton());
 
     expect(screen.getByText('Steg 2 av 3')).toBeTruthy();
-    expect(screen.getByText('Exempel')).toBeTruthy();
+    expect(screen.getByText('Exempel', { selector: '.step-kind' })).toBeTruthy();
     await vi.waitFor(() => expect(api.saved.at(-1)).toEqual({ path: POSITION, body: { step: 1, revision: 1, timeZone: 'Europe/Stockholm' } }));
   });
 
@@ -343,7 +343,7 @@ describe('a lesson', () => {
   it('names its sources without links when no module shows sources', async () => {
     open(LESSON_PAGE);
 
-    expect((await screen.findByText(/Lektionen bygger på/)).textContent).toBe('Lektionen bygger på Exempelkälla (Exempelförlaget).');
+    expect((await screen.findByText(/Lektionen bygger på/, { selector: '.lesson-sources' })).textContent).toBe('Lektionen bygger på Exempelkälla (Exempelförlaget).');
     expect(screen.queryByRole('link', { name: /Exempelkälla/ })).toBeNull();
   });
 
@@ -483,7 +483,7 @@ describe('what a module puts beside a lesson', () => {
     const selected = window.getSelection();
     selected?.selectAllChildren(word);
     fireEvent.click(screen.getByRole('button', { name: 'Ta markeringen' }));
-    selected?.selectAllChildren(screen.getByText(/Lektionen bygger på/));
+    selected?.selectAllChildren(screen.getByText(/Lektionen bygger på/, { selector: '.lesson-sources' }));
     fireEvent.click(screen.getByRole('button', { name: 'Ta markeringen' }));
     selected?.removeAllRanges();
     fireEvent.click(screen.getByRole('button', { name: 'Ta markeringen' }));

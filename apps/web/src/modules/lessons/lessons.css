@@ -17,8 +17,7 @@
 .stepcount { color: var(--graphite); font-size: 0.9rem; margin: 6px 0 0; }
 
 .lesson-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; margin-top: 18px; align-items: start; }
-.lesson-grid.with-side { grid-template-columns: minmax(0, 1fr) 19rem; }
-.lesson-sides { display: grid; gap: 14px; position: sticky; top: 16px; }
+.lesson-sides { display: grid; gap: 14px; position: sticky; top: 16px; align-content: start; }
 
 .lesson .step { padding: 26px 30px 22px; min-height: 16rem; }
 .lesson .step.example { border-left: 6px solid var(--done); }
@@ -29,9 +28,9 @@
 .lesson .step.again { border-left: 6px solid var(--warn); }
 .lesson-end { margin-top: 18px; }
 .lesson .step h2 { font-family: var(--title); font-weight: 600; font-size: 1.55rem; margin: 0 0 14px; }
-.prose-step { font-size: 1.05rem; }
+.prose-step { font-size: var(--read); line-height: 1.6; }
 .prose-step > :first-child { margin-top: 0; }
-.prose-step p, .prose-step ul, .prose-step ol { max-width: 38rem; margin: 0 0 12px; }
+.prose-step p, .prose-step ul, .prose-step ol { max-width: var(--measure); margin: 0 0 0.8em; }
 .lesson .placeholder { padding: 16px 18px; border: 1px dashed var(--rule); border-radius: 8px; color: var(--graphite); max-width: 36rem; margin: 0; }
 
 .lesson .nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
@@ -58,11 +57,65 @@
 .due.slim h2 { font-size: 1rem; font-weight: 600; }
 
 @media (max-width: 760px) {
-  .lesson-grid.with-side { grid-template-columns: 1fr; }
   .lesson-sides { position: static; }
   .lesson-title { font-size: 1.6rem; }
   .lesson .step, .lesson .end { padding: 20px 16px; }
   .lesson-top { flex-direction: column; }
   .leave { text-align: left; }
   .lesson .keys { display: none; }
+}
+
+/* ---------- the way of reading: switch, workbench and focus mode ---------- */
+.reading-switch { font: inherit; font-size: 0.85rem; font-weight: 600; color: var(--royal); background: var(--sheet); border: 1px solid var(--rule); border-radius: 99px; padding: 3px 12px; cursor: pointer; white-space: nowrap; }
+.reading-switch[aria-pressed="true"] { background: var(--royal); border-color: var(--royal); color: var(--sheet); }
+.lesson-top .reading-switch { margin-left: auto; align-self: center; }
+.lesson-rail { display: none; }
+.rail-box { padding: 14px 16px; font-size: 0.9rem; }
+.rail-box h2, .step-terms h2 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--graphite); font-weight: 600; margin: 0 0 8px; }
+.rail-box ol { list-style: none; margin: 0; padding: 0; counter-reset: step; }
+.rail-box ol li { counter-increment: step; display: grid; grid-template-columns: 1.5rem 1fr; padding: 4px 0; color: var(--graphite); line-height: 1.35; }
+.rail-box ol li::before { content: counter(step); font-variant-numeric: tabular-nums; }
+.rail-box ol li.done, .rail-box ol li.done .link-button { color: var(--ink); font-weight: 400; text-align: left; white-space: normal; }
+.rail-box ol li.now { color: var(--royal); font-weight: 600; }
+.rail-box ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rail-box ul a { color: var(--royal); font-weight: 600; }
+.rail-box ul span { display: block; color: var(--graphite); font-size: 0.82rem; }
+.step-terms { padding: 16px 18px; font-size: 0.92rem; }
+.step-term { padding: 10px 0; border-top: 1px solid var(--rule); }
+.step-term:first-of-type { border-top: 0; padding-top: 0; }
+.step-term.lit { background: var(--royal-wash); margin: 0 -10px; padding: 10px; border-radius: 6px; border-top-color: transparent; }
+
+@media (min-width: 761px) {
+  /* The lesson's own page is wider than a subject's: the text, and what stands beside it. */
+  .wrap:has(.lesson[data-reading="bench"]) { max-width: 104rem; }
+  .wrap:has(.lesson[data-reading="focus"]) { max-width: none; }
+  /* The text column and its head are sized in the reading type, so --measure is a line of it. */
+  .lesson-head, .lesson-grid { font-size: var(--read); }
+  .lesson-head .crumb, .lesson-head .leave, .lesson-head .stepcount, .lesson .nav, .lesson-sides, .lesson-rail, .lesson-sources { font-size: 1rem; }
+  .lesson-head .crumb { font-size: 0.9rem; }
+
+  .lesson[data-reading="bench"] .lesson-grid { grid-template-columns: minmax(0, calc(var(--measure) + 62px)) minmax(16rem, 21rem); justify-content: center; }
+  .lesson[data-reading="bench"] .lesson-head { max-width: calc(var(--measure) + 62px + 24px + 21rem); margin: 0 auto; }
+
+  .lesson[data-reading="focus"] .lesson-head, .lesson[data-reading="focus"] .lesson-grid { max-width: calc(var(--measure) + 62px); margin-left: auto; margin-right: auto; }
+  .lesson[data-reading="focus"] .lesson-grid { grid-template-columns: minmax(0, 1fr); }
+  /* In focus mode what is open beside the lesson is a drawer at the window's edge, and never narrows the text. */
+  .lesson[data-reading="focus"] .lesson-sides { position: fixed; top: 0; right: 0; bottom: 0; width: min(26rem, 32vw); padding: 18px; overflow: auto; background: var(--paper); border-left: 1px solid var(--rule); box-shadow: -10px 0 30px rgb(0 0 0 / 8%); z-index: 15; }
+  .lesson[data-reading="focus"]:has(.lesson-sides) .lesson-head,
+  .lesson[data-reading="focus"]:has(.lesson-sides) .lesson-grid { margin-right: max(calc(min(26rem, 32vw) + 24px), calc((100% - (var(--measure) + 62px)) / 2)); }
+  /* With nothing beside it, a figure may be wider than the text. */
+  .lesson[data-reading="focus"] .prose-step .figure { display: block; width: min(calc(100vw - 64px), calc(var(--measure) * 1.35)); margin-left: 50%; transform: translateX(-50%); }
+  /* The caption is read like the text, so it keeps the text's measure under a wide figure. */
+  .lesson[data-reading="focus"] .prose-step .figure .caption { max-width: var(--measure); margin-left: auto; margin-right: auto; }
+  .lesson[data-reading="focus"]:has(.lesson-sides) .prose-step .figure { width: auto; margin-left: 0; transform: none; }
+}
+@media (min-width: 1280px) {
+  .lesson[data-reading="bench"] .lesson-rail { display: grid; gap: 14px; align-content: start; position: sticky; top: 16px; }
+  .lesson[data-reading="bench"] .lesson-grid { grid-template-columns: 13rem minmax(0, calc(var(--measure) + 62px)) minmax(16rem, 21rem); }
+  .lesson[data-reading="bench"] .lesson-head { max-width: calc(13rem + 24px + var(--measure) + 62px + 24px + 21rem); padding-left: calc(13rem + 24px); padding-right: calc(21rem + 24px); }
+  /* The lesson's sources stand in the rail on the workbench, so not again at its foot. */
+  .lesson[data-reading="bench"] .lesson-sources { display: none; }
+}
+@media (max-width: 760px) {
+  .reading-switch { display: none; }
 }

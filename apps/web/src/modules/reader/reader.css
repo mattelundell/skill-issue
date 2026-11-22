@@ -49,10 +49,10 @@ mark { background: var(--mark-hit); color: inherit; border-radius: 2px; padding:
 .card .ext { color: var(--graphite); font-size: 0.85rem; margin-left: 6px; }
 .card .hint { display: block; color: var(--graphite); font-size: 0.85rem; }
 
-.prose { margin-top: 18px; padding: 22px 26px; font-size: 1.02rem; }
+.prose { margin-top: 18px; padding: 22px 26px; font-size: var(--read); line-height: 1.6; }
 .prose > div > :first-child { margin-top: 0; }
 .prose h1, .prose h2, .prose h3 { font-size: 1.15rem; margin: 22px 0 8px; }
-.prose p, .prose ul, .prose ol { margin: 0 0 12px; max-width: 38rem; }
+.prose p, .prose ul, .prose ol { margin: 0 0 0.8em; max-width: var(--measure); }
 .prose ul, .prose ol { padding-left: 1.2rem; }
 .prose a { color: var(--royal); }
 .prose code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.92em; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; }

@@ -23,7 +23,9 @@ test.beforeAll(async ({ request }) => {
 
 const leaving = new WeakMap<Page, string[]>();
 
-test.beforeEach(({ page }) => {
+test.beforeEach(async ({ page }) => {
+  // A term's card opens over the text in focus mode, and on a phone; on the workbench it stands beside the text instead (taking-a-lesson-on-a-wide-screen).
+  await page.addInitScript(() => window.localStorage.setItem('skill-issue.lessons.reading', 'focus'));
   const outside: string[] = [];
   leaving.set(page, outside);
   page.on('request', (request) => {

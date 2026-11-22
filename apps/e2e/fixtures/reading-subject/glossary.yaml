@@ -1,0 +1,4 @@
+- id: balanstemperatur
+  term: Balanstemperatur
+  definition: Den utetemperatur under vilken byggnaden behöver aktiv uppvärmning.
+  sources: [kalla]

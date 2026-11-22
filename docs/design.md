@@ -37,10 +37,17 @@ The path is a recommendation. Nothing is locked: a learner who already knows an 
 
 A lesson is a sequence of steps, one on screen at a time, with a progress bar.
 
-- A **text step** teaches one idea. Terms from the glossary are marked and show their definition, the other names they go by and the sources they rest on, on hover, on focus or on a press. A term is marked once per step, the first time the step names it, so the text is not strewn with marks; an example step applies what a text step marked and is not marked again.
+- A **text step** teaches one idea. Terms from the glossary are marked, and their definition, the other names they go by and the sources they rest on stand beside the text on the workbench, lit while the term is pointed at or focused; in focus mode and on a phone they open in a card at the term, on hover, on focus or on a press. A term is marked once per step, the first time the step names it, so the text is not strewn with marks; an example step applies what a text step marked and is not marked again.
 - An **example step** works through a case.
 - A **check step** asks one to three questions on what was just covered. The answer is graded at once, with the explanation and its source. A wrong answer brings the question back before the lesson ends, even when the lesson was left and resumed in between. A check step come back to — after leaving, or by going back a step — shows the answers already given in this pass through the lesson rather than asking them again; a pass begins when a lesson gone through to its end is opened again.
 - The lesson closes with a summary of what was covered, what was answered wrongly, and the offer to sit the lesson exam now or later.
+
+A lesson is read in one of two ways, switched with **Fokusläge** in its header or **F**, and remembered on the device:
+
+- **The workbench**, the default: the lesson's steps and the sources it rests on in a column to the left of the text, the note pane and the step's terms in a column to its right. Explanation stands beside what it explains, so the eye does not leave the page to find it. Below 1280px the left column gives way.
+- **Focus mode**, for reading without clutter: one centred column with nothing beside it; the note pane opens as a drawer at the window's edge that never narrows the text, and a figure may be wider than the text.
+
+Either way the text keeps about 65 characters a line and its type grows with the window; a phone has one column and no switch.
 
 The note pane sits beside the lesson, closed until **N** or **Anteckna** under the step opens it; **N** again, or Escape from inside it, closes it. A note is attached to the lesson, and to the step it was written at, automatically: each step has one note, the pane shows the one for the step on screen, and it is saved as it is written, with no button to press. Selecting text in a step and pressing **Q** quotes it into the note as a Markdown quote.
 
