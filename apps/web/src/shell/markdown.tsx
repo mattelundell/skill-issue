@@ -18,6 +18,9 @@ interface MarkEnv {
   readonly matcher: Matcher;
   readonly marked: Set<number>;
   readonly cardId: string;
+  /** Each mark's id, by its index; and whether its explanation stands beside the text rather than in a card. */
+  readonly ids: readonly string[];
+  readonly beside: boolean;
   /** Above zero inside a heading or a link, where nothing is marked: a heading names its subject, and a link is already something to press. */
   readonly skip: { depth: number };
 }
@@ -45,14 +48,17 @@ markdown.renderer.rules['text'] = (tokens, index, _options, env: unknown) => {
   if (!hasMarks(env) || env.marks.skip.depth > 0) {
     return escape(content);
   }
-  const { matcher, marked, cardId } = env.marks;
+  const { matcher, marked, cardId, ids, beside } = env.marks;
   return matcher
     .find(content, marked)
-    .map((segment) =>
-      typeof segment === 'string'
-        ? escape(segment)
-        : `<button type="button" class="term" data-mark="${segment.mark}" aria-expanded="false" aria-controls="${escape(cardId)}">${escape(segment.text)}</button>`,
-    )
+    .map((segment) => {
+      if (typeof segment === 'string') {
+        return escape(segment);
+      }
+      // Beside the text, a mark is described by its entry there; otherwise it opens and controls its card.
+      const tie = beside ? `aria-describedby="${escape(termEntryId(ids[segment.mark] ?? ''))}"` : `aria-expanded="false" aria-controls="${escape(cardId)}"`;
+      return `<button type="button" class="term" data-mark="${segment.mark}" ${tie}>${escape(segment.text)}</button>`;
+    })
     .join('');
 };
 
@@ -103,6 +109,9 @@ markdown.renderer.rules['image'] = (tokens, index, _options, env: unknown) => {
   return `<span class="figure">${image}${title === '' ? '' : `<span class="caption">${escape(title)}</span>`}</span>`;
 };
 
+/** The element id of a mark's explanation when it stands beside the text, so the mark can name it as its description. */
+export const termEntryId = (markId: string): string => `term-${markId}`;
+
 /** How long a card stays once the pointer has left its mark and the card, so the pointer can cross the gap between them. */
 const CLOSE_AFTER_MS = 300;
 
@@ -112,6 +121,8 @@ export function Markdown({
   imageText,
   className,
   marks,
+  beside,
+  onMarks,
 }: {
   readonly source: string;
   /** The subject whose files the material's images come from. */
@@ -121,18 +132,32 @@ export function Markdown({
   readonly className?: string;
   /** Words to mark, each the first time the text names it, with the card it opens; none, and the text is drawn as written. */
   readonly marks?: readonly TextMark[];
+  /**
+   * When the marks' explanations stand beside the text instead, such as in a
+   * column next to it: no card opens, and the mark pointed at or focused is
+   * reported, so what stands beside can show which it is.
+   */
+  readonly beside?: { readonly onPoint: (markId: string | undefined) => void };
+  /** Told the ids of the marks the text holds, in the order it names them, whenever that changes. */
+  readonly onMarks?: (markIds: readonly string[]) => void;
 }) {
   const cardId = `${useId()}-card`;
   const matcher = useMemo(() => (marks === undefined || marks.length === 0 ? undefined : compileMarks(marks)), [marks]);
-  const html = useMemo(
-    () =>
-      markdown.render(source, {
-        subjectId,
-        imageText,
-        ...(matcher === undefined ? {} : { marks: { matcher, marked: new Set<number>(), cardId, skip: { depth: 0 } } satisfies MarkEnv }),
-      }),
-    [source, subjectId, imageText, matcher, cardId],
-  );
+  const ids = useMemo(() => marks?.map(({ id }) => id) ?? [], [marks]);
+  const besideText = beside !== undefined;
+  const { html, found } = useMemo(() => {
+    const marked = new Set<number>();
+    const rendered = markdown.render(source, {
+      subjectId,
+      imageText,
+      ...(matcher === undefined ? {} : { marks: { matcher, marked, cardId, ids, beside: besideText, skip: { depth: 0 } } satisfies MarkEnv }),
+    });
+    return { html: rendered, found: [...marked].toSorted((a, b) => a - b).flatMap((index) => (ids[index] === undefined ? [] : [ids[index]])) };
+  }, [source, subjectId, imageText, matcher, cardId, ids, besideText]);
+  const foundKey = found.join('\u0000');
+  useEffect(() => {
+    onMarks?.(foundKey === '' ? [] : foundKey.split('\u0000'));
+  }, [foundKey, onMarks]);
   const drawn = useRef<HTMLDivElement>(null);
   useEffect(() => {
     // An image that cannot be fetched becomes its text, rather than a broken picture.
@@ -148,7 +173,70 @@ export function Markdown({
   }, [html]);
   // markdown-it built this from the source with raw HTML off and unsafe links dropped, so it holds no markup the material wrote itself.
   const text = <div ref={drawn} className={className} dangerouslySetInnerHTML={{ __html: html }} />;
-  return marks === undefined || matcher === undefined ? text : <MarkedText key={html} text={text} drawn={drawn} marks={marks} cardId={cardId} />;
+  if (marks === undefined || matcher === undefined) {
+    return text;
+  }
+  return beside === undefined ? <MarkedText key={html} text={text} drawn={drawn} marks={marks} cardId={cardId} /> : <PointedText key={html} text={text} drawn={drawn} ids={ids} onPoint={beside.onPoint} />;
+}
+
+/**
+ * Marks whose explanations stand beside the text: pointing at one or focusing
+ * it reports it, and leaving it reports none.
+ */
+function PointedText({
+  text,
+  drawn,
+  ids,
+  onPoint,
+}: {
+  readonly text: ReactElement;
+  readonly drawn: RefObject<HTMLDivElement | null>;
+  readonly ids: readonly string[];
+  readonly onPoint: (markId: string | undefined) => void;
+}) {
+  const frame = useRef<HTMLDivElement>(null);
+  // As with cards: the marks are in markup React did not draw, so native listeners, attached as it is committed.
+  useLayoutEffect(() => {
+    const host = frame.current;
+    if (host === null) {
+      return undefined;
+    }
+    const markId = (target: EventTarget | null): string | undefined => {
+      const found = target instanceof Element ? target.closest('button.term') : null;
+      return found instanceof HTMLElement && drawn.current?.contains(found) === true ? ids[Number(found.dataset['mark'])] : undefined;
+    };
+    const enter = (event: Event): void => {
+      const id = markId(event.target);
+      if (id !== undefined) {
+        onPoint(id);
+      }
+    };
+    const leave = (event: Event): void => {
+      const to = event instanceof MouseEvent || event instanceof FocusEvent ? event.relatedTarget : null;
+      if (markId(event.target) !== undefined && markId(to) !== markId(event.target)) {
+        onPoint(undefined);
+      }
+    };
+    const listeners = [
+      ['pointerover', enter],
+      ['focusin', enter],
+      ['pointerout', leave],
+      ['focusout', leave],
+    ] as const;
+    for (const [type, listener] of listeners) {
+      host.addEventListener(type, listener);
+    }
+    return () => {
+      for (const [type, listener] of listeners) {
+        host.removeEventListener(type, listener);
+      }
+    };
+  }, [drawn, ids, onPoint]);
+  return (
+    <div ref={frame} className="marked-text">
+      {text}
+    </div>
+  );
 }
 
 /**
