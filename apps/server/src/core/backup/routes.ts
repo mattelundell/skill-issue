@@ -75,6 +75,7 @@ export function backupRoutes(db: Db, registry: Registry, version: string): OpenA
       400: { description: 'The body is not a backup.', content: problemContent },
       409: { description: 'The installation is not empty, or the backup was written by another version.', content: problemContent },
       413: { description: 'The backup is too large.', content: problemContent },
+      415: { description: 'Not sent as application/json.', content: problemContent },
       422: { description: 'A table no one here owns, or a row that does not fit.', content: problemContent },
     },
   });
@@ -88,6 +89,11 @@ export function backupRoutes(db: Db, registry: Registry, version: string): OpenA
       const dryRun = DryRunSchema.safeParse(c.req.query('dryRun'));
       if (!dryRun.success) {
         return c.json(problem(400, 'dryRun must be true or false'), 400);
+      }
+      // Only a type a browser will not send across sites without asking first: text/plain or a form would let any page restore through the learner's browser.
+      const type = (c.req.header('content-type') ?? '').split(';')[0]?.trim().toLowerCase();
+      if (type !== 'application/json') {
+        return c.json(problem(415, 'Send a backup as application/json', `Content-Type was ${JSON.stringify(c.req.header('content-type') ?? '')}`), 415);
       }
       let json: unknown;
       try {
