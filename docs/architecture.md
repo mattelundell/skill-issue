@@ -92,7 +92,7 @@ The browser app is a shell that draws two screens — the start screen and a sub
 | figures on a start-screen row | beside each subject's title | reviews due, share mastered |
 | a resume panel | above the start screen's rows; while it shows a subject, the other rows go compact under "Dina andra ämnen" without that subject | where the learner left off |
 | a line across every subject | under the resume panels and above the rows, whether or not a panel shows | how many questions are due in all subjects, with a way into one session of them |
-| which subjects are begun | each start-screen row's action: "Fortsätt" where begun, "Börja" where not, "Öppna" when no module says | the subjects with a lesson begun |
+| which subjects are begun, and which gone all the way through | each start-screen row's action: "Fortsätt" where begun, "Börja" where not, "Öppna" when no module says; an introduction gone all the way through leaves the rows, the panels and the line across subjects, and one quiet line under the rows, "Visa introduktionen igen", opens its home | the subjects with a lesson begun; those with every lesson on the path gone through |
 | lesson marks, in the interface language | on each lesson in the path, and wherever another module lists lessons | not started, in progress, passed, mastered |
 | a lesson's address | each lesson on the path becomes a link, and so does a lesson another module names; given a step, the address opens the lesson at that step | the lessons module's page for one lesson; `/<step>` below it, counted from 1, as a note links back to where it was written |
 | a source's address | each source a lesson rests on becomes a link | the reader's page for one source |

@@ -14,6 +14,8 @@ export const sv = {
   'start.begin': 'Börja',
   'start.begin.label': 'Börja: {subject}',
   'start.others': 'Dina andra ämnen',
+  'start.introduction-again': 'Visa introduktionen igen',
+  'start.introduction-again.label': 'Visa introduktionen igen: {subject}',
   'start.only-language': 'endast {language}',
   'start.empty.title': 'Inga ämnen än',
   'start.empty.body':

@@ -476,7 +476,16 @@ const resuming = (shows: string | undefined): WebModule => ({
     useEffect(() => onShows(shows), [onShows]);
     return shows === undefined ? null : <section aria-label="Fixturpanel">Fortsätt i {shows}</section>;
   },
-  startedSubjects: async () => new Set(['statistik']),
+  subjectsTaken: async () => ({ started: new Set(['statistik']), finished: new Set() }),
+});
+
+const INTRODUCTION: SubjectSummary = { id: 'kom-igang', defaultLanguage: 'sv', languages: ['sv'], title: 'Kom igång', summary: 'Så fungerar appen.', role: 'introduction' };
+
+/** Says which subjects have been gone all the way through, and shows which subjects its resume panel was given. */
+const taking = (finished: readonly string[]): WebModule => ({
+  id: 'taking',
+  ResumePanel: ({ subjects }) => <section aria-label="Panelens ämnen">{subjects.map((subject) => subject.id).join(' ')}</section>,
+  subjectsTaken: async () => ({ started: new Set(finished), finished: new Set(finished) }),
 });
 
 const rows = (): (string | null)[][] =>
@@ -504,6 +513,36 @@ describe('the module contract for lessons', () => {
     await vi.waitFor(() => expect(rows()).toEqual([['example-subject', 'Börja'], ['cra', 'Börja'], ['statistik', 'Fortsätt']]));
     expect(screen.queryByRole('region', { name: 'Dina andra ämnen' })).toBeNull();
     expect(document.querySelector('.ledger')?.classList.contains('compact')).toBe(false);
+  });
+
+  it('leaves an introduction gone all the way through out of the rows and the panels, with one quiet line back to it', async () => {
+    api.subjects = [INTRODUCTION, EXAMPLE, SWEDISH_ONLY];
+    open('/', [taking(['kom-igang', 'statistik'])]);
+
+    const back = await screen.findByRole('link', { name: 'Visa introduktionen igen: Kom igång' });
+    expect(back.textContent).toBe('Visa introduktionen igen');
+    expect(back.getAttribute('href')).toBe('/subjects/kom-igang');
+    // A finished subject that is not an introduction stays.
+    expect(rows()).toEqual([['example-subject', 'Börja'], ['statistik', 'Fortsätt']]);
+    expect(screen.getByRole('region', { name: 'Panelens ämnen' }).textContent).toBe('example-subject statistik');
+  });
+
+  it('lists an introduction not yet gone all the way through like any subject, with no line back', async () => {
+    api.subjects = [INTRODUCTION, EXAMPLE];
+    open('/', [taking(['statistik'])]);
+
+    await vi.waitFor(() => expect(rows()).toEqual([['kom-igang', 'Börja'], ['example-subject', 'Börja']]));
+    expect(screen.queryByRole('link', { name: /^Visa introduktionen igen/ })).toBeNull();
+  });
+
+  it('with only a finished introduction left, says how to add a subject, and still offers the way back', async () => {
+    api.subjects = [INTRODUCTION];
+    open('/', [taking(['kom-igang'])]);
+
+    expect(await screen.findByRole('link', { name: 'Visa introduktionen igen: Kom igång' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: 'Inga ämnen än' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Välkommen');
+    expect(rows()).toEqual([]);
   });
 
   it('with no module saying what has been begun, offers to open each subject', async () => {

@@ -121,5 +121,7 @@ export const ResumeSchema = z.object({
     ])
     .nullable(),
   started: z.array(ItemIdSchema),
+  /** The subjects in which every lesson on the path has been finished. */
+  finished: z.array(ItemIdSchema),
 });
 export type Resume = z.infer<typeof ResumeSchema>;

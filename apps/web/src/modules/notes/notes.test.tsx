@@ -133,7 +133,7 @@ beforeEach(() => {
       return json({ subjectId: 'example-subject', lessons: {} });
     }
     if (path === '/api/v1/lessons/resume') {
-      return json({ offer: null, started: [] });
+      return json({ offer: null, started: [], finished: [] });
     }
     return json({ type: 'about:blank', title: 'Not found', status: 404 }, 404);
   });

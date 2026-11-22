@@ -15,6 +15,8 @@ export const en: Catalogue = {
   'start.begin': 'Begin',
   'start.begin.label': 'Begin: {subject}',
   'start.others': 'Your other subjects',
+  'start.introduction-again': 'Show the introduction again',
+  'start.introduction-again.label': 'Show the introduction again: {subject}',
   'start.only-language': '{language} only',
   'start.empty.title': 'No subjects yet',
   'start.empty.body':

@@ -109,7 +109,7 @@ beforeEach(() => {
       return json({ subjectId: 'example-subject', lessons: {} });
     }
     if (path === '/api/v1/lessons/resume') {
-      return json({ offer: null, started: [] });
+      return json({ offer: null, started: [], finished: [] });
     }
     if (path === '/api/v1/assessment/subjects/example-subject/questions') {
       const ids = (url.searchParams.get('ids') ?? '').split(',');

@@ -53,6 +53,8 @@ The note pane sits beside the lesson, closed until **N** or **Anteckna** under t
 
 Leaving mid-lesson is normal and needs no confirmation; the lesson says on its way out where it will take up. It resumes at the step you left, says so once, and offers a way back to the first step. A lesson already gone through to its end opens at its first step. When the subject has been reloaded and the lesson changed since you were in it, the lesson says so and resumes at the same step number — or at its last step, if it became shorter — because a step number is all that can be kept across a change.
 
+An introduction — a subject that teaches the application by being taken in it — is listed like any subject until its last lesson has been gone through. After that it is out of the way: gone from the rows, the lesson offered and the questions due everywhere, with one quiet line under the subjects, *Visa introduktionen igen*, to open it again.
+
 The start screen offers the lesson you were last in, if it is unfinished, or else the next one on that subject's path not yet gone through; the subject home suggests the same for its own lessons.
 
 ### Exam
