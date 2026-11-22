@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { createInterface } from 'node:readline';
+import type { Terminal } from './asking.js';
 import { backup, exportNotes, restore } from './backup.js';
 import { parseCommand, USAGE } from './command.js';
 import { exportSubject, load, validate, type Outcome } from './pack.js';
-import { review, type Terminal } from './review.js';
+import { review } from './review.js';
 import { fetchStatus, report } from './status.js';
 
 const finish = ({ text, exitCode }: Outcome): void => {
