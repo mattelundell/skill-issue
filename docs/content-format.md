@@ -25,6 +25,19 @@ my-subject/
 
 A translation is the same file with a language suffix before the extension — `lesson.en.md` beside `lesson.md`, `questions.en.yaml` beside `questions.yaml`. A file with no suffix is in the subject's default language. A translation repeats the whole item, and an item in another language must also exist in the default language.
 
+A translation changes words, never structure: what a learner did attaches to an item's id, whatever language it was shown in, so a translation that graded, resumed or examined differently would make that history mean something else. A translation is rejected with `translation-mismatch` when it differs from its original in any of these:
+
+| Item | Kept from the original |
+|---|---|
+| subject | `id`, `defaultLanguage`, `areas` |
+| area | `requires`, `lessons`, the exam's `questions` and `passMark` |
+| lesson | `concepts`, `sources`, the exam's `questions` and `passMark`, the type of each step, and each check's `questions` |
+| question | `type`, `concepts`, `sources`; for a choice the option ids and the answer, for true or false the answer, for a number its value and tolerance, for short text `caseSensitive`, for ordering the number of items, for matching the number of pairs |
+| source | `url`, `accessed`, `kind` |
+| glossary term | `sources` |
+
+Everything else — titles, prompts, option texts, explanations, accepted short answers, a number's unit — is the translation's own.
+
 A file never states its own language, and a question never states its lesson: both follow from where the file is, and a file that states them is rejected.
 
 A pack folder may also hold a `README` and a `LICENSE` at its root, which the application ignores, and hidden files and folders such as `.git/`, which it skips. Any other file the layout does not describe is rejected, so that a misplaced file is reported rather than silently left out.

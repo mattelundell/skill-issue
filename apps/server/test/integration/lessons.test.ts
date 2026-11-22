@@ -115,17 +115,24 @@ describe('one lesson', () => {
     expect(lesson.steps[1]).toEqual({ type: 'example', body: 'A 2 kW fan heater running for 3 hours uses 2 kW × 3 h = 6 kWh.' });
   });
 
-  it('shows the default language whole when a translation’s steps do not line up with the original’s', async () => {
+  it('refuses a subject whose translation has other steps than the original, so a step number means one step in every language', async () => {
     const files = new Map(example);
     const en = 'areas/grunder/lessons/energi-och-effekt/lesson.en.md';
     files.set(en, encode(decode(files.get(en)).replace(/---step---\ntype: example\n\n[^\n]*\n\n/, '')));
-    await load(files);
 
-    const { lesson } = await view('?language=en');
+    const response = await here.app.request('/api/v1/content/packs', { method: 'POST', headers: { 'content-type': 'application/zip' }, body: new Uint8Array(writeZip(files, 'example-subject')).buffer });
 
-    expect(lesson.language).toBe('sv');
-    expect(lesson.title).toBe('Energi och effekt');
-    expect(lesson.steps).toHaveLength(3);
+    expect(response.status).toBe(422);
+    expect(((await response.json()) as { faults: unknown[] }).faults).toEqual([
+      {
+        code: 'translation-mismatch',
+        file: en,
+        item: 'lesson energi-och-effekt',
+        field: 'steps',
+        expected: 'the same as in the default language: ["text","example","check"]',
+        found: '["text","check"]',
+      },
+    ]);
   });
 
   it('answers a subject or a lesson that does not exist with 404', async () => {

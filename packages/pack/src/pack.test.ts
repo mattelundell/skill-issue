@@ -8,6 +8,7 @@ const EXAMPLE = join(import.meta.dirname, '..', '..', '..', 'examples', 'example
 
 const LESSON_1 = 'areas/grunder/lessons/energi-och-effekt';
 const QUESTIONS_1 = `${LESSON_1}/questions.yaml`;
+const QUESTIONS_1_EN = `${LESSON_1}/questions.en.yaml`;
 const LESSON_3 = 'areas/fordjupning/lessons/energibalans';
 
 let example: PackFiles;
@@ -59,6 +60,10 @@ const f = (code: string, file: string, item: string | null, field: string, expec
   expected,
   found,
 });
+
+/** The fault a translation draws when its original is edited and it is not: the original's structure, and its own. */
+const mismatch = (file: string, item: string, field: string, expected: string, found: string): ContentFault =>
+  f('translation-mismatch', file, item, field, `the same as in the default language: ${expected}`, found);
 
 describe('the example pack', () => {
   it('passes every check, with every item in place', () => {
@@ -120,22 +125,22 @@ describe('a broken pack is rejected with every fault, each naming its file, item
     [
       'a question citing a source the pack lacks',
       () => edited(QUESTIONS_1, 'concepts: [effekt]\n  sources: [exempelkalla]\n  prompt: Vilken', 'concepts: [effekt]\n  sources: [boverket]\n  prompt: Vilken'),
-      [f('unknown-source', QUESTIONS_1, 'question kwh-eller-kw', 'sources[0]', 'the id of a source in this pack', '"boverket"')],
+      [mismatch(QUESTIONS_1_EN, 'question kwh-eller-kw', 'sources', '["boverket"]', '["exempelkalla"]'), f('unknown-source', QUESTIONS_1, 'question kwh-eller-kw', 'sources[0]', 'the id of a source in this pack', '"boverket"')],
     ],
     [
       'a check asking a question from another lesson',
       () => edited(`${LESSON_1}/lesson.md`, 'questions: [kwh-eller-kw, berakna-energi]', 'questions: [kwh-eller-kw, prefix-par]'),
-      [f('question-not-in-bank', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[2].questions[1]', 'a question from this lesson\'s own bank; it belongs to "enhetsprefix"', '"prefix-par"')],
+      [mismatch(`${LESSON_1}/lesson.en.md`, 'lesson energi-och-effekt', 'steps[2].questions', '["kwh-eller-kw","prefix-par"]', '["kwh-eller-kw","berakna-energi"]'), f('question-not-in-bank', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[2].questions[1]', 'a question from this lesson\'s own bank; it belongs to "enhetsprefix"', '"prefix-par"')],
     ],
     [
       'a check asking a question that does not exist',
       () => edited(`${LESSON_1}/lesson.md`, 'questions: [kwh-eller-kw, berakna-energi]', 'questions: [kwh-eller-kw, saknas]'),
-      [f('unknown-question', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[2].questions[1]', "the id of a question in this lesson's questions.yaml", '"saknas"')],
+      [mismatch(`${LESSON_1}/lesson.en.md`, 'lesson energi-och-effekt', 'steps[2].questions', '["kwh-eller-kw","saknas"]', '["kwh-eller-kw","berakna-energi"]'), f('unknown-question', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'steps[2].questions[1]', "the id of a question in this lesson's questions.yaml", '"saknas"')],
     ],
     [
       'a lesson exam drawing more questions than the bank holds',
       () => edited(`${LESSON_1}/lesson.md`, 'exam:\n  questions: 2', 'exam:\n  questions: 4'),
-      [f('exam-larger-than-bank', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'exam.questions', "at most 3, the questions in this lesson's bank", '4')],
+      [mismatch(`${LESSON_1}/lesson.en.md`, 'lesson energi-och-effekt', 'exam.questions', '4', '2'), f('exam-larger-than-bank', `${LESSON_1}/lesson.md`, 'lesson energi-och-effekt', 'exam.questions', "at most 3, the questions in this lesson's bank", '4')],
     ],
     [
       'an area exam drawing more questions than its lessons hold',
@@ -145,12 +150,12 @@ describe('a broken pack is rejected with every fault, each naming its file, item
     [
       'a single-choice answer that is not one of the options',
       () => edited(QUESTIONS_1, 'answer: b', 'answer: d'),
-      [f('unknown-option', QUESTIONS_1, 'question kwh-eller-kw', 'answer', 'one of the option ids ["a","b","c"]', '"d"')],
+      [mismatch(QUESTIONS_1_EN, 'question kwh-eller-kw', 'answer', '"d"', '"b"'), f('unknown-option', QUESTIONS_1, 'question kwh-eller-kw', 'answer', 'one of the option ids ["a","b","c"]', '"d"')],
     ],
     [
       'two options sharing an id',
       () => edited(QUESTIONS_1, '{ id: c, text: kWh/m² }', '{ id: a, text: kWh/m² }'),
-      [f('duplicate-option', QUESTIONS_1, 'question kwh-eller-kw', 'options[2].id', 'each entry of options different from the others', '"a"')],
+      [mismatch(QUESTIONS_1_EN, 'question kwh-eller-kw', 'options', '["a","b","a"]', '["a","b","c"]'), f('duplicate-option', QUESTIONS_1, 'question kwh-eller-kw', 'options[2].id', 'each entry of options different from the others', '"a"')],
     ],
     [
       'raw HTML in a step',
@@ -204,9 +209,53 @@ describe('a broken pack is rejected with every fault, each naming its file, item
       [f('missing-original', 'sources/annan.en.md', 'source annan', 'language', 'the same source also in the default language "sv"', '"en"')],
     ],
     [
+      'a translation giving a choice question another answer',
+      () => edited(QUESTIONS_1_EN, 'answer: b', 'answer: a'),
+      [f('translation-mismatch', QUESTIONS_1_EN, 'question kwh-eller-kw', 'answer', 'the same as in the default language: "b"', '"a"')],
+    ],
+    [
+      'a translation naming its options with other ids',
+      () => edited(QUESTIONS_1_EN, '{ id: c, text: kWh/m² }', '{ id: d, text: kWh/m² }'),
+      [f('translation-mismatch', QUESTIONS_1_EN, 'question kwh-eller-kw', 'options', 'the same as in the default language: ["a","b","c"]', '["a","b","d"]')],
+    ],
+    [
+      'a translation giving a numeric question another value, and a true-or-false question the opposite answer',
+      () => {
+        const once = edited(QUESTIONS_1_EN, 'answer: { value: 6, unit: kWh, tolerance: 0 }', 'answer: { value: 60, unit: kWh, tolerance: 0 }');
+        const twice = new TextDecoder().decode(once.get(QUESTIONS_1_EN)).replace('answer: true', 'answer: false');
+        return new Map(once).set(QUESTIONS_1_EN, new TextEncoder().encode(twice));
+      },
+      [
+        f('translation-mismatch', QUESTIONS_1_EN, 'question berakna-energi', 'answer.value', 'the same as in the default language: 6', '60'),
+        f('translation-mismatch', QUESTIONS_1_EN, 'question effekt-ar-takt', 'answer', 'the same as in the default language: true', 'false'),
+      ],
+    ],
+    [
+      'a translated lesson whose check asks other questions, and whose exam is another size',
+      () => {
+        const once = edited(`${LESSON_1}/lesson.en.md`, 'questions: [kwh-eller-kw, berakna-energi]', 'questions: [kwh-eller-kw, effekt-ar-takt]');
+        const twice = new TextDecoder().decode(once.get(`${LESSON_1}/lesson.en.md`)).replace('exam:\n  questions: 2', 'exam:\n  questions: 3');
+        return new Map(once).set(`${LESSON_1}/lesson.en.md`, new TextEncoder().encode(twice));
+      },
+      [
+        f('translation-mismatch', `${LESSON_1}/lesson.en.md`, 'lesson energi-och-effekt', 'exam.questions', 'the same as in the default language: 2', '3'),
+        f('translation-mismatch', `${LESSON_1}/lesson.en.md`, 'lesson energi-och-effekt', 'steps[2].questions', 'the same as in the default language: ["kwh-eller-kw","berakna-energi"]', '["kwh-eller-kw","effekt-ar-takt"]'),
+      ],
+    ],
+    [
+      'a translated lesson with a step fewer',
+      () => {
+        const lesson = text(example, `${LESSON_1}/lesson.en.md`);
+        const steps = lesson.split('---step---');
+        expect(steps.length).toBeGreaterThan(2);
+        return withFile(`${LESSON_1}/lesson.en.md`, steps.slice(0, -1).join('---step---'));
+      },
+      [f('translation-mismatch', `${LESSON_1}/lesson.en.md`, 'lesson energi-och-effekt', 'steps', 'the same as in the default language: ["text","example","check"]', '["text","example"]')],
+    ],
+    [
       'a concept no lesson teaches',
       () => edited(QUESTIONS_1, 'concepts: [effekt]\n  sources: [exempelkalla]\n  prompt: Vilken', 'concepts: [verkningsgrad]\n  sources: [exempelkalla]\n  prompt: Vilken'),
-      [f('unknown-concept', QUESTIONS_1, 'question kwh-eller-kw', 'concepts[0]', 'the id of a concept a lesson lists under "concepts" in this pack', '"verkningsgrad"')],
+      [mismatch(QUESTIONS_1_EN, 'question kwh-eller-kw', 'concepts', '["verkningsgrad"]', '["effekt"]'), f('unknown-concept', QUESTIONS_1, 'question kwh-eller-kw', 'concepts[0]', 'the id of a concept a lesson lists under "concepts" in this pack', '"verkningsgrad"')],
     ],
     [
       'areas that require each other',
