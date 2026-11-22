@@ -2,14 +2,18 @@ import type { LessonView, ShownStep, SubjectOutline } from '@skill-issue/contrac
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Language } from '../../i18n/index.js';
 import { languageName } from '../../i18n/index.js';
-import type { CheckStepProps, PageProps } from '../../shell/contract.js';
+import type { CheckStepProps, PageProps, TextMark } from '../../shell/contract.js';
 import { useCheckStep, useLessonEnds, useLessonSides, useSourceLink, useTextMarks } from '../../shell/contributions.js';
-import { Markdown } from '../../shell/markdown.js';
+import { Markdown, plainText, termEntryId } from '../../shell/markdown.js';
 import { Link, subjectPath } from '../../shell/router.js';
 import { WithCode } from '../../shell/text.js';
 import { useFetched } from '../../shell/useFetched.js';
 import { fetchLesson, savePosition } from './api.js';
 import { useMessages } from './messages.js';
+import { stepHeading, useReading, useWide } from './reading.js';
+
+/** The key that switches between the workbench and focus mode. */
+const READING_KEY = 'f';
 
 /** A step in a lesson's address, counted from 1 as the learner sees it. */
 const STEP_SEGMENT = /^[1-9][0-9]{0,5}$/;
@@ -159,6 +163,15 @@ function Taking({
   const CheckStep = useCheckStep();
   const lessonEnds = useLessonEnds();
   const sides = useLessonSides();
+  const { reading, toggle: toggleReading } = useReading();
+  const marks = useTextMarks(subject);
+  // The terms the step on screen marks, as it reports them, and the one pointed at; beside the text only on the workbench.
+  const [stepTerms, setStepTerms] = useState<readonly string[]>([]);
+  const [pointed, setPointed] = useState<string>();
+  // On a phone the workbench's right-hand column falls below the text, too far from a term to explain it, so a term opens its card there.
+  const wide = useWide();
+  const termsBeside = reading === 'bench' && wide;
+  const beside = useMemo(() => (termsBeside ? { onPoint: setPointed } : undefined), [termsBeside]);
   const home = subjectPath(subject.id);
   // What is beside the lesson is closed until the learner opens it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
@@ -252,6 +265,11 @@ function Taking({
         setOpened(new Set());
         return;
       }
+      if (!inField && plain && event.key.toLowerCase() === READING_KEY) {
+        event.preventDefault();
+        toggleReading();
+        return;
+      }
       const side = !inField && plain && step < total ? sides.find(({ key }) => key === event.key.toLowerCase()) : undefined;
       if (side !== undefined) {
         event.preventDefault();
@@ -260,7 +278,7 @@ function Taking({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [forward, step, total, opened, sides, toggleSide]);
+  }, [forward, step, total, opened, sides, toggleSide, toggleReading]);
 
   const sourceLink = useSourceLink();
   const sourcesLine = lesson.sources.length === 0 ? null : (
@@ -285,11 +303,14 @@ function Taking({
   );
 
   const head = (
-    <>
+    <div className="lesson-head">
       <div className="lesson-top">
         <p className="crumb">
           <Link to={home}>{subject.title}</Link> › {lesson.area.title}
         </p>
+        <button type="button" className="reading-switch" aria-pressed={reading === 'focus'} onClick={toggleReading}>
+          {t('reading.focus')}
+        </button>
         {step < total ? (
           <p className="leave">
             <Link to={home}>{t('leave')}</Link>
@@ -301,12 +322,12 @@ function Taking({
       {lesson.language === subject.language ? null : <p className="chip">{t('in-language', { language: languageName(lesson.language) })}</p>}
       <StepBar steps={lesson.steps} at={step} goTo={moveTo} />
       {again !== undefined ? <p className="stepcount">{t('again.count')}</p> : step < total ? <p className="stepcount">{t('step.of', { step: String(step + 1), steps: String(total) })}</p> : null}
-    </>
+    </div>
   );
 
   if (current === undefined) {
     return (
-      <div className="lesson">
+      <div className="lesson" data-reading={reading}>
         {head}
         <End subject={subject} lessonId={lesson.id} summary={lesson.summary}>
           {lessonEnds.map(({ module, End: Contributed }) => (
@@ -327,11 +348,64 @@ function Taking({
         <Side subject={subject} language={language} lessonId={lesson.id} step={step} selection={selection} close={() => closeSide(module)} />
       </div>
     ));
+  // On the workbench: the lesson's steps and sources to the left of the text, and the step's terms to its right.
+  const rail =
+    reading === 'bench' ? (
+      <div className="lesson-rail">
+        <nav className="sheet rail-box" aria-label={t('steps')}>
+          <h2>{t('steps')}</h2>
+          <ol>
+            {lesson.steps.map((each, index) => {
+              const heading = each.type === 'check' ? undefined : stepHeading(each.body);
+              const title = heading === undefined ? t(`kind.${each.type}`) : plainText(heading);
+              return (
+                // The steps never change order within one revision, and the list is redrawn for a new one.
+                <li key={index} className={index < step ? 'done' : index === step ? 'now' : undefined} aria-current={index === step ? 'step' : undefined}>
+                  {index < step ? (
+                    <button type="button" className="link-button" onClick={() => moveTo(index)}>
+                      {title}
+                    </button>
+                  ) : (
+                    title
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+        {lesson.sources.length === 0 ? null : (
+          <section className="sheet rail-box" aria-label={t('rail.sources')}>
+            <h2>{t('rail.sources')}</h2>
+            <ul>
+              {lesson.sources.map((source) => (
+                <li key={source.id}>
+                  {sourceLink === undefined ? source.title : <Link to={sourceLink(subject.id, source.id)}>{source.title}</Link>}
+                  <span>{source.publisher}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </div>
+    ) : null;
+  const shownTerms = termsBeside && marks !== undefined && current?.type === 'text' ? stepTerms.flatMap((id) => marks.filter((mark) => mark.id === id)) : [];
+  const termsBox =
+    shownTerms.length === 0 ? null : (
+      <section className="sheet side-box step-terms" aria-label={t('terms')}>
+        <h2>{t('terms')}</h2>
+        {shownTerms.map((mark) => (
+          <div key={mark.id} id={termEntryId(mark.id)} className={mark.id === pointed ? 'step-term lit' : 'step-term'}>
+            {mark.card}
+          </div>
+        ))}
+      </section>
+    );
   return (
-    <div className="lesson">
+    <div className="lesson" data-reading={reading}>
       {head}
-      <div className={sideBlocks.length > 0 ? 'lesson-grid with-side' : 'lesson-grid'}>
-        <div>
+      <div className="lesson-grid">
+        {rail}
+        <div className="lesson-main">
           {welcome === undefined ? null : (
             <div className={welcome === 'resumed' ? 'banner info' : 'banner warn'} role="note">
               <span>
@@ -369,6 +443,9 @@ function Taking({
               step={current}
               answeredAfter={view.checks.answeredAfter}
               CheckStep={CheckStep}
+              marks={marks}
+              beside={beside}
+              onMarks={setStepTerms}
               onSettled={(done) => setSettled((before) => (done === before.has(step) ? before : done ? new Set(before).add(step) : new Set([...before].filter((each) => each !== step))))}
               onAnswered={onAnswered}
             />
@@ -391,6 +468,9 @@ function Taking({
                   <kbd>{key.toUpperCase()}</kbd> {label[language].hint}
                 </span>
               ))}
+              <span>
+                <kbd>{READING_KEY.toUpperCase()}</kbd> {t('reading.focus.hint')}
+              </span>
             </span>
             <span className="go">
               {sides.map(({ module, label }) => (
@@ -405,7 +485,13 @@ function Taking({
           </div>
           {sourcesLine}
         </div>
-        {sideBlocks.length > 0 ? <aside className="lesson-sides">{sideBlocks}</aside> : null}
+        {/* Drawn in the same place in both ways of reading, so an open note is not taken down and drawn again when the way changes. */}
+        {sideBlocks.length > 0 || termsBox !== null ? (
+          <aside className="lesson-sides">
+            {sideBlocks}
+            {termsBox}
+          </aside>
+        ) : null}
       </div>
     </div>
   );
@@ -457,6 +543,9 @@ function StepCard({
   CheckStep,
   onSettled,
   onAnswered,
+  marks,
+  beside,
+  onMarks,
 }: {
   readonly subject: SubjectOutline;
   readonly language: Language;
@@ -467,10 +556,13 @@ function StepCard({
   readonly CheckStep: ReturnType<typeof useCheckStep>;
   readonly onSettled: (settled: boolean) => void;
   readonly onAnswered: (questionId: string, correct: boolean) => void;
+  readonly marks: readonly TextMark[] | undefined;
+  /** On the workbench, where the step's terms stand beside the text: told which mark is pointed at. */
+  readonly beside: { readonly onPoint: (markId: string | undefined) => void } | undefined;
+  readonly onMarks: (markIds: readonly string[]) => void;
 }) {
   const { t, tc } = useMessages();
   const imageText = useCallback((alt: string) => t('image', { alt }), [t]);
-  const marks = useTextMarks(subject);
   if (step.type === 'check') {
     return (
       <article className="sheet step check">
@@ -496,7 +588,13 @@ function StepCard({
     <article className={`sheet step ${step.type}`}>
       <p className={`step-kind ${step.type}`}>{t(`kind.${step.type}`)}</p>
       {/* Terms are marked in a text step, which teaches the idea; an example applies it, and marks there would only repeat the text's. */}
-      <Markdown className="prose-step" source={step.body} subjectId={subject.id} imageText={imageText} {...(step.type === 'text' && marks !== undefined ? { marks } : {})} />
+      <Markdown
+        className="prose-step"
+        source={step.body}
+        subjectId={subject.id}
+        imageText={imageText}
+        {...(step.type === 'text' && marks !== undefined ? { marks, onMarks, ...(beside === undefined ? {} : { beside }) } : {})}
+      />
     </article>
   );
 }

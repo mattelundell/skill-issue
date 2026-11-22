@@ -15,7 +15,9 @@ export function TermCard({ entry, subjectId }: { readonly entry: GlossaryEntry; 
   return (
     <div className="term-entry" lang={entry.language}>
       <dfn>{entry.term}</dfn>
-      <Markdown className="term-definition" source={entry.definition} subjectId={subjectId} imageText={imageText} />
+      <div role="definition">
+        <Markdown className="term-definition" source={entry.definition} subjectId={subjectId} imageText={imageText} />
+      </div>
       {entry.alsoKnownAs.length === 0 ? null : <p className="term-also">{t('also', { names: list(entry.alsoKnownAs) })}</p>}
       {entry.sources.length === 0 ? null : (
         <p className="term-sources">

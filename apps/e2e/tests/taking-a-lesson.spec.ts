@@ -126,6 +126,7 @@ test('a source links each lesson resting on it, with its state, and the lesson l
   await lesson.getByRole('link', { name: 'Energi och effekt' }).click();
 
   await expect(page).toHaveURL(LESSON);
-  await page.getByRole('link', { name: 'Exempelkälla om energi och effekt (Exempelförlaget)' }).click();
+  // At this width the workbench names the lesson's sources in the column beside it.
+  await page.locator('.lesson-rail').getByRole('link', { name: 'Exempelkälla om energi och effekt' }).click();
   await expect(page).toHaveURL('/subjects/example-subject/reader/exempelkalla');
 });

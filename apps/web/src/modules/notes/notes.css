@@ -29,7 +29,7 @@
 .note-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin: 0 0 4px; font-size: 0.9rem; color: var(--graphite); }
 .note-head a { color: var(--royal); font-weight: 600; }
 .note-head b { color: var(--ink); }
-.note-body { max-width: 40rem; overflow-wrap: anywhere; }
+.note-body { max-width: var(--measure); overflow-wrap: anywhere; font-size: var(--read); line-height: 1.55; }
 .note-body > :first-child { margin-top: 0; }
 .note-body > :last-child { margin-bottom: 0; }
 .note-body p, .note-body ul, .note-body ol { margin: 0 0 8px; }

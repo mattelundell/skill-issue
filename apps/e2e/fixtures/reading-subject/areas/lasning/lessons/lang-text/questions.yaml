@@ -1,0 +1,8 @@
+- id: lang-fraga
+  type: short-text
+  concepts: [lasning]
+  sources: [kalla]
+  prompt: Vad kallas utetemperaturen där gratisvärmen precis räcker?
+  accepted: [balanstemperatur]
+  caseSensitive: false
+  explanation: Under balanstemperaturen behövs värme från värmesystemet.

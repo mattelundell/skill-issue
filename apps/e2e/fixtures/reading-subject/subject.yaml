@@ -1,0 +1,7 @@
+formatVersion: 1
+id: reading-subject
+defaultLanguage: sv
+title: Läsämne
+summary: Ett ämne med långa stycken, för att mäta hur långa raderna blir på en bred skärm.
+areas:
+  - lasning

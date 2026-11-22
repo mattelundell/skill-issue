@@ -1,0 +1,9 @@
+id: lasning
+title: Läsning
+summary: Långa stycken.
+requires: []
+lessons:
+  - lang-text
+exam:
+  questions: 1
+  passMark: 1

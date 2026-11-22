@@ -19,7 +19,16 @@
   --warn-wash: #fbebe3;
   --body: "Atkinson Hyperlegible Next", system-ui, sans-serif;
   --title: "Newsreader", Georgia, serif;
+  /* Reading type grows with the window above a phone. */
+  --read: clamp(1.05rem, 0.72rem + 0.45vw, 1.3rem);
+  /*
+   * About 65 characters a line. Set in em, never ch: this typeface's zero is
+   * 0.65em wide while a running Swedish character averages about 0.45em, so
+   * 65ch would hold about 94 characters.
+   */
+  --measure: 29em;
 }
+@media (max-width: 760px) { :root { --read: 1.05rem; } }
 @media (prefers-color-scheme: dark) {
   :root {
     --paper: #14171d;
@@ -295,4 +304,10 @@ button.term:hover, button.term[aria-expanded="true"] { background: var(--royal-w
   font-size: 0.92rem; line-height: 1.45; font-weight: 400;
   background: var(--sheet); border: 1px solid var(--rule); border-left: 4px solid var(--royal); border-radius: 8px;
   padding: 10px 12px; box-shadow: 0 6px 20px rgb(0 0 0 / 12%);
+}
+
+/* ---------- wider pages for reading, above a phone ---------- */
+@media (min-width: 1280px) {
+  /* A subject's pages share one width, so moving between its tabs does not shift the page. */
+  .wrap:has(.subject-head) { max-width: 72rem; }
 }
