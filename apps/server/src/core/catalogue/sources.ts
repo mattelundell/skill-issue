@@ -11,6 +11,7 @@ import {
 } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
 import { err, ok, type Result } from '../result.js';
+import { LIVE_SUBJECT } from './live.js';
 
 /**
  * The reads behind a subject's source library: each source with what cites it.
@@ -99,7 +100,7 @@ export class Holdings {
 }
 
 export async function holdings(db: Db, subjectId: string): Promise<Holdings | undefined> {
-  const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+  const subjects = await db.query(LIVE_SUBJECT, [subjectId]);
   const subject = subjects[0];
   if (subject === undefined) {
     return undefined;

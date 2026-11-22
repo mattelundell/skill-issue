@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { AreaSchema, ExamBlueprintSchema, ItemIdSchema, LessonSchema, QuestionSchema, SourceSchema, type ExamScope, type LessonSource, type Question } from '@skill-issue/contract';
 import type { Db, Row } from '../db.js';
 import { err, ok, type Result } from '../result.js';
+import { LIVE_SUBJECT } from './live.js';
 
 /**
  * The reads behind asking and examining: questions with their answers, for the
@@ -122,7 +123,7 @@ class Held {
 }
 
 async function held(db: Db, subjectId: string, language: string | undefined): Promise<{ held: Held; bodies: (kind: string) => Promise<Bodies> } | undefined> {
-  const subjects = await db.query('SELECT default_language FROM catalogue.subject WHERE id = $1', [subjectId]);
+  const subjects = await db.query(LIVE_SUBJECT, [subjectId]);
   const subject = subjects[0];
   if (subject === undefined) {
     return undefined;
