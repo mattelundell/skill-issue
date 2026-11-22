@@ -1,37 +1,172 @@
-/* The notes module's own styles: the note pane beside a lesson and the Notes tab, in the B5 mockup's language. */
+/* The notes module's own styles: the notebook as a spread in a lesson, the Notes tab, and every notebook from the start screen, drawn to the chosen B14j mockup. */
 
-/* the note pane */
-.notes-pane { padding: 16px 18px; }
-.notes-pane h2 { font-size: 1rem; }
-.notes-pane .at { color: var(--graphite); font-size: 0.85rem; margin: 2px 0 10px; }
-.notes-pane textarea { display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 0.95rem; line-height: 1.45; color: var(--ink); background: var(--paper); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; resize: vertical; }
-.notes-pane textarea:focus-visible { outline: 2px solid var(--royal); outline-offset: 1px; }
-.notes-pane .saved { display: block; color: var(--graphite); font-size: 0.82rem; margin-top: 6px; }
-.notes-pane .saved.failed { color: var(--warn); }
-.notes-pane .state-line { color: var(--graphite); font-size: 0.9rem; }
-.notes-pane .keys { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 10px 0 0; color: var(--graphite); font-size: 0.82rem; }
-.notes-pane kbd { font: 0.76rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
+/* ---------- the spread ---------- */
+.notebook-spread { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
+.notebook-spread > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--rule); background: var(--sheet); }
+.notebook-spread > header h2 { font-family: var(--title); font-size: 1.3rem; font-weight: 600; margin: 0; }
+.notebook-spread .of { color: var(--graphite); font-size: 0.85rem; }
+.spread-tools { display: flex; gap: 12px; align-items: center; }
+.spread-close { font: inherit; font-size: 1rem; color: var(--graphite); background: none; border: 0; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; }
+.spread-close:hover { background: var(--royal-wash); color: var(--ink); }
+.spread-body { display: grid; grid-template-columns: 13rem minmax(0, 1fr); min-height: 0; }
+.spread-body > nav { overflow: auto; padding: 14px 14px 14px 18px; border-right: 1px solid var(--rule); }
+.spread-body .page { overflow: auto; padding: 18px 22px; }
+.spread-body .page h3 { font-family: var(--title); font-weight: 600; font-size: 1.35rem; margin: 0 0 10px; }
+.sec-path { color: var(--graphite); font-size: 0.82rem; margin: 0 0 2px; }
+.away { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.85rem; background: var(--warn-wash); border-radius: 7px; padding: 6px 10px; margin: 0 0 10px; }
+.notebook-spread .hint { font-size: 0.85rem; color: var(--warn); margin: 0 0 8px; }
+.notebook-spread .state-line { color: var(--graphite); font-size: 0.9rem; }
+@media (max-width: 1279px) { .spread-body { grid-template-columns: 12rem minmax(0, 1fr); } }
+@media (max-width: 760px) { .spread-body { grid-template-columns: minmax(0, 1fr); } .spread-body > nav { display: none; } }
 
-/* the Notes tab */
-.notes-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 22px; }
-.notes-export { flex: none; }
-.notes-search { flex: 1 1 18rem; display: flex; align-items: center; position: relative; }
-.notes-search input[type='search'] { width: 100%; font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 40px 8px 34px; }
-.notes-search svg { position: absolute; left: 11px; width: 16px; height: 16px; color: var(--graphite); pointer-events: none; }
-.notes-search kbd { position: absolute; right: 10px; font: 0.78rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--graphite); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; background: var(--paper); }
-.notes-count { display: block; margin: 16px 0 8px; color: var(--graphite); font-size: 0.9rem; }
-.notes-area { margin-top: 22px; }
-.notes-area > h2 { font-family: var(--title); font-weight: 600; font-size: 1.3rem; margin-bottom: 10px; }
-.notes-lesson { padding: 16px 22px; margin-top: 12px; }
-.notes-lesson h3 { font-size: 1.05rem; margin: 0 0 6px; }
-.notes-lesson ol { list-style: none; margin: 0; padding: 0; }
-.notes-lesson .note { padding: 12px 0; border-top: 1px solid var(--rule); }
-.notes-lesson .note:first-child { border-top: 0; }
-.note-head { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; margin: 0 0 4px; font-size: 0.9rem; color: var(--graphite); }
-.note-head a { color: var(--royal); font-weight: 600; }
-.note-head b { color: var(--ink); }
-.note-body { max-width: var(--measure); overflow-wrap: anywhere; font-size: var(--read); line-height: 1.55; }
-.note-body > :first-child { margin-top: 0; }
-.note-body > :last-child { margin-bottom: 0; }
-.note-body p, .note-body ul, .note-body ol { margin: 0 0 8px; }
-.note-body blockquote { margin: 0 0 8px; padding: 4px 10px; border-left: 3px solid var(--rule); color: var(--graphite); }
+.modes { display: inline-flex; border: 1px solid var(--rule); border-radius: 7px; overflow: hidden; flex: none; margin: 0; padding: 0; min-width: 0; }
+/* The note as read holds the focus so Enter writes in it; a quiet tint says so, not a ring. */
+.read-note:focus-visible { outline: 0; background: var(--royal-wash); box-shadow: 0 0 0 6px var(--royal-wash); }
+.modes button { font: inherit; font-size: 0.82rem; font-weight: 600; padding: 3px 10px; border: 0; background: transparent; color: var(--graphite); cursor: pointer; }
+.modes button[aria-pressed="true"] { background: var(--royal-wash); color: var(--royal); }
+
+/* ---------- writing: a formatting bar over the text area ---------- */
+.composer { border: 1px solid var(--rule); border-radius: 10px; background: var(--paper); }
+.composer:focus-within { border-color: var(--royal); box-shadow: 0 0 0 3px var(--royal-wash); }
+.composer .editor { display: block; width: 100%; box-sizing: border-box; font: 0.92rem/1.5 ui-monospace, "SF Mono", Menlo, monospace; color: var(--ink); background: transparent; border: 0; border-radius: 0 0 10px 10px; padding: 10px 12px; resize: vertical; }
+.composer .editor:focus-visible { outline: 0; }
+.note-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 5px 6px; border-bottom: 1px solid var(--rule); background: var(--sheet); border-radius: 10px 10px 0 0; }
+.tb-group { display: inline-flex; align-items: center; gap: 2px; }
+/* Every control is the same box, and letters and icons share one 18px square inside it, so they line up on one centre. */
+.note-bar button { position: relative; width: 30px; height: 32px; padding: 0; color: var(--graphite); background: none; border: 0; border-radius: 6px; cursor: pointer; display: grid; place-items: center; }
+.note-bar button:hover { background-color: var(--royal-wash); color: var(--ink); }
+.note-bar svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.note-bar .sep { width: 1px; height: 18px; background: var(--rule); margin: 0 2px; }
+.headpick { position: relative; }
+.note-bar .headbtn { width: auto; display: inline-flex; align-items: center; gap: 2px; padding: 0 4px 0 8px; font: 600 0.82rem/1 var(--body); }
+.note-bar .headbtn > span:first-child { width: 5.8em; text-align: left; }
+.note-bar .headbtn > svg { width: 14px; height: 14px; }
+.note-bar .headbtn[aria-expanded="true"] { background: var(--royal-wash); color: var(--royal); }
+.menu { position: absolute; left: 0; top: calc(100% + 4px); z-index: 50; min-width: 12rem; background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; box-shadow: 0 8px 24px rgb(0 0 0 / 14%); padding: 4px; display: grid; }
+.note-bar .menu button { width: auto; height: auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 7px 10px; font: 0.9rem var(--body); color: var(--ink); text-align: left; }
+.note-bar .menu button[data-head="h1"] span { font: 600 1.05rem var(--title); }
+.note-bar .menu button[data-head="h2"] span { font-weight: 700; }
+.note-bar .menu button[aria-checked="true"] { background: var(--royal-wash); color: var(--royal); }
+.note-bar .menu button:focus-visible { outline-offset: -2px; }
+.menu code { border: 0; background: none; color: var(--graphite); padding: 0; font: 0.8rem ui-monospace, "SF Mono", Menlo, monospace; }
+/* the tooltip: the action's name, then its keys drawn as keys */
+.note-bar .tip { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 8px; background: #1d2230; color: #fff; font: 600 0.8rem/1 var(--body); padding: 6px 8px 6px 10px; border-radius: 7px; box-shadow: 0 6px 18px rgb(0 0 0 / 22%); pointer-events: none; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity 0.1s ease 0s, visibility 0s linear 0.1s; }
+.note-bar button:hover > .tip, .note-bar button:focus-visible > .tip { opacity: 1; visibility: visible; transition-delay: 0.35s, 0.35s; }
+.note-bar .headbtn[aria-expanded="true"] > .tip { display: none; }
+.note-bar .tip small { font-weight: 400; color: #b9c0cc; }
+.chord { display: inline-flex; gap: 3px; }
+.note-bar .tip kbd { font: 600 0.78rem/1 var(--body); color: #1d2230; background: #fff; border: 0; border-bottom: 2px solid #9aa1ae; border-radius: 4px; min-width: 1.5em; padding: 3px 4px 2px; text-align: center; }
+@media (prefers-color-scheme: dark) {
+  .note-bar .tip { background: #e7eaf0; color: #1d2230; }
+  .note-bar .tip small { color: #5e6472; }
+  .note-bar .tip kbd { background: #1d2230; color: #fff; border-bottom-color: #5e6472; }
+}
+.notebook-spread .status, .notebook-page .status { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; color: var(--graphite); font-size: 0.8rem; margin: 6px 0 0; }
+.status .failed { color: var(--warn); }
+
+/* ---------- reading: a note's own headings sit below the notebook's ---------- */
+.md { font-size: 0.95rem; line-height: 1.55; overflow-wrap: anywhere; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p, .md ul, .md ol, .md blockquote, .md pre { margin: 0 0 0.7em; }
+.md ul, .md ol { padding-left: 1.3em; }
+.md h4 { font-size: 0.98rem; margin: 0.9em 0 0.3em; }
+.md h5, .md h6 { font-size: 0.9rem; margin: 0.8em 0 0.3em; color: var(--graphite); text-transform: uppercase; letter-spacing: 0.05em; }
+.md blockquote { border-left: 3px solid var(--royal); padding: 2px 0 2px 10px; color: var(--graphite); }
+.md img { display: block; max-width: 100%; height: auto; border: 1px solid var(--rule); border-radius: 6px; margin: 0.5em 0; background: #fff; }
+.md del { color: var(--graphite); }
+.md pre { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; overflow-x: auto; }
+.md-click { cursor: text; border-radius: 6px; }
+.md-click:hover { background: var(--sheet); box-shadow: 0 0 0 6px var(--sheet); }
+.empty-sec { color: var(--graphite); font-style: italic; font-size: 0.9rem; margin: 0; }
+
+/* ---------- the key map ---------- */
+.keymap-line { margin: 10px 0 0; }
+.keymap-btn { font: inherit; font-size: 0.82rem; color: var(--graphite); background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.keymap-btn:hover { color: var(--royal); border-color: var(--royal); }
+.keymap { margin-top: 10px; border: 1px solid var(--rule); border-radius: 10px; background: var(--sheet); padding: 12px 14px; font-size: 0.85rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 8px 24px; }
+.keymap h4 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--graphite); margin: 0 0 4px; }
+.keymap dl { margin: 0; display: grid; gap: 5px; }
+.keymap-row { display: grid; grid-template-columns: 6.5rem 1fr; gap: 12px; align-items: center; }
+.keymap dd { margin: 0; }
+.keymap kbd { min-width: 1.6em; text-align: center; }
+
+/* ---------- contents that fold by area ---------- */
+.toc-tools { display: flex; gap: 12px; margin: 0 0 10px; font-size: 0.78rem; }
+.toc-tools button { font: inherit; color: var(--royal); background: none; border: 0; padding: 0; cursor: pointer; }
+.toc { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; }
+.toc > li { margin: 0 0 6px; }
+.toc details > summary { list-style: none; cursor: pointer; display: flex; align-items: baseline; gap: 6px; font-weight: 700; padding: 3px 0; }
+.toc details > summary::-webkit-details-marker { display: none; }
+.toc details > summary::before { content: "›"; display: inline-block; width: 0.8em; color: var(--graphite); transition: transform 0.12s; }
+.toc details[open] > summary::before { transform: rotate(90deg); }
+.toc summary a { color: var(--ink); text-decoration: none; }
+.toc summary .n { white-space: nowrap; margin-left: auto; font-weight: 400; font-size: 0.75rem; color: var(--done); }
+.toc ul { list-style: none; margin: 2px 0 0; padding: 0 0 0 10px; border-left: 2px solid var(--rule); }
+.toc ul a { display: flex; gap: 6px; align-items: baseline; color: var(--graphite); text-decoration: none; padding: 2px 0 2px 6px; }
+.toc a.has::after { content: "●"; font-size: 0.6rem; color: var(--done); margin-left: auto; }
+.toc a[aria-current="true"] { color: var(--royal); font-weight: 700; }
+.toc a.here { color: var(--ink); }
+.toc a:hover { color: var(--royal); }
+.here-tag { font-weight: 700; color: var(--royal); }
+
+/* ---------- the Notes tab: the notebook as one document ---------- */
+.nb-tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 14px; margin-top: 22px; }
+.notes-search { flex: 1 1 18rem; }
+.notes-search input[type='search'] { width: 100%; font: inherit; font-size: 0.92rem; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 10px; }
+.only-written { font-size: 0.88rem; color: var(--graphite); display: flex; gap: 6px; align-items: center; }
+.nb-layout { display: grid; grid-template-columns: 16rem minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 16px; }
+.nb-contents { position: sticky; top: 16px; padding: 16px 16px 10px; max-height: calc(100vh - 32px); overflow: auto; }
+.nb-document { padding: 22px 30px 26px; }
+.doc-area > h2 { font-family: var(--title); font-weight: 600; font-size: 1.5rem; padding: 22px 0 4px; border-bottom: 1px solid var(--rule); margin: 0 0 4px; }
+.doc-area:first-of-type > h2 { padding-top: 0; }
+.doc-sec { padding: 8px 0 10px; border-bottom: 1px dashed var(--rule); scroll-margin-top: 12px; }
+.doc-sec:last-child { border-bottom: 0; }
+.doc-sec > header { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.doc-sec > header h3 { font-size: 1rem; margin: 0; }
+.doc-sec > header h3 a { color: var(--ink); text-decoration: none; }
+.doc-sec > header h3 a:hover { color: var(--royal); }
+.doc-sec.area-note > header h3 { color: var(--graphite); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.doc-sec .edit { font-size: 0.85rem; }
+.doc-sec > .md { margin-top: 4px; font-size: 1rem; max-width: 40em; }
+.doc-sec > .composer { margin-top: 6px; }
+@media (max-width: 760px) {
+  .nb-layout { grid-template-columns: minmax(0, 1fr); }
+  .nb-contents { position: static; max-height: none; }
+  .nb-document { padding: 18px 16px; }
+}
+
+/* the export dialog */
+.export-dialog { border: 1px solid var(--rule); border-radius: 12px; padding: 18px 22px; width: min(36rem, calc(100vw - 32px)); background: var(--sheet); color: var(--ink); }
+.export-dialog::backdrop { background: rgb(20 23 29 / 45%); }
+.export-dialog h2 { font-family: var(--title); font-weight: 600; font-size: 1.4rem; margin: 0 0 12px; }
+.export-dialog .choices { display: grid; gap: 10px; }
+.choice { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; padding: 12px 14px; border: 1.5px solid var(--rule); border-radius: 10px; cursor: pointer; }
+.choice:has(input:checked) { border-color: var(--royal); background: var(--royal-wash); }
+.choice input { grid-row: span 2; margin-top: 4px; align-self: start; }
+.choice small { color: var(--graphite); }
+.export-dialog footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+/* ---------- every notebook, and the way there from the start screen ---------- */
+.notebooks .lead { color: var(--graphite); margin: 6px 0 0; }
+.books { list-style: none; margin: 18px 0 0; padding: 0; display: grid; gap: 12px; }
+.book { display: grid; grid-template-columns: 1fr auto; gap: 6px 16px; padding: 18px 20px; align-items: center; }
+.book h2 { font-family: var(--title); font-weight: 600; font-size: 1.35rem; margin: 0; }
+.book p { margin: 0; color: var(--graphite); font-size: 0.9rem; }
+.book .areas-mini { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
+.areas-mini span { font-size: 0.78rem; border: 1px solid var(--rule); border-radius: 999px; padding: 1px 8px; color: var(--graphite); }
+.areas-mini span.has { color: var(--ink); border-color: var(--done); background: var(--done-wash); }
+.notebooks-line { margin: 10px 0 0; font-size: 0.92rem; color: var(--graphite); }
+.notebooks-line a { font-weight: 600; }
+
+/* ---------- print: the Notes tab is what a PDF is made from ---------- */
+@media print {
+  .topbar, .tabs, .nb-tools, .nb-contents, .doc-sec .edit, footer, .spread-button { display: none !important; }
+  .app { background: #fff !important; }
+  .nb-layout { display: block; }
+  .nb-document { border: 0; padding: 0; }
+  .doc-area { break-before: page; }
+  .doc-area:first-of-type { break-before: auto; }
+  .doc-sec { break-inside: avoid; border-bottom: 0; }
+  .doc-sec.empty { display: none; }
+}

@@ -38,7 +38,7 @@ node apps/cli/dist/main.js review                                  # answer what
 node apps/cli/dist/main.js review example-subject                  # … or in one
 node apps/cli/dist/main.js exam example-subject lesson enhetsprefix # sit a lesson exam; - leaves a question, q stops without handing in
 node apps/cli/dist/main.js exam example-subject area grunder       # … or an area exam
-node apps/cli/dist/main.js export-notes example-subject notes.md   # your notes as one Markdown file, by area, lesson and step
+node apps/cli/dist/main.js export-notes example-subject notes.zip  # your notebook: Markdown per area, images in bilder/
 node apps/cli/dist/main.js backup skill-issue-backup.json          # everything: subjects, answers, notes, where each lesson was left
 node apps/cli/dist/main.js restore skill-issue-backup.json         # into an empty installation of the same version
 ```

@@ -59,11 +59,11 @@ beforeEach(() => {
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : String(input), 'http://app.test');
     if (init?.method === 'PUT') {
-      const written = /\/notes\/subjects\/example-subject\/lessons\/([^/]+)\/steps\/(\d+)$/.exec(url.pathname);
+      const written = /\/notes\/subjects\/example-subject\/notebook\/lessons\/([^/]+)$/.exec(url.pathname);
       const body: unknown = JSON.parse(typeof init.body === 'string' ? init.body : '{}');
       const text = typeof body === 'object' && body !== null && 'body' in body && typeof body.body === 'string' ? body.body : '';
       return written !== null
-        ? json({ subjectId: 'example-subject', lessonId: written[1], step: Number(written[2]), body: text, createdAt: '2026-11-22T10:00:00Z', updatedAt: '2026-11-22T10:00:00Z' })
+        ? json({ subjectId: 'example-subject', kind: 'lesson', itemId: written[1], body: text, createdAt: '2026-11-22T10:00:00Z', updatedAt: '2026-11-22T10:00:00Z' })
         : json({ step: 0, steps: 3, revision: 1, startedAt: '2026-11-22T10:00:00Z', updatedAt: '2026-11-22T10:00:00Z', finishedAt: null });
     }
     switch (url.pathname) {
@@ -77,8 +77,8 @@ beforeEach(() => {
         return json(VIEW);
       case '/api/v1/glossary/subjects/example-subject/terms':
         return json(GLOSSARY);
-      case '/api/v1/notes/subjects/example-subject/notes':
-        return json({ subjectId: 'example-subject', notes: [] });
+      case '/api/v1/notes/subjects/example-subject/notebook':
+        return json({ subjectId: 'example-subject', sections: [] });
       default:
         return json({ type: 'about:blank', title: 'Not found', status: 404 }, 404);
     }
@@ -187,7 +187,7 @@ describe('focus mode', () => {
     expect(page.dataset['reading']).toBe('focus');
 
     await userEvent.keyboard('n');
-    const note = await screen.findByRole('textbox', { name: /Anteckning vid steg 1/ });
+    const note = await screen.findByRole('textbox', { name: 'Anteckning under Energi och effekt' });
     await userEvent.type(note, 'fff');
     expect(page.dataset['reading']).toBe('focus');
     expect((note as HTMLTextAreaElement).value).toBe('fff');
@@ -198,17 +198,17 @@ describe('focus mode', () => {
     await lesson();
     await userEvent.click(screen.getByRole('button', { name: 'Fortsätt' }));
     await screen.findByRole('heading', { name: 'En värmefläkt' });
-    await userEvent.click(screen.getByRole('button', { name: 'Anteckna' }));
-    const note = await screen.findByRole('textbox', { name: /Anteckning vid steg 2/ });
+    await userEvent.click(screen.getByRole('button', { name: /^Anteckningsboken/ }));
+    const note = await screen.findByRole('textbox', { name: 'Anteckning under Energi och effekt' });
     await userEvent.type(note, 'Två kW i tre timmar.');
 
     await userEvent.click(modeSwitch());
     expect(screen.getByRole('heading', { name: 'En värmefläkt' })).toBeTruthy();
-    expect(screen.getByRole('textbox', { name: /Anteckning vid steg 2/ })).toBe(note);
+    expect(screen.getByRole('textbox', { name: 'Anteckning under Energi och effekt' })).toBe(note);
     expect((note as HTMLTextAreaElement).value).toBe('Två kW i tre timmar.');
 
     await userEvent.click(modeSwitch());
-    expect(screen.getByRole('textbox', { name: /Anteckning vid steg 2/ })).toBe(note);
+    expect(screen.getByRole('textbox', { name: 'Anteckning under Energi och effekt' })).toBe(note);
   });
 
   it('is remembered on the device', async () => {
