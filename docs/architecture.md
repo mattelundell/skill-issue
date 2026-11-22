@@ -115,6 +115,7 @@ The shell owns what needs no module: the subject list and each subject's path, r
 |---|---|
 | `content` | Accepts, validates, versions and exports subject material. |
 | `reader` | Shows source material, with its origin. |
+| `glossary` | Marks a subject's terms in its lessons, and shows what each means and where that comes from. |
 | `lessons` | Runs a lesson step by step and tracks where you are. |
 | `assessment` | Checks inside lessons, and final exams per lesson and per area. Grades answers. |
 | `review` | Schedules questions to come back, and runs review sessions. |
