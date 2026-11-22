@@ -21,6 +21,19 @@ export interface AppDependencies {
 }
 
 
+/** Methods that change something. A removal is not among them: no browser sends one to another site without asking first, which this server never answers. */
+const WRITES: ReadonlySet<string> = new Set(['POST', 'PUT', 'PATCH']);
+
+/**
+ * The only bodies a write is taken in. A page on any site open in the learner's
+ * browser may send a POST unasked if its body is plain text, a form or nothing,
+ * and a server that read such a body as JSON would act on it. Every other type
+ * makes the browser ask first, and this server never answers that question, so
+ * only the application, the command-line tool or a script on this machine can
+ * send JSON or a zip archive. A route that takes no zip refuses one itself.
+ */
+const WRITABLE: ReadonlySet<string> = new Set(['application/json', 'application/zip']);
+
 const healthRoute = createRoute({
   method: 'get',
   path: '/health',
@@ -82,6 +95,18 @@ export function buildApp({ db, registry, version, webDir, maxBodyBytes = DEFAULT
       }
     });
   }
+
+  app.use(`${API_PREFIX}/*`, async (c, next) => {
+    if (!WRITES.has(c.req.method)) {
+      return next();
+    }
+    const type = (c.req.header('content-type') ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+    if (!WRITABLE.has(type)) {
+      // Not read, let alone acted on: see WRITABLE.
+      return c.json(problem(415, 'Send the request as application/json', `Content-Type was ${JSON.stringify(c.req.header('content-type') ?? '')}. A write is taken as application/json; a pack may also be sent as application/zip.`), 415);
+    }
+    return next();
+  });
 
   app.route(API_PREFIX, api);
 

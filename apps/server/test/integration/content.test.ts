@@ -289,7 +289,8 @@ describe('a rejected pack', () => {
     const { status, json } = await post(here.app, 'formatVersion: 1', 'text/yaml');
 
     expect(status).toBe(415);
-    expect(json).toEqual({ type: 'about:blank', title: 'Send a pack as application/json or application/zip', status: 415, detail: 'Content-Type was "text/yaml"' });
+    // Refused by the core, before the content module reads it, as every write that is neither JSON nor a zip archive is.
+    expect(json).toEqual({ type: 'about:blank', title: 'Send the request as application/json', status: 415, detail: 'Content-Type was "text/yaml". A write is taken as application/json; a pack may also be sent as application/zip.' });
   });
 
   it('with a dryRun that is not true or false is answered 400', async () => {
