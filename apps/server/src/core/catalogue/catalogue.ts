@@ -208,170 +208,176 @@ const byRef = (a: ItemRef, b: ItemRef): number => {
   return left < right ? -1 : left > right ? 1 : 0;
 };
 
-export function createCatalogue(db: Db): Catalogue {
-  const load = async (pack: Pack, { dryRun }: { readonly dryRun: boolean }): Promise<LoadResult> =>
-    db.transaction(async (tx) => {
-      const subject = pack.subject.find((entry) => entry.language === entry.defaultLanguage);
-      if (subject === undefined) {
-        throw new Error('a checked pack has a subject entry in its default language');
-      }
-      const subjectId = subject.id;
-      // Two loads of one subject at once would race for the same revision numbers.
-      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`catalogue:${subjectId}`]);
-
-      const existing = await tx.query('SELECT 1 FROM catalogue.subject WHERE id = $1', [subjectId]);
-      const created = existing.length === 0;
-      const currentRows = await tx.query(
-        `SELECT e.kind, e.id, e.language, e.retired_at IS NOT NULL AS retired, r.digest
-           FROM catalogue.entry e
-           JOIN catalogue.revision r USING (subject_id, kind, id, language)
-          WHERE e.subject_id = $1 AND r.revision = e.current_revision`,
-        [subjectId],
-      );
-      const current = new Map(
-        currentRows.map((row) => [
-          entryKey(text(row, 'kind'), text(row, 'id'), text(row, 'language')),
-          {
-            digest: text(row, 'digest'),
-            retired: row['retired'] === true,
-            kind: ItemKindSchema.parse(row['kind']),
-            id: text(row, 'id'),
-            language: text(row, 'language'),
-          },
-        ]),
-      );
-      const wanted = entriesOf(pack);
-
-      const added: WantedEntry[] = [];
-      const changed: WantedEntry[] = [];
-      let unchanged = 0;
-      for (const [key, entry] of wanted) {
-        const now = current.get(key);
-        if (now === undefined || now.retired) {
-          added.push(entry);
-        } else if (now.digest === entry.digest) {
-          unchanged += 1;
-        } else {
-          changed.push(entry);
-        }
-      }
-      const retired = [...current].filter(([key, now]) => !now.retired && !wanted.has(key)).map(([, now]) => now);
-
-      const assetRows = await tx.query('SELECT path, digest FROM catalogue.asset WHERE subject_id = $1', [subjectId]);
-      const currentAssets = new Map(assetRows.map((row) => [text(row, 'path'), text(row, 'digest')]));
-      const wantedAssets = new Map(pack.assets.map((asset) => [asset.path, { ...asset, digest: digestOf(asset) }]));
-      const addedAssets = [...wantedAssets.values()].filter((asset) => !currentAssets.has(asset.path));
-      const changedAssets = [...wantedAssets.values()].filter((asset) => {
-        const digest = currentAssets.get(asset.path);
-        return digest !== undefined && digest !== asset.digest;
-      });
-      const retiredAssets = [...currentAssets.keys()].filter((path) => !wantedAssets.has(path));
-      unchanged += wantedAssets.size - addedAssets.length - changedAssets.length;
-
-      const result = {
-        subject: subjectId,
-        created,
-        added: [...added.map(ref), ...addedAssets.map((asset) => assetRef(asset.path))].toSorted(byRef),
-        changed: [...changed.map(ref), ...changedAssets.map((asset) => assetRef(asset.path))].toSorted(byRef),
-        retired: [...retired.map(ref), ...retiredAssets.map(assetRef)].toSorted(byRef),
-        unchanged,
-      };
-      const nothingToDo = result.added.length + result.changed.length + result.retired.length === 0;
-      if (dryRun || nothingToDo) {
-        return { ...result, stored: false };
-      }
-
-      await tx.query(
-        `INSERT INTO catalogue.subject (id, default_language, format_version) VALUES ($1, $2, $3)
-         ON CONFLICT (id) DO UPDATE SET default_language = EXCLUDED.default_language,
-                                        format_version = EXCLUDED.format_version,
-                                        updated_at = now()`,
-        [subjectId, subject.defaultLanguage, pack.formatVersion],
-      );
-      for (const [key, placement] of placementsOf(pack)) {
-        const [kind, id] = key.split('\u0000');
-        await tx.query(
-          `INSERT INTO catalogue.item (subject_id, kind, id, parent_kind, parent_id, position) VALUES ($1, $2, $3, $4, $5, $6)
-           ON CONFLICT (subject_id, kind, id) DO UPDATE SET parent_kind = EXCLUDED.parent_kind,
-                                                            parent_id = EXCLUDED.parent_id,
-                                                            position = EXCLUDED.position`,
-          [subjectId, kind, id, placement.parentKind, placement.parentId, placement.position],
-        );
-      }
-      for (const entry of [...added, ...changed]) {
-        const latest = await tx.query(
-          'SELECT coalesce(max(revision), 0) + 1 AS next FROM catalogue.revision WHERE subject_id = $1 AND kind = $2 AND id = $3 AND language = $4',
-          [subjectId, entry.kind, entry.id, entry.language],
-        );
-        const revision = Number(latest[0]?.['next'] ?? 1);
-        await tx.query(
-          `INSERT INTO catalogue.entry (subject_id, kind, id, language, current_revision, retired_at) VALUES ($1, $2, $3, $4, $5, NULL)
-           ON CONFLICT (subject_id, kind, id, language) DO UPDATE SET current_revision = EXCLUDED.current_revision, retired_at = NULL`,
-          [subjectId, entry.kind, entry.id, entry.language, revision],
-        );
-        await tx.query(
-          'INSERT INTO catalogue.revision (subject_id, kind, id, language, revision, body, digest) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-          [subjectId, entry.kind, entry.id, entry.language, revision, JSON.stringify(entry.body), entry.digest],
-        );
-      }
-      for (const entry of retired) {
-        await tx.query(
-          'UPDATE catalogue.entry SET retired_at = now() WHERE subject_id = $1 AND kind = $2 AND id = $3 AND language = $4',
-          [subjectId, entry.kind, entry.id, entry.language],
-        );
-      }
-      for (const asset of [...addedAssets, ...changedAssets]) {
-        await tx.query(
-          `INSERT INTO catalogue.asset (subject_id, path, media_type, data, digest) VALUES ($1, $2, $3, $4, $5)
-           ON CONFLICT (subject_id, path) DO UPDATE SET media_type = EXCLUDED.media_type, data = EXCLUDED.data, digest = EXCLUDED.digest`,
-          [subjectId, asset.path, asset.mediaType, Buffer.from(asset.data, 'base64'), asset.digest],
-        );
-      }
-      for (const path of retiredAssets) {
-        await tx.query('DELETE FROM catalogue.asset WHERE subject_id = $1 AND path = $2', [subjectId, path]);
-      }
-      return { ...result, stored: true };
-    });
-
-  const exportPack = async (subjectId: string): Promise<Pack | undefined> => {
-    const subjects = await db.query('SELECT default_language, format_version FROM catalogue.subject WHERE id = $1', [subjectId]);
-    const subject = subjects[0];
+/** Stores a checked pack as the current state of its subject on `on`, joining a transaction already open there. */
+const loadOn = async (on: Db, pack: Pack, { dryRun }: { readonly dryRun: boolean }): Promise<LoadResult> =>
+  on.transaction(async (tx) => {
+    const subject = pack.subject.find((entry) => entry.language === entry.defaultLanguage);
     if (subject === undefined) {
-      return undefined;
+      throw new Error('a checked pack has a subject entry in its default language');
     }
-    const defaultLanguage = text(subject, 'default_language');
-    const rows = await db.query(
-      `SELECT e.kind, e.language, r.body
+    const subjectId = subject.id;
+    // Two loads of one subject at once would race for the same revision numbers.
+    await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`catalogue:${subjectId}`]);
+
+    const existing = await tx.query('SELECT 1 FROM catalogue.subject WHERE id = $1', [subjectId]);
+    const created = existing.length === 0;
+    const currentRows = await tx.query(
+      `SELECT e.kind, e.id, e.language, e.retired_at IS NOT NULL AS retired, r.digest
          FROM catalogue.entry e
          JOIN catalogue.revision r USING (subject_id, kind, id, language)
-         JOIN catalogue.item i USING (subject_id, kind, id)
-        WHERE e.subject_id = $1 AND r.revision = e.current_revision AND e.retired_at IS NULL
-        ORDER BY i.kind, i.parent_id NULLS FIRST, i.position, (e.language = $2) DESC, e.language`,
-      [subjectId, defaultLanguage],
+        WHERE e.subject_id = $1 AND r.revision = e.current_revision`,
+      [subjectId],
     );
-    const collections: Record<ItemCollection, unknown[]> = { subject: [], sources: [], glossary: [], areas: [], lessons: [], questions: [] };
-    for (const row of rows) {
-      const collection = COLLECTION_OF.get(ItemKindSchema.parse(row['kind']));
-      const body = row['body'];
-      if (collection === undefined || typeof body !== 'object' || body === null) {
-        throw new TypeError(`catalogue entry of kind ${String(row['kind'])} cannot be exported`);
+    const current = new Map(
+      currentRows.map((row) => [
+        entryKey(text(row, 'kind'), text(row, 'id'), text(row, 'language')),
+        {
+          digest: text(row, 'digest'),
+          retired: row['retired'] === true,
+          kind: ItemKindSchema.parse(row['kind']),
+          id: text(row, 'id'),
+          language: text(row, 'language'),
+        },
+      ]),
+    );
+    const wanted = entriesOf(pack);
+
+    const added: WantedEntry[] = [];
+    const changed: WantedEntry[] = [];
+    let unchanged = 0;
+    for (const [key, entry] of wanted) {
+      const now = current.get(key);
+      if (now === undefined || now.retired) {
+        added.push(entry);
+      } else if (now.digest === entry.digest) {
+        unchanged += 1;
+      } else {
+        changed.push(entry);
       }
-      collections[collection].push({ ...body, language: text(row, 'language') });
     }
-    const assets = await db.query('SELECT path, media_type, data FROM catalogue.asset WHERE subject_id = $1 ORDER BY path', [subjectId]);
-    // Parsed rather than trusted: what was stored under an earlier format must still be a valid pack.
-    return PackSchema.parse({
-      formatVersion: FORMAT_VERSION,
-      ...collections,
-      assets: assets.map((row) => {
-        const data = row['data'];
-        if (!(data instanceof Buffer)) {
-          throw new TypeError('catalogue asset data is not bytes');
-        }
-        return { path: text(row, 'path'), mediaType: text(row, 'media_type'), data: data.toString('base64') };
-      }),
+    const retired = [...current].filter(([key, now]) => !now.retired && !wanted.has(key)).map(([, now]) => now);
+
+    const assetRows = await tx.query('SELECT path, digest FROM catalogue.asset WHERE subject_id = $1', [subjectId]);
+    const currentAssets = new Map(assetRows.map((row) => [text(row, 'path'), text(row, 'digest')]));
+    const wantedAssets = new Map(pack.assets.map((asset) => [asset.path, { ...asset, digest: digestOf(asset) }]));
+    const addedAssets = [...wantedAssets.values()].filter((asset) => !currentAssets.has(asset.path));
+    const changedAssets = [...wantedAssets.values()].filter((asset) => {
+      const digest = currentAssets.get(asset.path);
+      return digest !== undefined && digest !== asset.digest;
     });
-  };
+    const retiredAssets = [...currentAssets.keys()].filter((path) => !wantedAssets.has(path));
+    unchanged += wantedAssets.size - addedAssets.length - changedAssets.length;
+
+    const result = {
+      subject: subjectId,
+      created,
+      added: [...added.map(ref), ...addedAssets.map((asset) => assetRef(asset.path))].toSorted(byRef),
+      changed: [...changed.map(ref), ...changedAssets.map((asset) => assetRef(asset.path))].toSorted(byRef),
+      retired: [...retired.map(ref), ...retiredAssets.map(assetRef)].toSorted(byRef),
+      unchanged,
+    };
+    const nothingToDo = result.added.length + result.changed.length + result.retired.length === 0;
+    if (dryRun || nothingToDo) {
+      return { ...result, stored: false };
+    }
+
+    await tx.query(
+      `INSERT INTO catalogue.subject (id, default_language, format_version) VALUES ($1, $2, $3)
+       ON CONFLICT (id) DO UPDATE SET default_language = EXCLUDED.default_language,
+                                      format_version = EXCLUDED.format_version,
+                                      updated_at = now()`,
+      [subjectId, subject.defaultLanguage, pack.formatVersion],
+    );
+    for (const [key, placement] of placementsOf(pack)) {
+      const [kind, id] = key.split('\u0000');
+      await tx.query(
+        `INSERT INTO catalogue.item (subject_id, kind, id, parent_kind, parent_id, position) VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (subject_id, kind, id) DO UPDATE SET parent_kind = EXCLUDED.parent_kind,
+                                                          parent_id = EXCLUDED.parent_id,
+                                                          position = EXCLUDED.position`,
+        [subjectId, kind, id, placement.parentKind, placement.parentId, placement.position],
+      );
+    }
+    for (const entry of [...added, ...changed]) {
+      const latest = await tx.query(
+        'SELECT coalesce(max(revision), 0) + 1 AS next FROM catalogue.revision WHERE subject_id = $1 AND kind = $2 AND id = $3 AND language = $4',
+        [subjectId, entry.kind, entry.id, entry.language],
+      );
+      const revision = Number(latest[0]?.['next'] ?? 1);
+      await tx.query(
+        `INSERT INTO catalogue.entry (subject_id, kind, id, language, current_revision, retired_at) VALUES ($1, $2, $3, $4, $5, NULL)
+         ON CONFLICT (subject_id, kind, id, language) DO UPDATE SET current_revision = EXCLUDED.current_revision, retired_at = NULL`,
+        [subjectId, entry.kind, entry.id, entry.language, revision],
+      );
+      await tx.query(
+        'INSERT INTO catalogue.revision (subject_id, kind, id, language, revision, body, digest) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [subjectId, entry.kind, entry.id, entry.language, revision, JSON.stringify(entry.body), entry.digest],
+      );
+    }
+    for (const entry of retired) {
+      await tx.query(
+        'UPDATE catalogue.entry SET retired_at = now() WHERE subject_id = $1 AND kind = $2 AND id = $3 AND language = $4',
+        [subjectId, entry.kind, entry.id, entry.language],
+      );
+    }
+    for (const asset of [...addedAssets, ...changedAssets]) {
+      await tx.query(
+        `INSERT INTO catalogue.asset (subject_id, path, media_type, data, digest) VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (subject_id, path) DO UPDATE SET media_type = EXCLUDED.media_type, data = EXCLUDED.data, digest = EXCLUDED.digest`,
+        [subjectId, asset.path, asset.mediaType, Buffer.from(asset.data, 'base64'), asset.digest],
+      );
+    }
+    for (const path of retiredAssets) {
+      await tx.query('DELETE FROM catalogue.asset WHERE subject_id = $1 AND path = $2', [subjectId, path]);
+    }
+    return { ...result, stored: true };
+  });
+
+/** The subject's current items as a pack, read on `on`. */
+const exportOn = async (on: Db, subjectId: string): Promise<Pack | undefined> => {
+  const subjects = await on.query('SELECT default_language, format_version FROM catalogue.subject WHERE id = $1', [subjectId]);
+  const subject = subjects[0];
+  if (subject === undefined) {
+    return undefined;
+  }
+  const defaultLanguage = text(subject, 'default_language');
+  const rows = await on.query(
+    `SELECT e.kind, e.language, r.body
+       FROM catalogue.entry e
+       JOIN catalogue.revision r USING (subject_id, kind, id, language)
+       JOIN catalogue.item i USING (subject_id, kind, id)
+      WHERE e.subject_id = $1 AND r.revision = e.current_revision AND e.retired_at IS NULL
+      ORDER BY i.kind, i.parent_id NULLS FIRST, i.position, (e.language = $2) DESC, e.language`,
+    [subjectId, defaultLanguage],
+  );
+  const collections: Record<ItemCollection, unknown[]> = { subject: [], sources: [], glossary: [], areas: [], lessons: [], questions: [] };
+  for (const row of rows) {
+    const collection = COLLECTION_OF.get(ItemKindSchema.parse(row['kind']));
+    const body = row['body'];
+    if (collection === undefined || typeof body !== 'object' || body === null) {
+      throw new TypeError(`catalogue entry of kind ${String(row['kind'])} cannot be exported`);
+    }
+    collections[collection].push({ ...body, language: text(row, 'language') });
+  }
+  const assets = await on.query('SELECT path, media_type, data FROM catalogue.asset WHERE subject_id = $1 ORDER BY path', [subjectId]);
+  // Parsed rather than trusted: what was stored under an earlier format must still be a valid pack.
+  return PackSchema.parse({
+    formatVersion: FORMAT_VERSION,
+    ...collections,
+    assets: assets.map((row) => {
+      const data = row['data'];
+      if (!(data instanceof Buffer)) {
+        throw new TypeError('catalogue asset data is not bytes');
+      }
+      return { path: text(row, 'path'), mediaType: text(row, 'media_type'), data: data.toString('base64') };
+    }),
+  });
+};
+
+export function createCatalogue(db: Db): Catalogue {
+  const load = async (pack: Pack, options: { readonly dryRun: boolean }): Promise<LoadResult> => loadOn(db, pack, options);
+  const exportPack = async (subjectId: string): Promise<Pack | undefined> => exportOn(db, subjectId);
+
 
   const listSubjects = async (): Promise<readonly SubjectSummary[]> => {
     const rows = await db.query(
