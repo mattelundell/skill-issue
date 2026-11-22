@@ -226,11 +226,13 @@ describe('where the learner is', () => {
   });
 });
 
+const lessonAt = (id: string): string => `/api/v1/lessons/subjects/example-subject/lessons/${id}`;
+
 describe('where to take up', () => {
   it('offers nothing and lists no subject before any lesson is begun', async () => {
     await load(example);
 
-    expect(await resume()).toEqual({ offer: null, started: [] });
+    expect(await resume()).toEqual({ offer: null, started: [], finished: [] });
   });
 
   it('offers to continue the lesson last moved in, at its step', async () => {
@@ -241,6 +243,7 @@ describe('where to take up', () => {
     expect(await resume()).toEqual({
       offer: { kind: 'continue', subjectId: 'example-subject', lessonId: 'energi-och-effekt', language: 'sv', title: 'Energi och effekt', areaTitle: 'Grunder', step: 1, steps: 3 },
       started: ['example-subject'],
+      finished: [],
     });
   });
 
@@ -260,6 +263,22 @@ describe('where to take up', () => {
     const steps = LessonViewSchema.parse(await (await here.app.request(last)).json()).lesson.steps.length;
     await put(steps, 1, last);
 
-    expect(await resume()).toEqual({ offer: null, started: ['example-subject'] });
+    expect(await resume()).toEqual({ offer: null, started: ['example-subject'], finished: [] });
+  });
+
+  it('names a subject finished once every lesson on its path is gone through, and not before', async () => {
+    await load(example);
+    const through = async (id: string): Promise<void> => {
+      const steps = LessonViewSchema.parse(await (await here.app.request(lessonAt(id))).json()).lesson.steps.length;
+      expect((await put(steps, 1, lessonAt(id))).status).toBe(200);
+    };
+    await through('energi-och-effekt');
+    await through('energibalans');
+    // One lesson begun and left: two of three gone through is not finished.
+    expect((await put(1, 1, lessonAt('enhetsprefix'))).status).toBe(200);
+    expect((await resume()).finished).toEqual([]);
+
+    await through('enhetsprefix');
+    expect(await resume()).toEqual({ offer: null, started: ['example-subject'], finished: ['example-subject'] });
   });
 });

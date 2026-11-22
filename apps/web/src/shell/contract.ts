@@ -92,9 +92,11 @@ export interface WebModule {
   readonly StartLine?: ComponentType<{ readonly subjects: readonly SubjectSummary[]; readonly language: Language }>;
   /**
    * The subjects in which the learner has begun something, so each row's action
-   * reads "continue" or "begin". With no module saying, it reads "open".
+   * reads "continue" or "begin" (with no module saying, it reads "open"); and
+   * those the learner has gone all the way through, so a finished introduction
+   * leaves the start screen.
    */
-  readonly startedSubjects?: (signal: AbortSignal) => Promise<ReadonlySet<string>>;
+  readonly subjectsTaken?: (signal: AbortSignal) => Promise<{ readonly started: ReadonlySet<string>; readonly finished: ReadonlySet<string> }>;
   /** The address of one source, for every module that names a source to link it. One module shows sources. */
   readonly sourceLink?: (subjectId: string, sourceId: string) => string;
   /**

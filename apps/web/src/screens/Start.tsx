@@ -13,6 +13,8 @@ interface Listed {
   readonly seenFirst: ReadonlySet<string> | undefined;
   /** Subjects in which something has been begun, by any module that says; undefined when none says. */
   readonly started: ReadonlySet<string> | undefined;
+  /** Subjects gone all the way through, by any module that says. */
+  readonly finished: ReadonlySet<string>;
 }
 
 interface StartProps {
@@ -24,7 +26,7 @@ interface StartProps {
 /** Every subject, each with one way in. A subject loaded while the screen is open appears on the next refresh, marked as new. */
 export function Start({ modules, status, refreshStatus }: StartProps) {
   const { t } = useI18n();
-  const starters = useMemo(() => modules.flatMap(({ startedSubjects }) => (startedSubjects === undefined ? [] : [startedSubjects])), [modules]);
+  const starters = useMemo(() => modules.flatMap(({ subjectsTaken }) => (subjectsTaken === undefined ? [] : [subjectsTaken])), [modules]);
   // What the screen saw the first time the list came back; anything beyond it arrived while it was open.
   const seenFirst = useRef<ReadonlySet<string> | undefined>(undefined);
   const load = useCallback(async (signal: AbortSignal): Promise<Listed> => {
@@ -33,12 +35,14 @@ export function Start({ modules, status, refreshStatus }: StartProps) {
       seenFirst.current = new Set(subjects.value.map((subject) => subject.id));
     }
     let started: ReadonlySet<string> | undefined;
+    let finished: ReadonlySet<string> = new Set();
     if (starters.length > 0) {
       // A module that cannot say is left out; the others still decide each row's action.
-      const said = await Promise.allSettled(starters.map(async (starter) => starter(signal)));
-      started = new Set(said.flatMap((result) => (result.status === 'fulfilled' ? [...result.value] : [])));
+      const said = (await Promise.allSettled(starters.map(async (starter) => starter(signal)))).flatMap((result) => (result.status === 'fulfilled' ? [result.value] : []));
+      started = new Set(said.flatMap((each) => [...each.started]));
+      finished = new Set(said.flatMap((each) => [...each.finished]));
     }
-    return { subjects, seenFirst: seenFirst.current, started };
+    return { subjects, seenFirst: seenFirst.current, started, finished };
   }, [starters]);
   const { value: listed, refresh } = usePolled(load);
   const subjects = listed?.subjects;
@@ -52,11 +56,12 @@ export function Start({ modules, status, refreshStatus }: StartProps) {
     refresh();
   };
 
-  const empty = subjects?.kind === 'ok' && subjects.value.length === 0;
+  // A finished introduction does not count: with only it left, the screen greets as an empty one does.
+  const empty = subjects?.kind === 'ok' && subjects.value.every((subject) => isTaken(subject, listed?.finished));
   return (
     <>
       <h1 className="page-title">{empty ? t('start.welcome') : t('start.title')}</h1>
-      <StartBody modules={modules} status={status} subjects={subjects} seenFirst={listed?.seenFirst} started={listed?.started} retry={retry} />
+      <StartBody modules={modules} status={status} subjects={subjects} seenFirst={listed?.seenFirst} started={listed?.started} finished={listed?.finished} retry={retry} />
     </>
   );
 }
@@ -67,6 +72,7 @@ function StartBody({
   subjects,
   seenFirst,
   started,
+  finished,
   retry,
 }: {
   readonly modules: readonly WebModule[];
@@ -74,6 +80,7 @@ function StartBody({
   readonly subjects: Fetched<readonly SubjectSummary[]> | undefined;
   readonly seenFirst: ReadonlySet<string> | undefined;
   readonly started: ReadonlySet<string> | undefined;
+  readonly finished: ReadonlySet<string> | undefined;
   readonly retry: () => void;
 }) {
   const { t, language } = useI18n();
@@ -124,8 +131,29 @@ function StartBody({
   if (subjects.value.length === 0) {
     return <Empty />;
   }
+  // An introduction gone all the way through has done its work: it leaves every list here, and one line brings it back.
+  const taken = subjects.value.filter((subject) => isTaken(subject, finished));
+  const studied = subjects.value.filter((subject) => !taken.includes(subject));
   const shown = modules.map(({ id }) => shows.get(id)).find((subjectId) => subjectId !== undefined);
-  const rows = subjects.value.filter((subject) => subject.id !== shown);
+  const rows = studied.filter((subject) => subject.id !== shown);
+  const again =
+    taken.length === 0 ? null : (
+      <p className="again">
+        {taken.map((subject) => (
+          <Link key={subject.id} to={subjectPath(subject.id)} aria-label={t('start.introduction-again.label', { subject: subject.title })}>
+            {t('start.introduction-again')}
+          </Link>
+        ))}
+      </p>
+    );
+  if (studied.length === 0) {
+    return (
+      <>
+        <Empty />
+        {again}
+      </>
+    );
+  }
   const ledger = (
     <div className={shown === undefined ? 'sheet ledger' : 'sheet ledger compact'}>
       {rows.map((subject) => (
@@ -136,9 +164,9 @@ function StartBody({
   return (
     <>
       {modules.map(({ id, ResumePanel }) =>
-        ResumePanel === undefined ? null : <ResumePanel key={id} subjects={subjects.value} language={language} onShows={reporters.get(id) ?? noReport} />,
+        ResumePanel === undefined ? null : <ResumePanel key={id} subjects={studied} language={language} onShows={reporters.get(id) ?? noReport} />,
       )}
-      {modules.map(({ id, StartLine }) => (StartLine === undefined ? null : <StartLine key={id} subjects={subjects.value} language={language} />))}
+      {modules.map(({ id, StartLine }) => (StartLine === undefined ? null : <StartLine key={id} subjects={studied} language={language} />))}
       {shown === undefined ? (
         ledger
       ) : rows.length > 0 ? (
@@ -149,11 +177,15 @@ function StartBody({
           {ledger}
         </section>
       ) : null}
+      {again}
     </>
   );
 }
 
 const noReport = (): void => undefined;
+
+/** An introduction the learner has gone all the way through. */
+const isTaken = (subject: SubjectSummary, finished: ReadonlySet<string> | undefined): boolean => subject.role === 'introduction' && finished?.has(subject.id) === true;
 
 function Row({
   subject,

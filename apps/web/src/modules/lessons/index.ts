@@ -16,12 +16,12 @@ export const lessonsModule: WebModule = {
   lessonLink: (subjectId, lessonId, step) => subjectPath(subjectId, 'lessons', step === undefined ? [lessonId] : [lessonId, String(step + 1)]),
   homeBlocks: [{ placement: 'lead', Block: ContinueBlock }],
   ResumePanel,
-  startedSubjects: async (signal) => {
+  subjectsTaken: async (signal) => {
     const resume = await fetchResume(signal);
     if (resume.kind !== 'ok') {
       throw new Error('where the learner has begun could not be read');
     }
-    return new Set(resume.value.started);
+    return { started: new Set(resume.value.started), finished: new Set(resume.value.finished) };
   },
   lessonMarks: async (subjectId, signal, language) => {
     const positions = await fetchPositions(subjectId, signal);

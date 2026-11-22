@@ -112,6 +112,10 @@ h1, h2, h3 { margin: 0; line-height: 1.2; }
 
 /* ---------- start: ledger ---------- */
 .ledger { margin-top: 28px; }
+/* The way back to an introduction already taken: one quiet line under the subjects. */
+.again { margin: 18px 0 0; font-size: 0.9rem; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.again a { color: var(--graphite); }
+.again a:hover { color: var(--royal); }
 .ledger-row {
   display: grid; grid-template-columns: 1fr auto; gap: 8px 24px; align-items: center;
   padding: 18px 22px; border-top: 1px solid var(--rule);

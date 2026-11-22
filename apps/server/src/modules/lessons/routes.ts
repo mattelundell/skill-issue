@@ -196,7 +196,7 @@ export function lessonsRoutes({ db, catalogue, record }: ModuleContext): OpenAPI
     path: '/resume',
     summary: 'Where the learner left off, across every subject.',
     description:
-      'The lesson last moved in, when it is unfinished; else the first lesson after it on its subject’s path that has not been gone through; else nothing. Lessons a subject no longer offers are passed over. `started` lists the subjects in which any lesson has been begun.',
+      'The lesson last moved in, when it is unfinished; else the first lesson after it on its subject’s path that has not been gone through; else nothing. Lessons a subject no longer offers are passed over. `started` lists the subjects in which any lesson has been begun; `finished`, those in which every lesson on the path has been gone through.',
     request: language,
     responses: {
       200: { description: 'The offer, if any.', content: { 'application/json': { schema: ResumeSchema } } },
@@ -209,7 +209,17 @@ export function lessonsRoutes({ db, catalogue, record }: ModuleContext): OpenAPI
       return c.json(badLanguage, 400);
     }
     const positions = await latestPositions(db);
-    const resume: Resume = { offer: null, started: [...new Set(positions.map((position) => position.subjectId))].toSorted() };
+    const started = [...new Set(positions.map((position) => position.subjectId))].toSorted();
+    const goneThrough: string[] = [];
+    for (const subjectId of started) {
+      const outline = await catalogue.outline(subjectId, undefined);
+      const path = outline?.areas.flatMap((area) => area.lessons.map((each) => each.id)) ?? [];
+      const through = new Set(positions.filter((each) => each.subjectId === subjectId && each.finishedAt !== null).map((each) => each.lessonId));
+      if (path.length > 0 && path.every((id) => through.has(id))) {
+        goneThrough.push(subjectId);
+      }
+    }
+    const resume: Resume = { offer: null, started, finished: goneThrough };
     for (const position of positions) {
       const lesson = await catalogue.lesson(position.subjectId, position.lessonId, wanted.data);
       if (!lesson.ok) {

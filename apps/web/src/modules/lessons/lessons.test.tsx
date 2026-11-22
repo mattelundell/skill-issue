@@ -70,7 +70,7 @@ let api: FakeApi;
 const json = (body: unknown, status = 200): Response => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 
 beforeEach(() => {
-  api = { views: [view(0)], positions: {}, resume: { offer: null, started: [] }, saveAnswers: [], saved: [], requested: [] };
+  api = { views: [view(0)], positions: {}, resume: { offer: null, started: [], finished: [] }, saveAnswers: [], saved: [], requested: [] };
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = new URL(input instanceof Request ? input.url : String(input), 'http://app.test');
     const path = url.pathname;
@@ -512,6 +512,7 @@ describe('the start screen with lessons', () => {
     api.resume = {
       offer: { kind: 'continue', subjectId: 'example-subject', lessonId: 'energi-och-effekt', language: 'sv', title: 'Energi och effekt', areaTitle: 'Grunder', step: 1, steps: 3 },
       started: ['example-subject'],
+      finished: [],
     };
     open('/');
 
@@ -524,7 +525,7 @@ describe('the start screen with lessons', () => {
   });
 
   it('after the last lesson was gone through, offers the next one', async () => {
-    api.resume = { offer: { kind: 'next', subjectId: 'example-subject', lessonId: 'enhetsprefix', language: 'sv', title: 'Enhetsprefix', areaTitle: 'Grunder' }, started: ['example-subject'] };
+    api.resume = { offer: { kind: 'next', subjectId: 'example-subject', lessonId: 'enhetsprefix', language: 'sv', title: 'Enhetsprefix', areaTitle: 'Grunder' }, started: ['example-subject'], finished: [] };
     open('/');
 
     const panel = await screen.findByRole('region', { name: 'Exempelämne' });
