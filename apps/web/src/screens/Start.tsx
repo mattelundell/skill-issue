@@ -250,7 +250,7 @@ function Empty() {
         <li>
           <div>
             {t('start.empty.example')}
-            <pre>node apps/cli/dist/main.js load examples/example-subject</pre>
+            <pre>docker compose run --rm cli load subjects/my-subject</pre>
           </div>
         </li>
         <li>

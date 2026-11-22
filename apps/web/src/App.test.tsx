@@ -334,7 +334,7 @@ describe('the start screen', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Välkommen' })).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Inga ämnen än' })).toBeTruthy();
-    expect(screen.getByText('node apps/cli/dist/main.js load examples/example-subject')).toBeTruthy();
+    expect(screen.getByText('docker compose run --rm cli load subjects/my-subject')).toBeTruthy();
   });
 
   it('lists each subject with one way in, and names its languages unless it is in the interface’s language alone', async () => {

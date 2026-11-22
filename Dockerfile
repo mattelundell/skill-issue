@@ -34,12 +34,15 @@ FROM node@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb
 ENV NODE_ENV=production \
     HOST=0.0.0.0 \
     PORT=4747 \
-    WEB_DIR=/app/web
+    WEB_DIR=/app/web \
+    INTRODUCTION_DIR=/app/introduction
 WORKDIR /app
 COPY --from=build /out/server/package.json ./
 COPY --from=build /out/server/node_modules ./node_modules
 COPY --from=build /out/server/dist ./dist
 COPY --from=build /src/apps/web/dist ./web
+# Loaded on the first start of an installation that holds no subject.
+COPY examples/introduction ./introduction
 COPY --from=build /out/cli/package.json ./cli/
 COPY --from=build /out/cli/node_modules ./cli/node_modules
 COPY --from=build /out/cli/dist ./cli/dist

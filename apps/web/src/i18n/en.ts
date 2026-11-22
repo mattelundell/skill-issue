@@ -20,8 +20,8 @@ export const en: Catalogue = {
   'start.only-language': '{language} only',
   'start.empty.title': 'No subjects yet',
   'start.empty.body':
-    'Skill Issue ships with no subjects. A subject is a subject pack — a folder of sources, lessons and questions — that you load. It appears here straight away, without a restart.',
-  'start.empty.example': 'Try the example subject that comes with the app:',
+    'A subject is a subject pack — a folder of sources, lessons and questions — that you load. It appears here straight away, without a restart.',
+  'start.empty.example': 'Put the pack’s folder in the app’s folder and load it:',
   'start.empty.api': 'Or send a pack of your own to the API:',
   'start.unreachable.title': 'The server cannot be reached',
   'start.unreachable.body': 'The app got no answer from the server, so your subjects cannot be shown. Your data is still in the database.',
