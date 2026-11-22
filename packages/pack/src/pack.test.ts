@@ -74,7 +74,36 @@ const f = (code: string, file: string, item: string | null, field: string, expec
 const mismatch = (file: string, item: string, field: string, expected: string, found: string): ContentFault =>
   f('translation-mismatch', file, item, field, `the same as in the default language: ${expected}`, found);
 
+/** The ids among these items that are missing in Swedish or in English. */
+const missingInEither = (items: readonly { id: string; language: string }[]): string[] =>
+  [...new Set(items.map((item) => item.id))].filter((id) => !(items.some((item) => item.id === id && item.language === 'sv') && items.some((item) => item.id === id && item.language === 'en')));
+
 describe('an introduction', () => {
+  it('ships with the application: it passes every check, says it is an introduction, and has every item in both languages', async () => {
+    const read = await readFolder(join(import.meta.dirname, '..', '..', '..', 'examples', 'introduction'));
+    if (!read.ok) {
+      throw new Error(`introduction unreadable: ${JSON.stringify(read.error)}`);
+    }
+    const result = checkPackFiles(read.value);
+    if (!result.ok) {
+      throw new Error(`introduction does not check: ${JSON.stringify(result.error)}`);
+    }
+    const pack = result.value;
+    expect(pack.subject.map(({ id, language, role }) => ({ id, language, role }))).toEqual([
+      { id: 'kom-igang', language: 'en', role: 'introduction' },
+      { id: 'kom-igang', language: 'sv', role: 'introduction' },
+    ]);
+    // Every lesson, question, area, source and term is there in English as well as Swedish.
+    expect({
+      lessons: missingInEither(pack.lessons),
+      questions: missingInEither(pack.questions),
+      areas: missingInEither(pack.areas),
+      sources: missingInEither(pack.sources),
+      glossary: missingInEither(pack.glossary),
+    }).toEqual({ lessons: [], questions: [], areas: [], sources: [], glossary: [] });
+    expect(pack.lessons.filter((lesson) => lesson.language === 'sv').map((lesson) => lesson.id)).toEqual(['sa-laser-du', 'sen']);
+  });
+
   it('passes when every subject file says so, and keeps the role in each', () => {
     const result = checkPackFiles(asRole('introduction'));
     expect(result.ok ? result.value.subject.map(({ language, role }) => ({ language, role })) : result.error).toEqual([

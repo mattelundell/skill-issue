@@ -1,0 +1,4 @@
+- id: steg
+  term: steg
+  definition: En del av en lektion, med en enda tanke. Fortsätt eller Enter går till nästa.
+  sources: [om-appen]

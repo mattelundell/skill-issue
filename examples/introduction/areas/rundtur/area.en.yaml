@@ -1,0 +1,10 @@
+id: rundtur
+title: Tour
+summary: How a lesson works, and what happens afterwards.
+requires: []
+lessons:
+  - sa-laser-du
+  - sen
+exam:
+  questions: 2
+  passMark: 0.5
