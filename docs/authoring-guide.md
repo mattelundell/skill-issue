@@ -6,6 +6,8 @@ The figures in this guide — how many areas, steps and questions — are advice
 
 What you produce is a **pack**: a folder of YAML and Markdown files. The application checks every pack against the format and refuses one that breaks a rule, with a list of every fault, each naming the file, the item and the field to correct. You fix those and send it again. You never need to guess whether a pack is right: the application tells you.
 
+`examples/example-subject/` in the application's repository is a small, complete pack that uses every part of the format: every question type, a translated lesson, an image. Copy its shape; it is a model for writing, not a subject to study, and is not loaded into an installation.
+
 ## What makes a good subject
 
 The learner reads a lesson a step at a time, answers short checks along the way, sits an exam at the end of each lesson and each area, and afterwards gets the questions back on a schedule set by how well they remembered them. So:

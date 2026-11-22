@@ -50,7 +50,7 @@ docker compose run --rm cli load subjects/my-subject
 
 It says what will be added, or lists every fault, each naming the file and field to correct; nothing is stored until the pack is right. `docker compose run --rm cli validate subjects/my-subject` checks a pack without the application. Loading the same subject again updates it, after showing what changes; your history with it is kept.
 
-A new installation opens on a short introduction to the application, loaded on its first start; once taken, it leaves the start page. To see a fuller subject before writing one of your own, load the example: `docker compose run --rm cli load examples/example-subject`.
+A new installation opens on a short introduction to the application, loaded on its first start; once taken, it leaves the start page.
 
 A subject you no longer want is removed with `curl -X DELETE http://127.0.0.1:4747/api/v1/content/subjects/<subject-id>`. It leaves the application, but nothing is deleted: loading its pack again brings it back with your history.
 
