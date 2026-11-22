@@ -4,6 +4,7 @@ import { ContentFaultSchema } from './content.js';
 export * from './assessment.js';
 export * from './backup.js';
 export * from './content.js';
+export * from './diagnostics.js';
 export * from './glossary.js';
 export * from './lessons.js';
 export * from './notes.js';

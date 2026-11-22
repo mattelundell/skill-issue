@@ -130,4 +130,8 @@ Text scales with the browser setting. Colour is never the only signal for right 
 
 ## Session recording
 
-For finding faults, a session can be recorded: with the learner's consent, switched on from settings, the application keeps a local log of interface events, API calls and errors for that session, and can export it as one file. Nothing is recorded unless it is switched on, and nothing leaves the machine.
+For finding faults, a session can be recorded. **Felsökning**, a quiet link in the footer of every screen, opens a page that says what a recording keeps and starts and stops one; while one runs, the footer says **Spelar in** in words and colour, so it is never on unnoticed. One recording runs at a time, and it ends itself at 20 000 events rather than grow for weeks.
+
+A recording keeps the pages the learner goes to, what they click — named by its text or label — the keys pressed outside a text field, every API call the server answers, from the browser or the command line, every error thrown in the browser, and each read the browser gave up on because no answer came or the answer did not match the contract. It never keeps what is typed: in a field only Enter, Escape and Tab are noted, a field is named by its label and never its value, and an address keeps the names in its query but not their values, since a value may be the words of a search. Request bodies are not kept.
+
+Each recording is listed with its time and size, exported as one JSON file — the recording, then every event in the order it happened, its format named and versioned — and removed after a confirmation. Nothing is recorded unless it is switched on, and nothing leaves the machine unless the learner passes the file on.

@@ -1,0 +1,29 @@
+/* The footer's way to diagnostics: quiet until a session is recorded, then plain about it in words as well as colour. */
+.diagnostics-link { color: var(--graphite); text-decoration: none; }
+.diagnostics-link:hover { color: var(--royal); text-decoration: underline; }
+.diagnostics-link.recording { color: var(--warn); font-weight: 700; }
+.diagnostics .dot, .diagnostics-link .dot {
+  display: inline-block; width: 0.6em; height: 0.6em; margin-right: 0.4em;
+  border-radius: 50%; background: var(--warn); vertical-align: 0.05em;
+}
+.diagnostics { display: grid; gap: 16px; }
+/* The shared sheet sets no padding of its own; this is the resume panel's. */
+.diagnostics .sheet { padding: 26px 28px; }
+@media (max-width: 760px) { .diagnostics .sheet { padding: 20px 18px; } }
+.diagnostics h1 { font-family: var(--title); font-weight: 600; margin: 0 0 8px; }
+.diagnostics h2 { font-family: var(--title); font-weight: 600; margin: 0 0 8px; font-size: 1.3rem; }
+.diagnostics p { max-width: var(--measure); }
+.diagnostics-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 16px; }
+.diagnostics-control p { margin: 0; }
+.diagnostics-control .recording { color: var(--warn); font-weight: 700; }
+.diagnostics-failed { flex-basis: 100%; color: var(--warn); }
+.recordings { list-style: none; margin: 0; padding: 0; }
+.recording-row {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px;
+  padding: 12px 0; border-top: 1px solid var(--rule);
+}
+.recording-row:first-child { border-top: none; }
+.recording-span { display: block; font-weight: 700; }
+.recording-facts { color: var(--graphite); font-size: 0.9rem; }
+.recording-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.recording-actions a.btn { text-decoration: none; }
