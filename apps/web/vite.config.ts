@@ -13,5 +13,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     setupFiles: ['src/test-setup.ts'],
+    // The tests are written in the learner's time zone, Europe/Stockholm, and send it with each answer; pinned here, so a machine or CI runner in another zone runs them the same.
+    env: { TZ: 'Europe/Stockholm' },
   },
 });
