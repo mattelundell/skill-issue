@@ -255,9 +255,15 @@ function Taking({
       const target = event.target;
       const inField = target instanceof HTMLElement && target.closest('input, textarea, select, button, a, [contenteditable="true"]') !== null;
       const plain = !event.metaKey && !event.ctrlKey && !event.altKey;
-      if (event.key === 'Enter' && !inField && plain && step < total) {
+      if ((event.key === 'Enter' || event.key === 'ArrowRight') && !inField && plain && step < total) {
         event.preventDefault();
         forward();
+        return;
+      }
+      // Back to the step before, to read it again; not while a question asked again is waiting for its answer.
+      if (event.key === 'ArrowLeft' && !inField && plain && step > 0 && step < total && again === undefined) {
+        event.preventDefault();
+        moveTo(step - 1);
         return;
       }
       if (event.key === 'Escape' && opened.size > 0) {
@@ -278,7 +284,7 @@ function Taking({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [forward, step, total, opened, sides, toggleSide, toggleReading]);
+  }, [forward, moveTo, again, step, total, opened, sides, toggleSide, toggleReading]);
 
   const sourceLink = useSourceLink();
   const sourcesLine = lesson.sources.length === 0 ? null : (
@@ -462,6 +468,9 @@ function Taking({
             <span className="keys">
               <span>
                 <kbd>Enter</kbd> {t('keys.enter')}
+              </span>
+              <span>
+                <kbd>←</kbd> <kbd>→</kbd> {t('keys.arrows')}
               </span>
               {sides.map(({ module, key, label }) => (
                 <span key={module}>

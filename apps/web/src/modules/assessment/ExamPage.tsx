@@ -7,7 +7,7 @@ import { WithCode } from '../../shell/text.js';
 import { useFetched } from '../../shell/useFetched.js';
 import { fetchPassed, handIn, startExam } from './api.js';
 import { Feedback } from './CheckStep.js';
-import { AnswerInput, initialAnswer, useWords } from './inputs.js';
+import { AnswerInput, initialAnswer, useAnswerKeys, useWords } from './inputs.js';
 import { useMessages } from './messages.js';
 
 export const examPath = (subjectId: string, scope: ExamScope): string => subjectPath(subjectId, 'assessment', [scope.kind, scope.id]);
@@ -142,6 +142,7 @@ function Exam({ subject, scope, title, areaTitle }: { readonly subject: SubjectO
             key={question.id}
             subject={subject}
             question={question}
+            onEnter={at < total - 1 ? () => setStage({ ...stage, at: at + 1 }) : undefined}
             onChange={(answer) => {
               const next = new Map(answers);
               if (answer === undefined) {
@@ -189,10 +190,32 @@ function startingAnswers(sitting: Sitting): Map<string, GivenAnswer> {
 }
 
 /** One question of a sitting. Its answer is kept as the learner moves between questions; nothing is graded until hand-in. */
-function ExamQuestion({ subject, question, onChange }: { readonly subject: SubjectOutline; readonly question: Sitting['questions'][number]; readonly onChange: (answer: GivenAnswer | undefined) => void }) {
+function ExamQuestion({
+  subject,
+  question,
+  onChange,
+  onEnter,
+}: {
+  readonly subject: SubjectOutline;
+  readonly question: Sitting['questions'][number];
+  readonly onChange: (answer: GivenAnswer | undefined) => void;
+  /** What Enter does: the next question, or nothing on the last, where handing in is the learner's own click. */
+  readonly onEnter: (() => void) | undefined;
+}) {
   const imageText = useCallback((alt: string) => alt, []);
+  const holder = useRef<HTMLDivElement>(null);
+  const enter = useCallback((): boolean => {
+    const reveal = holder.current?.querySelector<HTMLButtonElement>('[data-reveal]');
+    if (reveal !== null && reveal !== undefined && !reveal.disabled) {
+      reveal.click();
+      return true;
+    }
+    onEnter?.();
+    return onEnter !== undefined;
+  }, [onEnter]);
+  useAnswerKeys(holder, true, enter);
   return (
-    <div className="q" data-question={question.id}>
+    <div ref={holder} className="q" data-question={question.id}>
       <div className="prompt">
         <Markdown source={question.prompt} subjectId={subject.id} imageText={imageText} />
       </div>
