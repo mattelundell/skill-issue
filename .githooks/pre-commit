@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refuses a commit whose staged changes hold something that looks like a secret
+# — a key, a token, a password in a connection string — before it reaches the
+# history, where removing it means rewriting every later commit. A finding that
+# is not a secret is allowed with a `gitleaks:allow` comment on its line.
+set -eu
+if ! command -v gitleaks > /dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed, so this commit cannot be checked for secrets." >&2
+  echo "  Install it (https://github.com/gitleaks/gitleaks#installing), or commit with --no-verify knowing it was not checked." >&2
+  exit 1
+fi
+exec gitleaks git --pre-commit --staged --redact --no-banner --verbose .
