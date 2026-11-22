@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test';
 import { checkPackFiles, readFolder } from '@skill-issue/pack';
 
 const EXAMPLE = join(import.meta.dirname, '..', '..', '..', 'examples', 'example-subject');
@@ -78,14 +78,31 @@ test('a lesson exam sat with wrong answers fails, and reviews every answer with 
   await expect(page.locator('.review li .feedback').first()).toContainText('Inte rätt.Rätt svar:');
 });
 
-test('sat again with right answers it passes, and the path marks the lesson mastered, its every question answered within minutes', async ({ page }) => {
+/** Every question in the energi-och-effekt bank, answered right as a lesson check would: the state mastery is judged on, made here rather than left to the order of other files or to which questions a sitting draws. */
+async function answerTheBankRight(request: APIRequestContext): Promise<void> {
+  const right = [
+    ['kwh-eller-kw', { type: 'single-choice', option: 'b' }],
+    ['berakna-energi', { type: 'numeric', value: 6 }],
+    ['effekt-ar-takt', { type: 'true-false', value: true }],
+  ] as const;
+  for (const [id, given] of right) {
+    const sent = await request.post(`/api/v1/assessment/subjects/example-subject/questions/${id}/answers`, {
+      data: { answer: given, durationMs: 4000, timeZone: 'Europe/Stockholm', setting: 'lesson-check' },
+    });
+    expect(sent.status()).toBe(200);
+    expect(await sent.json()).toMatchObject({ questionId: id, correct: true });
+  }
+}
+
+test('sat again with right answers it passes, and the path marks the lesson mastered, its every question answered within minutes', async ({ page, request }) => {
+  await answerTheBankRight(request);
   await sit(page, true);
 
   await expect(page.getByRole('heading', { name: 'Godkänt' })).toBeVisible();
   await expect(page.getByText('2 av 2 rätt. Godkänt vid 50 %.')).toBeVisible();
 
   await page.getByRole('link', { name: 'Till ämnet' }).click();
-  // Passed, and each of its three questions was answered minutes ago — in the lesson file and here — so what is remembered of them is above the 90 % target.
+  // Passed, and each of its three questions answered right moments ago, so what is remembered of them is above the 90 % target.
   await expect(page.locator('li[data-lesson="energi-och-effekt"]')).toHaveAttribute('data-state', 'mastered');
   const area = page.locator('section[data-area="grunder"]');
   await expect(area.getByRole('link', { name: 'Skriv områdesprovet' })).toHaveAttribute('href', '/subjects/example-subject/assessment/area/grunder');
