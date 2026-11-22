@@ -115,6 +115,7 @@ describe('the content module', () => {
       '/content/subjects/{subjectId}': ['get'],
       '/content/subjects/{subjectId}/assets/{file}': ['get'],
       '/content/subjects/{subjectId}/pack': ['get'],
+      '/content/subjects/{subjectId}/{collection}/{itemId}': ['put'],
       '/content/schema/pack.json': ['get'],
     });
   });

@@ -227,6 +227,12 @@ export const LoadResultSchema = z.object({
 });
 export type LoadResult = z.infer<typeof LoadResultSchema>;
 
+/** What putting one item into a subject changes, or would change on a dry run, and the revision the item is then at. */
+export const ItemLoadResultSchema = LoadResultSchema.extend({
+  item: ItemRefSchema.extend({ revision: z.int().min(1) }),
+});
+export type ItemLoadResult = z.infer<typeof ItemLoadResultSchema>;
+
 export const SubjectSummarySchema = z.object({
   id: ItemIdSchema,
   defaultLanguage: LanguageSchema,

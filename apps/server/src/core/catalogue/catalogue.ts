@@ -8,6 +8,8 @@ import {
   PackSchema,
   SubjectSchema,
   type ItemKind,
+  type ContentFault,
+  type ItemLoadResult,
   type ItemRef,
   type LoadResult,
   type OutlineLesson,
@@ -26,12 +28,28 @@ import { examPlan, shownQuestions, type ExamPlan, type QuestionReadError, type S
 import { glossary } from './glossary.js';
 import { sourceLibrary, sourcePage, type CataloguePage, type SourcePageError } from './sources.js';
 
+/** Why one item could not be put into a subject. */
+export type UpdateError = { readonly kind: 'no-subject' } | { readonly kind: 'faults'; readonly faults: readonly ContentFault[] };
+
 /** The catalogue as modules see it: the only way subject material is stored or read. */
 export interface Catalogue {
   /** Stores a checked pack as the current state of its subject, or only reports what would change. */
   load(pack: Pack, options: { readonly dryRun: boolean }): Promise<LoadResult>;
   /** The subject's current items as a pack, or undefined when there is no such subject. */
   exportPack(subjectId: string): Promise<Pack | undefined>;
+  /**
+   * Changes an existing subject by one item: `change` is given the subject as
+   * it stands and returns the whole subject as it would then stand, checked, or
+   * the faults that stop it. Reading, checking and storing happen in one
+   * transaction under the subject's lock, so a load in between cannot be undone
+   * by it. Nothing is retired that `change` keeps.
+   */
+  update(
+    subjectId: string,
+    item: { readonly kind: ItemKind; readonly id: string; readonly language: string },
+    change: (current: Pack) => Result<Pack, readonly ContentFault[]>,
+    options: { readonly dryRun: boolean },
+  ): Promise<Result<ItemLoadResult, UpdateError>>;
   listSubjects(): Promise<readonly SubjectSummary[]>;
   /**
    * The subject's path in `language`, each entry falling back to the default
@@ -378,6 +396,30 @@ export function createCatalogue(db: Db): Catalogue {
   const load = async (pack: Pack, options: { readonly dryRun: boolean }): Promise<LoadResult> => loadOn(db, pack, options);
   const exportPack = async (subjectId: string): Promise<Pack | undefined> => exportOn(db, subjectId);
 
+  const update: Catalogue['update'] = async (subjectId, item, change, options) =>
+    db.transaction(async (tx) => {
+      // Taken before reading, so the subject read is the one the change is stored over.
+      await tx.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [`catalogue:${subjectId}`]);
+      const current = await exportOn(tx, subjectId);
+      if (current === undefined) {
+        return { ok: false, error: { kind: 'no-subject' } } as const;
+      }
+      const next = change(current);
+      if (!next.ok) {
+        return { ok: false, error: { kind: 'faults', faults: next.error } } as const;
+      }
+      const result = await loadOn(tx, next.value, options);
+      const rows = await tx.query(
+        `SELECT (SELECT current_revision FROM catalogue.entry WHERE subject_id = $1 AND kind = $2 AND id = $3 AND language = $4) AS current,
+                (SELECT coalesce(max(revision), 0) FROM catalogue.revision WHERE subject_id = $1 AND kind = $2 AND id = $3 AND language = $4) AS latest`,
+        [subjectId, item.kind, item.id, item.language],
+      );
+      const isItem = (entry: ItemRef): boolean => entry.kind === item.kind && entry.id === item.id && entry.language === item.language;
+      const pending = !result.stored && [...result.added, ...result.changed].some(isItem);
+      // Stored or unchanged, the item is at its current revision; on a dry run that would store it, at the next one.
+      const revision = pending ? Number(rows[0]?.['latest'] ?? 0) + 1 : Number(rows[0]?.['current']);
+      return { ok: true, value: { ...result, item: { ...item, revision } } } as const;
+    });
 
   const listSubjects = async (): Promise<readonly SubjectSummary[]> => {
     const rows = await db.query(
@@ -501,6 +543,7 @@ export function createCatalogue(db: Db): Catalogue {
   return {
     load,
     exportPack,
+    update,
     listSubjects,
     banks,
     outline,
