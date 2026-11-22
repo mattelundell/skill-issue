@@ -1,0 +1,10 @@
+id: kom-igang
+role: introduction
+defaultLanguage: sv
+title: Getting started
+summary: A short tour of the app — a few minutes, and nothing here can go wrong. It leaves the start page when you are done.
+areas:
+  - rundtur
+concepts:
+  - { id: lektioner, name: Lessons }
+  - { id: repetition, name: Exams and review }

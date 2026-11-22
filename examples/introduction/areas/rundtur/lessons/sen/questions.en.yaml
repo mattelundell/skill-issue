@@ -1,0 +1,9 @@
+- id: prova-minnas
+  type: free-recall
+  concepts: [repetition]
+  sources: [om-appen]
+  prompt: "Free recall: think of the answer, show it, and say yourself whether you knew it. Which key goes on in a lesson?"
+  answer: Enter.
+  explanation: >
+    Here you grade yourself, and review builds on it — better to say no once too often.
+    There are seven more kinds of question: one or several answers, true or false, numbers, short words, order and pairs.

@@ -1,0 +1,9 @@
+- id: prova-svara
+  type: true-false
+  concepts: [lektioner]
+  sources: [om-appen]
+  prompt: "Try answering: choose True."
+  answer: true
+  explanation: >
+    After every answer it says what was right and why. Answer wrongly, and the question is asked once more
+    at the end of the lesson — and it comes back later, in review.

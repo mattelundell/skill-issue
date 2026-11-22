@@ -1,0 +1,10 @@
+id: rundtur
+title: Rundtur
+summary: Hur en lektion går till, och vad som händer efteråt.
+requires: []
+lessons:
+  - sa-laser-du
+  - sen
+exam:
+  questions: 2
+  passMark: 0.5

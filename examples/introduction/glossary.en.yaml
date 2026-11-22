@@ -1,0 +1,4 @@
+- id: steg
+  term: step
+  definition: A part of a lesson, with a single idea. Continue or Enter goes to the next.
+  sources: [om-appen]

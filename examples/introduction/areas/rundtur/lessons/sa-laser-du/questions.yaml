@@ -1,0 +1,9 @@
+- id: prova-svara
+  type: true-false
+  concepts: [lektioner]
+  sources: [om-appen]
+  prompt: "Prova att svara: välj Sant."
+  answer: true
+  explanation: >
+    Efter varje svar står vad som var rätt och varför. Svarar du fel ställs frågan en gång till i slutet
+    av lektionen — och den kommer tillbaka senare, i repetitionen.
