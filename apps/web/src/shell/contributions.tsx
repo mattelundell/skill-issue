@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { mergeLessonMarks, type CheckStepProps, type LessonEndProps, type LessonMark, type LessonSide, type WebModule } from './contract.js';
+import type { SubjectOutline } from '@skill-issue/contract';
+import { mergeLessonMarks, type CheckStepProps, type LessonEndProps, type LessonMark, type LessonSide, type TextMark, type WebModule } from './contract.js';
 import type { ComponentType } from 'react';
 import { useI18n } from './i18n.js';
 
@@ -15,9 +16,10 @@ interface Contributions {
   readonly CheckStep: ComponentType<CheckStepProps> | undefined;
   readonly lessonSides: readonly ({ readonly module: string } & LessonSide)[];
   readonly lessonEnds: readonly { readonly module: string; readonly End: ComponentType<LessonEndProps> }[];
+  readonly textMarkers: readonly NonNullable<WebModule['textMarks']>[];
 }
 
-const NONE: Contributions = { lessonLink: undefined, sourceLink: undefined, markers: [], CheckStep: undefined, lessonSides: [], lessonEnds: [] };
+const NONE: Contributions = { lessonLink: undefined, sourceLink: undefined, markers: [], CheckStep: undefined, lessonSides: [], lessonEnds: [], textMarkers: [] };
 
 const ContributionsContext = createContext<Contributions>(NONE);
 
@@ -31,6 +33,7 @@ export function ContributionsProvider({ modules, children }: { readonly modules:
       CheckStep: modules.find(({ steps }) => steps?.check !== undefined)?.steps?.check,
       lessonSides: modules.flatMap(({ id, lessonSide }) => (lessonSide === undefined ? [] : [{ module: id, ...lessonSide }])),
       lessonEnds: modules.flatMap(({ id, LessonEnd }) => (LessonEnd === undefined ? [] : [{ module: id, End: LessonEnd }])),
+      textMarkers: modules.flatMap(({ textMarks }) => (textMarks === undefined ? [] : [textMarks])),
     }),
     [modules],
   );
@@ -92,4 +95,32 @@ export function useLessonMarks(subjectId: string): ReadonlyMap<string, LessonMar
     return undefined;
   }
   return marks?.subjectId === subjectId ? marks.marks : new Map();
+}
+
+/**
+ * The words to mark in a subject's lesson text, from every module that marks
+ * words, read in the language the subject is shown in; undefined while they are
+ * read and when no module marks words, so the text is drawn as written. A
+ * module whose marks cannot be read is left out, not fatal.
+ */
+export function useTextMarks(subject: SubjectOutline): readonly TextMark[] | undefined {
+  const { textMarkers } = useContext(ContributionsContext);
+  const [read, setRead] = useState<{ readonly subject: SubjectOutline; readonly marks: readonly TextMark[] }>();
+
+  useEffect(() => {
+    if (textMarkers.length === 0) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    const settle = async (): Promise<void> => {
+      const settled = await Promise.allSettled(textMarkers.map(async (marker) => marker(subject, controller.signal)));
+      if (!controller.signal.aborted) {
+        setRead({ subject, marks: settled.flatMap((result) => (result.status === 'fulfilled' ? result.value : [])) });
+      }
+    };
+    void settle();
+    return () => controller.abort();
+  }, [subject, textMarkers]);
+
+  return read?.subject === subject ? read.marks : undefined;
 }
