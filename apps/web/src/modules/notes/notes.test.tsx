@@ -339,6 +339,25 @@ describe('the Notes tab', () => {
     expect(within(gone).getByText('Steg 1')).toBeTruthy();
   });
 
+  it('offers every note in the subject as one Markdown file, its headings in the interface language and its titles in the content language', async () => {
+    api.notes = [note('energi-och-effekt', 0, 'Första steget.')];
+    open('/subjects/example-subject/notes');
+
+    const link = await screen.findByRole('link', { name: 'Exportera som Markdown' });
+
+    expect([link.getAttribute('href'), link.hasAttribute('download')]).toEqual(['/api/v1/notes/subjects/example-subject/notes.md?language=sv&interface=sv', true]);
+  });
+
+  it('asks for the file’s headings in English when the interface is', async () => {
+    window.localStorage.setItem('skill-issue.language', 'en');
+    api.notes = [note('energi-och-effekt', 0, 'Första steget.')];
+    open('/subjects/example-subject/notes');
+
+    const link = await screen.findByRole('link', { name: 'Export as Markdown' });
+
+    expect(link.getAttribute('href')).toBe('/api/v1/notes/subjects/example-subject/notes.md?language=sv&interface=en');
+  });
+
   it('opens the lesson at the note’s step from its link', async () => {
     api.notes = [note('energi-och-effekt', 2, 'Tredje steget.')];
     open('/subjects/example-subject/notes');

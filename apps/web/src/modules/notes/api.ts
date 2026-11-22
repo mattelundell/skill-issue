@@ -16,6 +16,12 @@ export async function fetchNotes(subjectId: string, filter: { readonly lessonId?
   return getJson(`${subjectBase(subjectId)}/notes${query}`, NoteListSchema, signal);
 }
 
+/** Where a subject's notes are fetched as one Markdown file: titles in the content language, the file's own headings in the interface language. */
+export function notesFileUrl(subjectId: string, contentLanguage: string, interfaceLanguage: string): string {
+  const search = new URLSearchParams({ language: contentLanguage, interface: interfaceLanguage });
+  return `${API_PREFIX}${subjectBase(subjectId)}/notes.md?${search.toString()}`;
+}
+
 /** What writing a note came to: kept as the server now holds it, removed because it was emptied, or not reached. */
 export type Written = { readonly kind: 'saved'; readonly note: Note } | { readonly kind: 'removed' } | { readonly kind: 'failed' };
 

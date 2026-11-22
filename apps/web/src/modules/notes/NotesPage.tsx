@@ -6,7 +6,7 @@ import { useI18n } from '../../shell/i18n.js';
 import { Markdown } from '../../shell/markdown.js';
 import { Link } from '../../shell/router.js';
 import { useFetched } from '../../shell/useFetched.js';
-import { fetchNotes } from './api.js';
+import { fetchNotes, notesFileUrl } from './api.js';
 import { useMessages } from './messages.js';
 import { NOTE_KEY } from './place.js';
 
@@ -48,6 +48,7 @@ function shelve(subject: SubjectOutline, notes: readonly Note[], goneHeading: st
 /** The Notes tab: every note in the subject, filed by area and lesson, searchable as text, each linking back to its step. */
 export function NotesPage({ subject }: PageProps) {
   const { t, tc } = useMessages();
+  const { language } = useI18n();
   const [typed, setTyped] = useState('');
   const [query, setQuery] = useState('');
   const search = useRef<HTMLInputElement>(null);
@@ -124,6 +125,9 @@ export function NotesPage({ subject }: PageProps) {
           <input ref={search} type="search" value={typed} placeholder={t('browse.search.placeholder')} onChange={(event) => setTyped(event.target.value)} />
           <kbd aria-hidden="true">/</kbd>
         </label>
+        <a className="btn quiet small notes-export" href={notesFileUrl(subject.id, subject.language, language)} download>
+          {t('browse.export')}
+        </a>
       </div>
       {shown.notes.length === 0 ? (
         <>

@@ -13,7 +13,8 @@
 .notes-pane kbd { font: 0.76rem ui-monospace, "SF Mono", Menlo, monospace; color: var(--graphite); border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; background: var(--paper); }
 
 /* the Notes tab */
-.notes-toolbar { display: flex; margin-top: 22px; }
+.notes-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 22px; }
+.notes-export { flex: none; }
 .notes-search { flex: 1 1 18rem; display: flex; align-items: center; position: relative; }
 .notes-search input[type='search'] { width: 100%; font: inherit; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 8px 40px 8px 34px; }
 .notes-search svg { position: absolute; left: 11px; width: 16px; height: 16px; color: var(--graphite); pointer-events: none; }
