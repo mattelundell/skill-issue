@@ -7,16 +7,29 @@ const lessonPath = (subjectId: string, lessonId: string): string => `/lessons/su
 export const fetchLesson = async (subjectId: string, lessonId: string, language: string, signal: AbortSignal): Promise<Fetched<LessonView>> =>
   getJson(`${lessonPath(subjectId, lessonId)}?language=${encodeURIComponent(language)}`, LessonViewSchema, signal);
 
+/**
+ * The position saves still on their way. A lesson shows its next step, or its end,
+ * before the save lands, and the learner may leave for the start screen at once;
+ * a read of where they are waits for these, so it never shows the state before.
+ */
+let saving: Promise<unknown> = Promise.resolve();
+
 export const fetchPositions = async (subjectId: string, signal: AbortSignal): Promise<Fetched<SubjectPositions>> =>
-  getJson(`/lessons/subjects/${encodeURIComponent(subjectId)}/positions`, SubjectPositionsSchema, signal);
+  saving.then(async () => getJson(`/lessons/subjects/${encodeURIComponent(subjectId)}/positions`, SubjectPositionsSchema, signal));
 
 /** Each offered lesson comes in its own subject's default language: content language is a choice of its own, not the interface's. */
-export const fetchResume = async (signal: AbortSignal): Promise<Fetched<Resume>> => getJson('/lessons/resume', ResumeSchema, signal);
+export const fetchResume = async (signal: AbortSignal): Promise<Fetched<Resume>> => saving.then(async () => getJson('/lessons/resume', ResumeSchema, signal));
 
 /** What saving where the learner is came to: kept, refused because the lesson changed underneath, or not reached. */
 export type Saved = 'saved' | 'changed' | 'failed';
 
 export async function savePosition(subjectId: string, lessonId: string, step: number, revision: number): Promise<Saved> {
+  const saved = put(subjectId, lessonId, step, revision);
+  saving = Promise.all([saving, saved]);
+  return saved;
+}
+
+async function put(subjectId: string, lessonId: string, step: number, revision: number): Promise<Saved> {
   try {
     const response = await fetch(`${API_PREFIX}${lessonPath(subjectId, lessonId)}/position`, {
       method: 'PUT',
