@@ -85,9 +85,11 @@ All notes, browsable by subject, area and lesson in the order of the path, and s
 
 ### Progress
 
-- **Mastery per area and lesson** — the share of its questions you are currently expected to recall.
-- **Over time** — reviews per day, the share answered correctly, and how the expected recall of the whole subject has moved.
+- **Mastery per area and lesson** — the share of its questions you are currently expected to recall, a question never answered counting as none; passed and mastered lessons are named.
+- **Over time** — the last 30 days: answers per day, the share answered correctly, and how the expected recall of the whole subject has moved.
 - **Weak spots** — the concepts with the most wrong answers, each linking to its lesson.
+
+Each subject's row on the start screen gives the share of it remembered now, once a question has been answered. A share is rounded down where it is shown, so a lesson short of the target never reads as on it.
 
 ## Mastery
 

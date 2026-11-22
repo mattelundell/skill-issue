@@ -1,0 +1,38 @@
+/* The Progress tab: a summary, mastery by area and lesson, the last days, and weak spots. */
+.progress { display: grid; gap: 16px; }
+.progress > .sheet { padding: 16px 22px; }
+.progress h2 { margin-top: 0; }
+.progress-big { font-family: var(--title); font-size: 1.25rem; margin: 0 0 8px; }
+.progress-big b { font-size: 2.4rem; font-weight: 600; margin-right: 6px; }
+.progress-note { color: var(--graphite); font-size: 0.92rem; max-width: var(--measure); }
+
+.progress-area + .progress-area { margin-top: 20px; }
+.progress-area h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin: 0 0 6px; font-size: 1.05rem; }
+.progress-area ul, .progress-weak ol { list-style: none; margin: 0; padding: 0; }
+.progress-area li, .progress-weak li { display: flex; align-items: baseline; gap: 12px; padding: 8px 0; border-top: 1px solid var(--grid); }
+.progress-lesson { flex: 1 1 auto; min-width: 0; }
+.progress-figure { color: var(--graphite); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.progress-figure.meter { color: var(--ink); }
+.progress .state-word { font-size: 0.85rem; color: var(--royal); }
+.progress .state-word.mastered { color: var(--done); }
+.progress-weak li b { flex: 0 0 auto; }
+.progress-weak li b::first-letter { text-transform: uppercase; }
+.progress-weak .progress-lesson { text-align: right; }
+
+.progress-days { margin: 12px 0 0; }
+.progress-chart { position: relative; height: 140px; border-bottom: 1px solid var(--rule); }
+.progress-chart svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.progress-chart rect.answers { fill: var(--royal-wash); stroke: var(--royal); stroke-width: 0.15; }
+.progress-chart polyline.recall { fill: none; stroke: var(--done); stroke-width: 2; }
+/* The days are read out, not seen: the chart draws them. */
+.progress-day-list { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; padding: 0; }
+.progress-days figcaption { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 0.85rem; color: var(--graphite); }
+.progress-days .key::before { content: ""; display: inline-block; width: 12px; height: 8px; margin-right: 6px; vertical-align: middle; }
+.progress-days .key.answers::before { background: var(--royal-wash); border: 1px solid var(--royal); }
+.progress-days .key.recall::before { height: 2px; background: var(--done); }
+.progress-days .span { margin-left: auto; }
+
+@media (max-width: 760px) {
+  .progress-area li, .progress-weak li { flex-wrap: wrap; gap: 4px 12px; }
+  .progress-weak .progress-lesson { text-align: left; flex-basis: 100%; }
+}
