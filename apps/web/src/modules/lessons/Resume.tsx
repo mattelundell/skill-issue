@@ -35,7 +35,10 @@ export function ResumePanel({
     <section className="sheet resume" aria-labelledby="resume-h">
       <div>
         <p className="where">{shown.kind === 'continue' ? t('panel.continue') : t('panel.next')}</p>
-        <h2 id="resume-h">{subject.title}</h2>
+        {/* The subject's name opens its overview, as a name in the list below does: the button goes on with the lesson. */}
+        <h2 id="resume-h">
+          <Link to={subjectPath(subject.id)}>{subject.title}</Link>
+        </h2>
         <p className="lesson">
           {t('panel.where', { area: shown.areaTitle, lesson: shown.title })}
           {shown.kind === 'continue' ? `, ${t('panel.step', { step: String(shown.step + 1), steps: String(shown.steps) })}` : ''}
