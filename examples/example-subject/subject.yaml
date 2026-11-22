@@ -6,3 +6,9 @@ summary: Energi och effekt, enhetsprefix och energibalans — tillräckligt för
 areas:
   - grunder
   - fordjupning
+concepts:         # what the lessons teach, each named once for the learner
+  - { id: energi, name: Energi }
+  - { id: effekt, name: Effekt }
+  - { id: si-prefix, name: SI-prefix }
+  - { id: energibalans, name: Energibalans }
+  - { id: forluster, name: Förluster }

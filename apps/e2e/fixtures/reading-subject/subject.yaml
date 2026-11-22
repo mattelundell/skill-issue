@@ -5,3 +5,5 @@ title: Läsämne
 summary: Ett ämne med långa stycken, för att mäta hur långa raderna blir på en bred skärm.
 areas:
   - lasning
+concepts:
+  - { id: lasning, name: Läsning }

@@ -258,9 +258,33 @@ describe('a broken pack is rejected with every fault, each naming its file, item
       [mismatch(QUESTIONS_1_EN, 'question kwh-eller-kw', 'concepts', '["verkningsgrad"]', '["effekt"]'), f('unknown-concept', QUESTIONS_1, 'question kwh-eller-kw', 'concepts[0]', 'the id of a concept a lesson lists under "concepts" in this pack', '"verkningsgrad"')],
     ],
     [
+      'a concept a lesson teaches that the subject does not declare',
+      () => edited('subject.yaml', '  - { id: forluster, name: Förluster }\n', ''),
+      [
+        mismatch('subject.en.yaml', 'subject example-subject', 'concepts', '["energi","effekt","si-prefix","energibalans"]', '["energi","effekt","si-prefix","energibalans","forluster"]'),
+        f('unknown-concept', `${LESSON_3}/lesson.md`, 'lesson energibalans', 'concepts[1]', 'the id of a concept the subject declares under "concepts" in this pack', '"forluster"'),
+      ],
+    ],
+    [
       'a translation of the subject with its areas in another order, reported on the translation',
       () => edited('subject.en.yaml', 'areas:\n  - grunder\n  - fordjupning', 'areas:\n  - fordjupning\n  - grunder'),
       [mismatch('subject.en.yaml', 'subject example-subject', 'areas', '["grunder","fordjupning"]', '["fordjupning","grunder"]')],
+    ],
+    [
+      'a subject that declares no concepts',
+      () => {
+        const written = new TextDecoder().decode(example.get('subject.yaml'));
+        return withFile('subject.yaml', written.slice(0, written.indexOf('concepts:')));
+      },
+      [f('schema', 'subject.yaml', 'subject example-subject', 'concepts', 'a value of type array', 'nothing')],
+    ],
+    [
+      'a concept declared twice',
+      () => edited('subject.yaml', '  - { id: forluster, name: Förluster }\n', '  - { id: forluster, name: Förluster }\n  - { id: forluster, name: Värmeförluster }\n'),
+      [
+        mismatch('subject.en.yaml', 'subject example-subject', 'concepts', '["energi","effekt","si-prefix","energibalans","forluster","forluster"]', '["energi","effekt","si-prefix","energibalans","forluster"]'),
+        f('duplicate-item', 'subject.yaml', 'subject example-subject', 'concepts[5].id', 'each concept declared once', '"forluster"'),
+      ],
     ],
     [
       'areas that require each other',

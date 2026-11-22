@@ -29,7 +29,7 @@ A translation changes words, never structure: what a learner did attaches to an 
 
 | Item | Kept from the original |
 |---|---|
-| subject | `id`, `defaultLanguage`, `areas` |
+| subject | `id`, `defaultLanguage`, `areas`, and the id of each of its `concepts` |
 | area | `requires`, `lessons`, the exam's `questions` and `passMark` |
 | lesson | `concepts`, `sources`, the exam's `questions` and `passMark`, the type of each step, and each check's `questions` |
 | question | `type`, `concepts`, `sources`; for a choice the option ids and the answer, for true or false the answer, for a number its value and tolerance, for short text `caseSensitive`, for ordering the number of items, for matching the number of pairs |
@@ -59,7 +59,12 @@ summary: En mening om vad ämnet täcker.
 areas:            # order of the path
   - grunder
   - fordjupning
+concepts:         # what the lessons teach, each named once
+  - { id: energi, name: Energi }
+  - { id: effekt, name: Effekt }
 ```
+
+`concepts` declares what the subject teaches: each concept's identifier, which lessons and questions use, and the name a learner reads — on the Progress tab, a concept answered wrongly most often is shown by it. A lesson may list only concepts declared here, so a mistyped concept is reported instead of quietly becoming a new one. A translation of the subject declares the same concepts in the same order and names them in its own language.
 
 ## sources/&lt;source-id&gt;.md
 
@@ -127,7 +132,7 @@ questions: [kwh-eller-kw, berakna-energi]
 
 Step types in version 1: `text`, `example`, `check`. After the separator comes the step's header — YAML up to the first blank line — and then, for `text` and `example`, its body. A `check` has no body and names one to three questions from the lesson's own `questions.yaml`.
 
-`concepts` lists what the lesson teaches. A question names the concepts it tests, and each must be one that some lesson in the subject lists.
+`concepts` lists what the lesson teaches, each one the subject declares. A question names the concepts it tests, and each must be one that some lesson in the subject lists.
 
 ## questions.yaml
 
@@ -185,7 +190,7 @@ Images a lesson shows: `.png`, `.jpg`, `.jpeg`, `.gif` and `.webp`. Not SVG, bec
 
 ## Rules the application enforces
 
-- Every reference — to a source, a question, an area, a lesson, a concept — resolves inside the pack, and names its target once.
+- Every reference — to a source, a question, an area, a lesson, a concept — resolves inside the pack, and names its target once. A lesson's concepts are declared in the subject, each once; a question's are taught by some lesson.
 - Every area is in the subject's `areas`, every lesson in exactly one area's `lessons`, and `requires` never leads back to the area it starts from.
 - Every question has an explanation and at least one source; so does every glossary term.
 - Every lesson and area has an exam. A lesson's bank holds at least as many questions as its exam draws, and an area's exam can be drawn from the banks of its lessons.
