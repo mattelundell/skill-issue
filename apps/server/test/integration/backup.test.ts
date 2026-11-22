@@ -2,6 +2,8 @@ import { join } from 'node:path';
 import { BackupSchema, RestoreResultSchema, SittingSchema, type Backup, type GivenAnswer } from '@skill-issue/contract';
 import { readFolder, writeZip, type PackFiles } from '@skill-issue/pack';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createCatalogue } from '../../src/core/catalogue/catalogue.js';
+import { introduce } from '../../src/core/introduction.js';
 import { install, type Installation } from './installation.js';
 
 /**
@@ -11,6 +13,7 @@ import { install, type Installation } from './installation.js';
  */
 
 const EXAMPLE = join(import.meta.dirname, '..', '..', '..', '..', 'examples', 'example-subject');
+const INTRODUCTION = join(import.meta.dirname, '..', '..', '..', '..', 'examples', 'introduction');
 const SUBJECT = 'example-subject';
 const QUESTIONS_FILE = 'areas/grunder/lessons/energi-och-effekt/questions.yaml';
 const ZONE = 'Europe/Stockholm';
@@ -228,6 +231,31 @@ describe('restoring', () => {
     expect(refused).toMatchObject({ status: 409, json: { title: 'The installation is not empty' } });
     expect(await rowsOf(target, 'catalogue.revision')).toEqual(before);
     expect(await rowsOf(target, 'record.event')).toEqual([]);
+  });
+
+  it('takes an installation holding only an introduction nobody has begun as empty: the introduction makes way for the backup', async () => {
+    await studied(source);
+    const backup = await backupOf(source);
+    expect(await introduce(target.db, createCatalogue(target.db), INTRODUCTION)).toBe('loaded');
+
+    // A dry run writes nothing, and leaves the introduction where it was.
+    expect((await restore(target, backup, '?dryRun=true')).status).toBe(200);
+    expect((await call(target, '/content/subjects')).json).toMatchObject([{ id: 'kom-igang' }]);
+
+    expect((await restore(target, backup)).status).toBe(200);
+    for (const table of BACKED_UP) {
+      expect({ table, rows: await rowsOf(target, table) }).toEqual({ table, rows: await rowsOf(source, table) });
+    }
+  });
+
+  it('refuses an installation whose introduction has been begun, since the learner has a history with it', async () => {
+    await studied(source);
+    const backup = await backupOf(source);
+    await introduce(target.db, createCatalogue(target.db), INTRODUCTION);
+    expect((await call(target, '/lessons/subjects/kom-igang/lessons/sa-laser-du/position', { method: 'PUT', body: { step: 1, revision: 1, timeZone: ZONE } })).status).toBe(200);
+
+    expect(await restore(target, backup)).toMatchObject({ status: 409, json: { title: 'The installation is not empty' } });
+    expect((await call(target, '/content/subjects')).json).toMatchObject([{ id: 'kom-igang' }]);
   });
 
   it('refuses a backup written under other migrations than this installation has, naming the owner', async () => {
