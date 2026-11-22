@@ -65,7 +65,7 @@ export const en: Catalogue = {
   'not-found.body': 'The address leads nowhere in the app.',
 
   'status.loading': 'Contacting the server …',
-  'status.ok': 'The server is up. Loaded modules: {modules}.',
+  'status.ok': 'The server is up.',
   'status.unavailable': 'The server is up, but the database cannot be reached.',
   'status.unreachable': 'The server cannot be reached.',
 };

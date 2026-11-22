@@ -32,7 +32,7 @@ function statusMessage(status: ServerStatus | undefined, t: I18n['t']): string {
   const { health } = status;
   switch (health.status) {
     case 'ok':
-      return t('status.ok', { modules: health.modules.join(', ') });
+      return t('status.ok');
     case 'unavailable':
       return t('status.unavailable');
     default: {

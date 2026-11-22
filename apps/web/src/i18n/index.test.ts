@@ -26,11 +26,11 @@ describe('translate', () => {
   });
 
   it('fills in named values', () => {
-    expect(translate('en', 'status.ok', { modules: 'notes, review' })).toBe('The server is up. Loaded modules: notes, review.');
+    expect(translate('en', 'start.open.label', { subject: 'Statistics' })).toBe('Open: Statistics');
   });
 
   it('leaves a placeholder visible when its value is missing', () => {
-    expect(translate('en', 'status.ok')).toBe('The server is up. Loaded modules: {modules}.');
+    expect(translate('en', 'start.open.label')).toBe('Open: {subject}');
   });
 });
 

@@ -385,6 +385,13 @@ describe('the start screen', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('in the footer says only that the server is up, not what it has loaded', async () => {
+    open('/');
+
+    await vi.waitFor(() => expect(screen.getByRole('status').textContent).not.toBe('Kontaktar servern …'));
+    expect(screen.getByRole('status').textContent).toBe('Servern svarar.');
+  });
+
   it('when the database is down says that, not that the server is', async () => {
     api.health = 'database-down';
     open('/');
