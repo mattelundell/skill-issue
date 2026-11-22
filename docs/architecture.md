@@ -55,6 +55,7 @@ The core is what every module needs and no module owns.
 
 - **Catalogue** — subjects, areas, lessons, questions, sources and glossary terms: their identity, hierarchy, language and revisions.
 - **Learning record** — the append-only log of everything the learner did.
+- **Memory model** — what the learner is expected to remember, from the record: the scheduler with everything that changes a due date pinned, which answers count, the rating each gives, and the chance of recalling a question at a moment. It holds no tables. It is the core's because more than one module reads it — review to schedule, progress to show mastery — and two copies could drift until a lesson was called mastered while its questions were due.
 - **Settings** — interface language, study preferences.
 - **Module registry** — discovers modules and wires their routes, migrations, navigation entries and commands.
 - **Platform** — database access, migrations, validation, error format, logging.
@@ -185,7 +186,7 @@ A review answer is an answer like any other, with the setting "review". The sche
 
 Rows become visible in the order they are numbered: every append holds a transaction-scoped lock until its transaction ends, so a row that commits late, such as an exam's answers written with the hand-in, can never appear behind a higher-numbered one. A module that follows the record by row number therefore never passes a row over.
 
-Besides appending, the record answers a few reads, so modules meet in the core rather than in each other's tables: the answers after a row, the latest answer to each of some questions in given settings, the row at which a lesson was last finished, a learner's typical time over one question, and what was answered on a source's strength.
+Besides appending, the record answers a few reads, so modules meet in the core rather than in each other's tables: the answers after a row, every answer in a subject, the latest answer to each of some questions in given settings, the row at which a lesson was last finished, the lessons whose exam has been passed, a learner's typical time over one question, and what was answered on a source's strength.
 
 ## Review scheduling
 
@@ -196,8 +197,18 @@ Review uses **FSRS**, the algorithm behind current Anki, through its reference T
 - **Only the first answer to a question on a day counts**, the day being the learner's own, in their time zone. A second answer the same day — the round a lesson asks again, a wrong answer coming back in a session — is the learning itself; counting it would rate a question "good" minutes after it was forgotten.
 - **Ratings.** Wrong is "again". Right is "good", unless a guess would hit the question one time in three or more often — true or false, a single choice among three or fewer, a matching of two — when it is "hard": the memory still grows, but a lucky guess does not send the question away for weeks. The chance of a guess comes from the type and the number of options the record keeps for each answer. Free recall is graded right or wrong by the learner today, so it gives "again" or "good"; offering it all four ratings needs a free-recall answer that carries them.
 - **Scheduling is in whole days.** Short-term learning steps are off. A question is due once the day it falls due on has come in the learner's time zone, at any hour of it.
-- **The memory is a view of the record**, in tables owned by the review module: each question's state, and how far into the record it has been brought and by which scheduler. Every read first folds in the answers written since, in order, under a lock so two reads fold each answer once. The scheduler is named by everything that changes a due date — library, version, model, retention, steps and fuzz — and a memory built by any other is thrown away and replayed from the first row. Changing the algorithm, or fitting its parameters to the learner's own history, is therefore a replay, not a migration.
+- **The memory is a view of the record**, in tables owned by the review module, built with the core's memory model: each question's state, and how far into the record it has been brought and by which scheduler. Every read first folds in the answers written since, in order, under a lock so two reads fold each answer once. The scheduler is named by everything that changes a due date — library, version, model, retention, steps and fuzz — and a memory built by any other is thrown away and replayed from the first row. Changing the algorithm, or fitting its parameters to the learner's own history, is therefore a replay, not a migration.
 - **A session** is what was due when it opened, asked one question at a time. A question answered wrongly returns later in the same session: behind the next three questions, or at the end when fewer are left. When it is the last one left it comes straight back, after its explanation has been shown — a bank too small to put anything between is not a reason to let it go unanswered. The session ends when every question in it has been answered right once, or when the learner stops; what is left stays due.
+
+## Progress
+
+Progress owns no tables: every figure is computed from the record and the catalogue when asked for, with the core's memory model, so it can never disagree with what review schedules.
+
+- **Expected recall** of a question is the model's chance of recalling it at a moment, from its memory: the forgetting curve at the time since it was last answered, in days and fractions of a day. It is the target, 90 %, at the moment the question falls due, and 0 for a question never answered.
+- **Mastery** of a lesson, an area or a subject is the mean expected recall of its questions now, over the questions it holds now. A question never answered counts as 0, so a share cannot be raised by leaving the hard questions alone.
+- **A lesson is mastered** while its exam has been passed at least once and its mastery is at or above the target. The figure and the state are rounded down where shown, so a lesson at 89.6 % never reads "90 %" beside a "passed".
+- **Over time** is the last 30 days in the learner's time zone: the answers given each day in every setting, how many were right, and the subject's mastery at the day's end — at its own midnight, which a change of clocks moves — or now, for today. The memory at each moment is the record folded up to it, so it is what review would have built then.
+- **Weak spots** are the concepts on the most wrong answers, as the record kept them when each answer was given, five at most: ties go to the larger share wrong. Each links to the first lesson on the path that teaches it; a concept no lesson teaches any longer is left out.
 
 ## API
 

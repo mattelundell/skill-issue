@@ -55,6 +55,8 @@ export interface RecordedAnswer {
   readonly timeZone: string;
   readonly question: ItemAt;
   readonly setting: AnswerSetting;
+  /** The concepts the question tested when it was answered. */
+  readonly concepts: readonly string[];
   readonly questionType: QuestionType;
   readonly options: number | undefined;
   /** Undefined for an exam question left unanswered. */
@@ -94,12 +96,16 @@ export interface LearningRecord {
   typicalAnswerMs(subjectId: string): Promise<number | undefined>;
   /** The row at which the learner last reached a lesson's end; 0 when they never have. */
   lastFinished(subjectId: string, lessonId: string): Promise<number>;
+  /** Every answer given in a subject, in the order written. */
+  answersIn(subjectId: string): Promise<readonly RecordedAnswer[]>;
+  /** The lessons of a subject whose exam the learner has passed at least once. */
+  passedLessons(subjectId: string): Promise<ReadonlySet<string>>;
 }
 
 /** The advisory lock every append holds until its transaction ends. Any number no other code locks; this one spells "record". */
 const APPEND_LOCK = 0x7265636f7264;
 
-const ANSWER_COLUMNS = 'seq, at, time_zone, subject_id, item_id, language, revision, setting, question_type, options, given, correct';
+const ANSWER_COLUMNS = 'seq, at, time_zone, subject_id, item_id, language, revision, setting, concepts, question_type, options, given, correct';
 
 const RecordedRowSchema = z.object({
   seq: z.coerce.number().int(),
@@ -110,6 +116,7 @@ const RecordedRowSchema = z.object({
   language: z.string(),
   revision: z.number().int(),
   setting: AnswerSettingSchema,
+  concepts: z.array(z.string()),
   question_type: QuestionTypeSchema,
   options: z.number().int().nullable(),
   given: GivenAnswerSchema.nullable(),
@@ -124,6 +131,7 @@ function recordedAnswer(row: unknown): RecordedAnswer {
     timeZone: parsed.time_zone,
     question: { subjectId: parsed.subject_id, id: parsed.item_id, language: parsed.language, revision: parsed.revision },
     setting: parsed.setting,
+    concepts: parsed.concepts,
     questionType: parsed.question_type,
     options: parsed.options ?? undefined,
     given: parsed.given ?? undefined,
@@ -258,6 +266,19 @@ export function createLearningRecord(db: Db): LearningRecord {
         [subjectId, lessonId],
       );
       return z.coerce.number().int().parse(rows[0]?.['seq']);
+    },
+
+    async answersIn(subjectId) {
+      const rows = await db.query(`SELECT ${ANSWER_COLUMNS} FROM record.event WHERE kind = 'answer' AND subject_id = $1 ORDER BY seq`, [subjectId]);
+      return rows.map(recordedAnswer);
+    },
+
+    async passedLessons(subjectId) {
+      const rows = await db.query(
+        `SELECT DISTINCT item_id FROM record.event WHERE kind = 'exam' AND subject_id = $1 AND item_kind = 'lesson' AND (result ->> 'passed')::boolean`,
+        [subjectId],
+      );
+      return new Set(rows.map((row) => z.string().parse(row['item_id'])));
     },
   };
 }
