@@ -38,6 +38,15 @@ function edited(path: string, from: string, to: string): PackFiles {
   return new Map(example).set(path, new TextEncoder().encode(before.replace(from, to)));
 }
 
+/** The example with both of its subject files saying the subject has this role. */
+function asRole(role: string): PackFiles {
+  const files = new Map(example);
+  for (const path of ['subject.yaml', 'subject.en.yaml']) {
+    files.set(path, new TextEncoder().encode(text(example, path).replace('id: example-subject\n', `id: example-subject\nrole: ${role}\n`)));
+  }
+  return files;
+}
+
 const withFile = (path: string, content: string | Uint8Array): PackFiles =>
   new Map(example).set(path, typeof content === 'string' ? new TextEncoder().encode(content) : content);
 
@@ -64,6 +73,16 @@ const f = (code: string, file: string, item: string | null, field: string, expec
 /** The fault a translation draws when its original is edited and it is not: the original's structure, and its own. */
 const mismatch = (file: string, item: string, field: string, expected: string, found: string): ContentFault =>
   f('translation-mismatch', file, item, field, `the same as in the default language: ${expected}`, found);
+
+describe('an introduction', () => {
+  it('passes when every subject file says so, and keeps the role in each', () => {
+    const result = checkPackFiles(asRole('introduction'));
+    expect(result.ok ? result.value.subject.map(({ language, role }) => ({ language, role })) : result.error).toEqual([
+      { language: 'en', role: 'introduction' },
+      { language: 'sv', role: 'introduction' },
+    ]);
+  });
+});
 
 describe('the example pack', () => {
   it('passes every check, with every item in place', () => {
@@ -269,6 +288,19 @@ describe('a broken pack is rejected with every fault, each naming its file, item
       'a translation of the subject with its areas in another order, reported on the translation',
       () => edited('subject.en.yaml', 'areas:\n  - grunder\n  - fordjupning', 'areas:\n  - fordjupning\n  - grunder'),
       [mismatch('subject.en.yaml', 'subject example-subject', 'areas', '["grunder","fordjupning"]', '["fordjupning","grunder"]')],
+    ],
+    [
+      'an introduction whose translation does not say it is one, reported on the translation',
+      () => edited('subject.yaml', 'id: example-subject\n', 'id: example-subject\nrole: introduction\n'),
+      [mismatch('subject.en.yaml', 'subject example-subject', 'role', '"introduction"', 'nothing')],
+    ],
+    [
+      'a subject role the format does not have',
+      () => asRole('tutorial'),
+      [
+        f('schema', 'subject.en.yaml', 'subject example-subject', 'role', '"introduction"', '"tutorial"'),
+        f('schema', 'subject.yaml', 'subject example-subject', 'role', '"introduction"', '"tutorial"'),
+      ],
     ],
     [
       'a subject that declares no concepts',

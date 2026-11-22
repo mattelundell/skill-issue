@@ -120,8 +120,8 @@ type ItemCollection = (typeof COLLECTIONS)[number][0];
 
 const COLLECTION_OF: ReadonlyMap<ItemKind, ItemCollection> = new Map(COLLECTIONS.map(([collection, kind]) => [kind, collection]));
 
-/** The title and summary of a stored subject entry. */
-const SubjectTextSchema = z.object({ title: z.string(), summary: z.string() });
+/** The title, summary and role of a stored subject entry. */
+const SubjectTextSchema = z.object({ title: z.string(), summary: z.string(), role: SubjectSchema.shape.role });
 
 /** Stored bodies carry no language: it is a column of the entry. */
 const StoredSubjectSchema = SubjectSchema.omit({ language: true });
@@ -444,13 +444,14 @@ export function createCatalogue(db: Db): Catalogue {
         ORDER BY s.id`,
     );
     return rows.map((row) => {
-      const { title, summary } = SubjectTextSchema.parse(row['body']);
+      const { title, summary, role } = SubjectTextSchema.parse(row['body']);
       return {
         id: text(row, 'id'),
         defaultLanguage: text(row, 'default_language'),
         languages: z.array(z.string()).parse(row['languages']),
         title,
         summary,
+        ...(role === undefined ? {} : { role }),
       };
     });
   };

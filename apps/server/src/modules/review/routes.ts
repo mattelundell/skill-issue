@@ -84,7 +84,7 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
     path: '/due',
     summary: 'The questions due for review today in every subject, the most overdue first; how many each subject has due; and how long the learner typically takes over one there.',
     description:
-      'Every subject with a question scheduled is named, with 0 when none is due today. The questions are one list across subjects, ordered by the moment each fell due, so a review of everything asks the most overdue first whichever subject it is in.',
+      'Every subject with a question scheduled is named, with 0 when none is due today, except an introduction: it teaches the application, so its questions are reviewed only in its own review. The questions are one list across subjects, ordered by the moment each fell due, so a review of everything asks the most overdue first whichever subject it is in.',
     request: { query: zoneQuery },
     responses: {
       200: { description: 'The counts, by subject.', content: { 'application/json': { schema: DueCountsSchema } } },
@@ -99,7 +99,11 @@ export function reviewRoutes({ db, catalogue, record }: ModuleContext): OpenAPIH
     const timeZone = zone.data ?? 'UTC';
     const ready = await scheduler;
     await catchUp(db, record, ready);
-    const bySubject = Map.groupBy(await memoriesIn(db, undefined, ready), (memory) => memory.subjectId);
+    const introductions = new Set((await catalogue.listSubjects()).filter((subject) => subject.role === 'introduction').map((subject) => subject.id));
+    const bySubject = Map.groupBy(
+      (await memoriesIn(db, undefined, ready)).filter((memory) => !introductions.has(memory.subjectId)),
+      (memory) => memory.subjectId,
+    );
     const now = new Date();
     const subjects: Record<string, { due: number; typicalAnswerMs: number | null }> = {};
     const due: Memory[] = [];

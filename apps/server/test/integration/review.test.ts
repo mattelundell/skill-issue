@@ -103,6 +103,17 @@ function asSubject(files: PackFiles, subjectId: string): PackFiles {
   return renamed;
 }
 
+/** The pack, its subject saying in every language that it is an introduction. */
+function asIntroduction(files: PackFiles): PackFiles {
+  const marked = new Map(files);
+  for (const file of ['subject.yaml', 'subject.en.yaml']) {
+    const text = decode(files.get(file));
+    expect(text).toMatch(/^id: .+\n/m);
+    marked.set(file, encode(text.replace(/^(id: .+\n)/m, '$1role: introduction\n')));
+  }
+  return marked;
+}
+
 const inSubject = (event: AnswerEvent, subjectId: string): AnswerEvent => ({ ...event, question: { ...event.question, subjectId } });
 
 const write = async (events: readonly RecordEvent[]): Promise<void> => createLearningRecord(here.db).append(events);
@@ -340,6 +351,21 @@ describe('what is due', () => {
         { subjectId: OTHER, questionId: 'kwh-eller-kw' },
       ],
     });
+  });
+
+  it('leaves an introduction out of what is due in every subject, while its own review still asks its questions', async () => {
+    await load(example);
+    await load(asIntroduction(asSubject(example, OTHER)));
+    await write([answerAt('effekt-ar-takt', daysAgo(5), false), inSubject(answerAt('kwh-eller-kw', daysAgo(4), false), OTHER)]);
+
+    const everywhere = await here.app.request(`${REVIEW}/due?timeZone=${ZONE}`);
+    expect(DueCountsSchema.parse(await everywhere.json())).toEqual({
+      subjects: { [SUBJECT]: { due: 1, typicalAnswerMs: 3000 } },
+      questions: [{ subjectId: SUBJECT, questionId: 'effekt-ar-takt' }],
+    });
+    const own = await here.app.request(`${REVIEW}/subjects/${OTHER}/due?timeZone=${ZONE}`);
+    expect(own.status).toBe(200);
+    expect(JSON.stringify(await own.json())).toContain('"kwh-eller-kw"');
   });
 
   it('leaves out a question the subject no longer holds', async () => {

@@ -64,6 +64,8 @@ concepts:         # what the lessons teach, each named once
   - { id: effekt, name: Effekt }
 ```
 
+`role: introduction`, optional, marks a subject that teaches the application itself rather than a subject to study. It is listed on the start screen like any other until every lesson on its path has been gone through; then it leaves the start screen, with one quiet line left to bring it back, and nothing of it is deleted. Its questions are reviewed only in its own review, never in a review of every subject. A translation of the subject states the same role. Without `role`, a subject is an ordinary one.
+
 `concepts` declares what the subject teaches: each concept's identifier, which lessons and questions use, and the name a learner reads — on the Progress tab, a concept answered wrongly most often is shown by it. A lesson may list only concepts declared here, so a mistyped concept is reported instead of quietly becoming a new one. A translation of the subject declares the same concepts in the same order and names them in its own language.
 
 ## sources/&lt;source-id&gt;.md
