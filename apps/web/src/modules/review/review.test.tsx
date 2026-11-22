@@ -6,7 +6,6 @@ import { App } from '../../App.js';
 import type { WebModule } from '../../shell/contract.js';
 import { catalogueFaults } from '../../shell/messages.js';
 import { assessmentModule } from '../assessment/index.js';
-import { minutesFor } from './api.js';
 import { reviewModule } from './index.js';
 import { catalogues } from './messages.js';
 
@@ -149,15 +148,6 @@ async function answerNumeric(value: string): Promise<void> {
   await userEvent.click(within(question).getByRole('button', { name: 'Svara' }));
   await within(question).findByRole('status');
 }
-
-describe('the time a review takes', () => {
-  it('is the questions at the learner’s pace, in whole minutes and at least one, and unsaid before there is a pace', () => {
-    expect(minutesFor(14, 25_000)).toBe(6);
-    expect(minutesFor(2, 20_000)).toBe(1);
-    expect(minutesFor(3, null)).toBeUndefined();
-    expect(minutesFor(0, 20_000)).toBeUndefined();
-  });
-});
 
 describe('the review session', () => {
   it('asks what was due one question at a time, sends each as a review, asks a wrong one again, and ends when all are right', async () => {

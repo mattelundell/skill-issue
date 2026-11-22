@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HealthResponseSchema, ModuleIdSchema, requeue } from './index.js';
+import { HealthResponseSchema, minutesFor, ModuleIdSchema, requeue } from './index.js';
 
 describe('HealthResponseSchema', () => {
   it('accepts a healthy answer with its module list', () => {
@@ -34,5 +34,14 @@ describe('a question answered wrong in a review session', () => {
     expect(requeue(['a', 'b', 'c', 'd', 'e'], 'x')).toEqual(['a', 'b', 'c', 'x', 'd', 'e']);
     expect(requeue(['a', 'b'], 'x')).toEqual(['a', 'b', 'x']);
     expect(requeue([], 'x')).toEqual(['x']);
+  });
+});
+
+describe('the time a review takes', () => {
+  it('is the questions at the learner’s pace, in whole minutes and at least one, and unsaid before there is a pace', () => {
+    expect(minutesFor(14, 25_000)).toBe(6);
+    expect(minutesFor(2, 20_000)).toBe(1);
+    expect(minutesFor(3, null)).toBeUndefined();
+    expect(minutesFor(0, 20_000)).toBeUndefined();
   });
 });
