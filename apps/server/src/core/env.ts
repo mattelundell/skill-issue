@@ -13,6 +13,8 @@ const EnvSchema = z.object({
   DB_PASSWORD_FILE: z.string().min(1),
   /** Folder with the built browser app. When absent, only the API is served. */
   WEB_DIR: z.string().min(1).optional(),
+  /** Folder with the introduction, loaded on the first start of an installation that holds no subject. When absent, nothing is loaded. */
+  INTRODUCTION_DIR: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

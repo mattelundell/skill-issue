@@ -2,7 +2,7 @@
 
 A study application for one person. Load a subject, take its lessons, get tested, and have the questions you are about to forget come back at the right time.
 
-The application ships with no subjects. A subject is a pack of source material, lessons and questions that you — or an AI assistant working for you — write and load through the API.
+The application ships with no subjects to study — only a short introduction to itself, loaded on the first start of a new installation and gone from the start page once taken. A subject is a pack of source material, lessons and questions that you — or an AI assistant working for you — write and load through the API.
 
 **Status: in development, before 1.0.** A subject can be loaded, studied lesson by lesson with checks, examined, reviewed on a schedule, annotated and followed over time in the browser; reviewed, examined, backed up and restored from the command line.
 

@@ -2,7 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { serve } from '@hono/node-server';
 import { buildApp } from './core/app.js';
 import { coreMigrations } from './core/migrations.js';
+import { createCatalogue } from './core/catalogue/catalogue.js';
 import { connect } from './core/db.js';
+import { introduce } from './core/introduction.js';
 import { parseEnv } from './core/env.js';
 import { describeThrown, log } from './core/log.js';
 import { migrate } from './core/migrate.js';
@@ -39,6 +41,10 @@ async function start(): Promise<void> {
     throw new Error(`Migration ${owner}/${name} could not be applied: ${kind}`);
   }
   log.info('migrations.applied', { applied: migrated.value.applied });
+
+  if (env.value.INTRODUCTION_DIR !== undefined) {
+    await introduce(db, createCatalogue(db), env.value.INTRODUCTION_DIR);
+  }
 
   const app = buildApp({
     db,
