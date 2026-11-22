@@ -125,6 +125,7 @@ The shell owns what needs no module: the subject list and each subject's path, r
 | `review` | Schedules questions to come back, and runs review sessions. |
 | `notes` | Notes written beside a lesson, filed by subject, area and lesson; browsing and search. |
 | `progress` | Mastery per lesson and area, and learning over time. |
+| `packs` | Loading a subject pack from the browser: a zip dropped or chosen on its page, checked by the content endpoint's dry run, every fault listed by file and field, and stored only on the learner's word. Browser only; it calls the same endpoint the command-line tool does. |
 | `diagnostics` | An opt-in recording of a study session — interface events, API calls, errors — kept locally, for finding faults, and exported as one file. |
 
 Functions that are expected later and must fit without rework: a glossary trainer, flashcards written by the learner, study streaks and goals, an assistant that explains a wrong answer. Each is a module by the contract above.

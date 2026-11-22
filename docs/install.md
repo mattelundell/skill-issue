@@ -42,7 +42,9 @@ On Windows, run the commands in Git Bash or WSL, which can run the `.sh` script.
 
 ## 4. Load a subject
 
-A subject is a pack: a folder of text files (`docs/content-format.md`). Put the folder inside the application's folder — `subjects/my-subject/`, say — and load it:
+A subject is a pack: a folder of text files (`docs/content-format.md`). The simplest way in is the browser: pack the folder as a zip file and drop it on **Ladda in ämne** at the foot of any page. It is checked first, every fault named by file and field, and stored only when you say so.
+
+From a terminal, put the folder inside the application's folder — `subjects/my-subject/`, say — and load it:
 
 ```sh
 docker compose run --rm cli load subjects/my-subject

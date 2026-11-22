@@ -1,0 +1,11 @@
+.packs .lede { margin-bottom: 18px; }
+.packs-sheet { padding: 26px 28px; }
+.packs-sheet h2 { font-family: var(--title); font-weight: 600; font-size: 1.4rem; margin-bottom: 8px; }
+.packs-sheet .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.dropzone { border: 2px dashed var(--rule); border-radius: 10px; padding: 36px 20px; text-align: center; color: var(--graphite); }
+.dropzone.over { border-color: var(--royal); background: var(--royal-wash); color: var(--ink); }
+.dropzone-label { font-size: 1.15rem; color: var(--ink); margin: 0 0 8px; }
+.packs-problem { color: var(--warn); margin: 14px 0 0; }
+.faults { list-style: none; padding: 0; margin: 14px 0 18px; display: grid; gap: 10px; }
+.faults li { border-left: 3px solid var(--warn); padding: 4px 0 4px 12px; }
+.faults code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; }

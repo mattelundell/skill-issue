@@ -4,6 +4,7 @@ import { diagnosticsModule } from './diagnostics/index.js';
 import { glossaryModule } from './glossary/index.js';
 import { lessonsModule } from './lessons/index.js';
 import { notesModule } from './notes/index.js';
+import { packsModule } from './packs/index.js';
 import { progressModule } from './progress/index.js';
 import { readerModule } from './reader/index.js';
 import { reviewModule } from './review/index.js';
@@ -13,7 +14,7 @@ import { reviewModule } from './review/index.js';
  * the only place that names them: removing a line removes the module's pages,
  * tabs, blocks, figures and lesson marks, and nothing else.
  */
-export const webModules: readonly WebModule[] = [readerModule, lessonsModule, assessmentModule, reviewModule, notesModule, glossaryModule, progressModule, diagnosticsModule];
+export const webModules: readonly WebModule[] = [readerModule, lessonsModule, assessmentModule, reviewModule, notesModule, glossaryModule, progressModule, packsModule, diagnosticsModule];
 
 const fault = checkModules(webModules);
 if (fault !== undefined) {
