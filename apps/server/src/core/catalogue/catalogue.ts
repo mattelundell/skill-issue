@@ -84,6 +84,8 @@ export interface Catalogue {
    * every language.
    */
   banks(subjectId: string): Promise<readonly LessonBank[] | undefined>;
+  /** The name the subject gives each of its concepts, in `language` where translated and in the default language where not. */
+  conceptNames(subjectId: string, language: string | undefined): Promise<ReadonlyMap<string, string>>;
   /** A file the subject currently carries, at its path in the pack such as `assets/figur.png`; undefined when it carries none there. */
   asset(subjectId: string, path: string): Promise<StoredAsset | undefined>;
 }
@@ -128,6 +130,8 @@ const StoredAreaSchema = AreaSchema.omit({ language: true });
 const StoredLessonSchema = z.object({ title: LessonSchema.shape.title, summary: LessonSchema.shape.summary });
 
 const BankSubjectSchema = z.object({ areas: z.array(z.string()) });
+/** A stored subject written before it declared concepts has none to name. */
+const StoredConceptsSchema = z.object({ concepts: z.array(z.object({ id: z.string(), name: z.string() })).default([]) });
 const BankAreaSchema = z.object({ lessons: z.array(z.string()) });
 const BankLessonSchema = z.object({ concepts: LessonSchema.shape.concepts });
 
@@ -552,6 +556,26 @@ export function createCatalogue(db: Db): Catalogue {
     update,
     listSubjects,
     banks,
+    conceptNames: async (subjectId, language) => {
+      const rows = await db.query(
+        `SELECT e.language = s.default_language AS original, r.body
+           FROM catalogue.entry e
+           JOIN catalogue.revision r USING (subject_id, kind, id, language)
+           JOIN catalogue.subject s ON s.id = e.subject_id
+          WHERE e.subject_id = $1 AND e.kind = 'subject' AND r.revision = e.current_revision AND e.retired_at IS NULL
+            AND (e.language = s.default_language OR e.language = $2)
+          ORDER BY original DESC`,
+        [subjectId, language ?? null],
+      );
+      // The original first, so a translation's names replace its names and the original's fill any gap.
+      const names = new Map<string, string>();
+      for (const row of rows) {
+        for (const concept of StoredConceptsSchema.parse(row['body']).concepts) {
+          names.set(concept.id, concept.name);
+        }
+      }
+      return names;
+    },
     outline,
     sourceLibrary: async (subjectId, language) => sourceLibrary(db, subjectId, language),
     sourcePage: async (subjectId, sourceId, language) => sourcePage(db, subjectId, sourceId, language),

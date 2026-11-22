@@ -75,9 +75,9 @@ test('the Progress tab shows what is remembered by area and lesson, the last day
   const time = page.getByRole('region', { name: 'Över tid' });
   await expect(time.locator('rect.answers')).toHaveCount(progress.days.filter((day) => day.answers > 0).length);
 
-  // "kwh-eller-kw" was answered wrong, and it tests "effekt".
+  // "kwh-eller-kw" was answered wrong, and it tests "effekt", which the subject names "Effekt".
   const weak = page.getByRole('region', { name: 'Svaga punkter' });
-  await expect(weak.locator('li b').filter({ hasText: /^effekt$/ })).toHaveCount(1);
+  await expect(weak.locator('li b').filter({ hasText: /^Effekt$/ })).toHaveCount(1);
   await weak.getByRole('link', { name: 'Energi och effekt' }).first().click();
   await expect(page).toHaveURL(/\/subjects\/example-subject\/lessons\/energi-och-effekt/);
 });

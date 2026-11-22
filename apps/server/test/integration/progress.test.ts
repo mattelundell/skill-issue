@@ -146,7 +146,9 @@ describe("a subject's progress", () => {
       { answers: 1, correct: 1 },
       { answers: 0, correct: 0 },
     ]);
-    expect(shown.weakSpots).toEqual([{ concept: 'effekt', wrong: 1, answers: 3, lessonId: 'energi-och-effekt' }]);
+    expect(shown.weakSpots).toEqual([{ concept: 'effekt', name: 'Effekt', wrong: 1, answers: 3, lessonId: 'energi-och-effekt' }]);
+    // The name in the language asked for, as the subject's translation gives it.
+    expect((await progress(`?timeZone=${ZONE}&language=en`)).weakSpots.map((spot) => spot.name)).toEqual(['Power']);
   });
 
   it('calls a lesson mastered just after its questions are answered right and its exam passed', async () => {
