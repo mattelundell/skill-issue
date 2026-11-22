@@ -6,7 +6,7 @@ import { Markdown } from '../../shell/markdown.js';
 import { Link } from '../../shell/router.js';
 import { useFetched } from '../../shell/useFetched.js';
 import { fetchEarlierAnswers, fetchQuestions, postAnswer } from './api.js';
-import { AnswerInput, useWords } from './inputs.js';
+import { AnswerInput, initialAnswer, useWords } from './inputs.js';
 import { useMessages } from './messages.js';
 
 /** A check inside a lesson, or a question in a review: each question answered and graded at once, with why, and where that comes from. */
@@ -102,7 +102,7 @@ function AskedOne({
 }) {
   const { t } = useMessages();
   const words = useWords();
-  const [answer, setAnswer] = useState<GivenAnswer>();
+  const [answer, setAnswer] = useState<GivenAnswer | undefined>(() => initialAnswer(question));
   const [sending, setSending] = useState(false);
   const [failed, setFailed] = useState(false);
   // From the question being shown to the answer being sent: the learning record's "how long it took".

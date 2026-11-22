@@ -7,7 +7,7 @@ import { WithCode } from '../../shell/text.js';
 import { useFetched } from '../../shell/useFetched.js';
 import { fetchPassed, handIn, startExam } from './api.js';
 import { Feedback } from './CheckStep.js';
-import { AnswerInput, useWords } from './inputs.js';
+import { AnswerInput, initialAnswer, useWords } from './inputs.js';
 import { useMessages } from './messages.js';
 
 export const examPath = (subjectId: string, scope: ExamScope): string => subjectPath(subjectId, 'assessment', [scope.kind, scope.id]);
@@ -75,7 +75,7 @@ function Exam({ subject, scope, title, areaTitle }: { readonly subject: SubjectO
   const start = async (): Promise<void> => {
     setStage({ kind: 'starting' });
     const sitting = await startExam(subject.id, scope, subject.language);
-    setStage(sitting === undefined ? { kind: 'intro', failed: true } : { kind: 'sitting', sitting, at: 0, answers: new Map(), handing: false, failed: false });
+    setStage(sitting === undefined ? { kind: 'intro', failed: true } : { kind: 'sitting', sitting, at: 0, answers: startingAnswers(sitting), handing: false, failed: false });
   };
 
   const head = (
@@ -178,6 +178,14 @@ function Exam({ subject, scope, title, areaTitle }: { readonly subject: SubjectO
       {stage.failed ? <p className="grade-failed" role="alert">{t('exam.hand-in.failed')}</p> : null}
     </div>
   );
+}
+
+/** Each question's answer before the learner does anything: an ordering's shown order, which counts as answered. */
+function startingAnswers(sitting: Sitting): Map<string, GivenAnswer> {
+  return new Map(sitting.questions.flatMap((question) => {
+    const answer = initialAnswer(question);
+    return answer === undefined ? [] : [[question.id, answer] as const];
+  }));
 }
 
 /** One question of a sitting. Its answer is kept as the learner moves between questions; nothing is graded until hand-in. */
