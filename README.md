@@ -4,7 +4,7 @@ A study application for one person. Load a subject, take its lessons, get tested
 
 The application ships with no subjects. A subject is a pack of source material, lessons and questions that you — or an AI assistant working for you — write and load through the API.
 
-**Status: in development.** A subject can be loaded, updated and exported through the API and the command-line tool, and the browser app lists the subjects and shows each one's path of areas and lessons. There are no study screens yet.
+**Status: in development, before 1.0.** A subject can be loaded, studied lesson by lesson with checks, examined, reviewed on a schedule, annotated and followed over time in the browser; reviewed, backed up and restored from the command line. The install guide and the guide for writing a subject with an AI assistant are not written yet.
 
 ## Running it
 
@@ -26,6 +26,19 @@ node apps/cli/dist/main.js validate examples/example-subject    # check it, with
 node apps/cli/dist/main.js load examples/example-subject        # load it; an update asks for --yes
 node apps/cli/dist/main.js export example-subject out.zip       # write it back out, as a .zip or a new folder
 ```
+
+## Studying and keeping your data from the command line
+
+```sh
+node apps/cli/dist/main.js status                                  # is it up, and what is due in each subject
+node apps/cli/dist/main.js review                                  # answer what is due today, in every subject; q stops
+node apps/cli/dist/main.js review example-subject                  # … or in one
+node apps/cli/dist/main.js export-notes example-subject notes.md   # your notes as one Markdown file, by area, lesson and step
+node apps/cli/dist/main.js backup skill-issue-backup.json          # everything: subjects, answers, notes, where each lesson was left
+node apps/cli/dist/main.js restore skill-issue-backup.json         # into an empty installation of the same version
+```
+
+A backup holds every revision of every subject, because your answers name the revision you answered; a pack holds only the current one, so packs alone cannot restore your history. It restores only into an empty installation, of the version that wrote it — `--dry-run` checks that without writing. The interface language and the other choices the browser remembers stay with the browser.
 
 Or straight against the API — the OpenAPI document is at <http://127.0.0.1:4747/api/v1/openapi.json>:
 
