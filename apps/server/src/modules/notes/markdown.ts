@@ -22,6 +22,43 @@ export function stepTitle(step: ShownStep | undefined): string | undefined {
   return match?.[1];
 }
 
+/** The level a step's heading has in the file; a heading in a note goes below it. */
+const STEP_LEVEL = 4;
+
+/**
+ * A note's text with each of its own headings moved below the step it is filed
+ * under — level n becomes n + 4, at most 6, the deepest Markdown has — so a
+ * heading the learner wrote does not read as a new area or lesson. Lines in a
+ * fenced code block are left as written.
+ */
+export function underStep(body: string): string {
+  let fence: string | undefined;
+  return body
+    .split('\n')
+    .map((line) => {
+      const opening = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (opening !== null) {
+        const marker = opening[1] ?? '';
+        if (fence === undefined) {
+          fence = marker;
+        } else if (marker.startsWith(fence[0] ?? '') && marker.length >= fence.length) {
+          fence = undefined;
+        }
+        return line;
+      }
+      if (fence !== undefined) {
+        return line;
+      }
+      const heading = /^( {0,3})(#{1,6})([ \t].*|)$/.exec(line);
+      if (heading === null) {
+        return line;
+      }
+      const [, indent = '', hashes = '', rest = ''] = heading;
+      return `${indent}${'#'.repeat(Math.min(6, hashes.length + STEP_LEVEL))}${rest}`;
+    })
+    .join('\n');
+}
+
 /** The lessons a note can be filed under: their titles and steps as the subject now holds them. */
 export interface FiledLesson {
   readonly title: string;
@@ -44,7 +81,7 @@ export function notesAsMarkdown(subject: SubjectOutline, lessons: ReadonlyMap<st
     for (const note of (byLesson.get(lessonId) ?? []).toSorted((a, b) => a.step - b.step)) {
       const title = stepTitle(steps[note.step]);
       const step = fill(words.step, { step: String(note.step + 1) });
-      lines.push(`#### ${title === undefined ? step : `${step} · ${title}`}`, '', note.body.trim(), '');
+      lines.push(`${'#'.repeat(STEP_LEVEL)} ${title === undefined ? step : `${step} · ${title}`}`, '', underStep(note.body.trim()), '');
     }
   };
 
