@@ -4,7 +4,7 @@ import type { Catalogue } from '../../core/catalogue/catalogue.js';
 import { problem, problemContent } from '../../core/problem.js';
 import type { ModuleContext } from '../../core/registry.js';
 import { catchUp, memoriesIn, type Memory } from './memory.js';
-import { createScheduler, dayIn } from './scheduler.js';
+import { createScheduler, dayIn } from '../../core/memory/memory.js';
 
 const noSubject = (subjectId: string) => problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`);
 const badZone = problem(400, 'timeZone must be a time zone name such as Europe/Stockholm');
