@@ -317,3 +317,9 @@ button.term:hover, button.term[aria-expanded="true"] { background: var(--royal-w
   /* A subject's pages share one width, so moving between its tabs does not shift the page. */
   .wrap:has(.subject-head) { max-width: 72rem; }
 }
+
+/* A table in written material — a source in the reader, a lesson's step: ruled, left-aligned, read row by row, and scrolled sideways rather than squeezed on a narrow screen. */
+.prose table, .prose-step table { display: block; overflow-x: auto; border-collapse: collapse; font-size: 0.9em; margin: 0 0 1em; max-width: 100%; line-height: 1.45; }
+.prose th, .prose td, .prose-step th, .prose-step td { text-align: left; vertical-align: top; padding: 7px 12px; border: 1px solid var(--rule); }
+.prose th, .prose-step th { background: var(--paper); font-weight: 600; }
+.prose td, .prose-step td { font-variant-numeric: tabular-nums; }
