@@ -355,6 +355,26 @@ describe('across every subject', () => {
     expect(api.requested.filter((request) => request.startsWith('/api/v1/review/due'))[0]).toBe('/api/v1/review/due?timeZone=Europe%2FStockholm');
   });
 
+  it('reads each subject in the language the learner chose for it, so its questions are asked in that language', async () => {
+    window.localStorage.setItem('skill-issue.content-language', JSON.stringify({ statistik: 'en' }));
+    api.everywhere = {
+      subjects: { 'example-subject': { due: 1, typicalAnswerMs: 20_000 }, statistik: { due: 1, typicalAnswerMs: 20_000 } },
+      questions: [
+        { subjectId: 'statistik', questionId: 'medel-ar-kvot' },
+        { subjectId: 'example-subject', questionId: 'effekt-ar-takt' },
+      ],
+    };
+    try {
+      open('/review');
+
+      expect(await screen.findByText('2 frågor kvar')).toBeTruthy();
+      expect(api.requested).toContain('/api/v1/content/subjects/statistik?language=en');
+      expect(api.requested).toContain('/api/v1/content/subjects/example-subject');
+    } finally {
+      window.localStorage.removeItem('skill-issue.content-language');
+    }
+  });
+
   it('with nothing due anywhere says so and leads back to the subjects', async () => {
     open('/review');
 

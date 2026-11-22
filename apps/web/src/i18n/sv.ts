@@ -39,6 +39,7 @@ export const sv = {
   'home.requires': 'Bygger på {areas}.',
   'home.list.and': 'och',
   'home.in-language': 'på {language}',
+  'home.content-language': 'Innehållets språk',
   'home.loading': 'Hämtar ämnet …',
   'home.missing.title': 'Ämnet finns inte',
   'home.missing.body': 'Inget ämne har id:t {id}. Det kan ha tagits bort, eller så är länken fel.',

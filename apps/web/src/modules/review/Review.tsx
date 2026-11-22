@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { fetchOutline, type Fetched } from '../../api.js';
 import type { Language } from '../../i18n/index.js';
 import type { AppPageProps, PageProps, SubjectProps } from '../../shell/contract.js';
+import { contentLanguageOf } from '../../shell/contentLanguage.js';
 import { useCheckStep } from '../../shell/contributions.js';
 import { usePolled } from '../../shell/poll.js';
 import { Link, appPagePath, startPath, subjectPath } from '../../shell/router.js';
@@ -184,7 +185,8 @@ async function loadEverything(signal: AbortSignal): Promise<Fetched<Everything>>
     return due.kind === 'not-found' ? { kind: 'failed' } : due;
   }
   const ids = [...new Set(due.value.questions.map(({ subjectId }) => subjectId))];
-  const fetched = await Promise.all(ids.map(async (id) => [id, await fetchOutline(id, signal)] as const));
+  // Each subject in the language the learner reads it in, so its questions are asked in that language.
+  const fetched = await Promise.all(ids.map(async (id) => [id, await fetchOutline(id, signal, contentLanguageOf(id))] as const));
   if (fetched.some(([, outline]) => outline.kind === 'failed')) {
     return { kind: 'failed' };
   }

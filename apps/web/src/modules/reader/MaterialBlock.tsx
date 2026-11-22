@@ -14,8 +14,8 @@ const NAMED_PUBLISHERS = 2;
 export function MaterialBlock({ subject }: SubjectProps) {
   const { t, tc } = useMessages();
   const { list } = useI18n();
-  const load = useMemo(() => async (signal: AbortSignal) => fetchLibrary(subject.id, signal), [subject.id]);
-  const { fetched } = useFetched(subject.id, load);
+  const load = useMemo(() => async (signal: AbortSignal) => fetchLibrary(subject.id, subject.language, signal), [subject.id, subject.language]);
+  const { fetched } = useFetched(`${subject.id}/${subject.language}`, load);
 
   let body: string | undefined;
   if (fetched?.kind === 'ok') {

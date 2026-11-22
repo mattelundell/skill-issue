@@ -106,7 +106,7 @@ Mastery can be lost. If the questions of a mastered lesson fall due and are not 
 
 ## Language
 
-Interface language and content language are separate settings. A subject available in several languages offers the choice on its home screen. Where an item is missing in the chosen language it is shown in the subject's default language, marked as such.
+Interface language and content language are separate settings. A subject available in several languages offers the choice on its home screen, each language named in itself, and the choice is remembered for that subject on the device; the start screen names subjects in their own default language. Where an item is missing in the chosen language it is shown in the subject's default language, marked as such.
 
 ## Command line
 

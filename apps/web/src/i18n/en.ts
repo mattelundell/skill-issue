@@ -40,6 +40,7 @@ export const en: Catalogue = {
   'home.requires': 'Builds on {areas}.',
   'home.list.and': 'and',
   'home.in-language': 'in {language}',
+  'home.content-language': 'Content language',
   'home.loading': 'Fetching the subject …',
   'home.missing.title': 'No such subject',
   'home.missing.body': 'No subject has the id {id}. It may have been removed, or the link is wrong.',

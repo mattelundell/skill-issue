@@ -3,6 +3,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { fetchOutline, type Fetched } from '../api.js';
 import { languageName } from '../i18n/index.js';
 import type { LessonMark, WebModule } from '../shell/contract.js';
+import { chooseContentLanguage, contentLanguageOf } from '../shell/contentLanguage.js';
 import { useLessonLink, useLessonMarks } from '../shell/contributions.js';
 import { useI18n } from '../shell/i18n.js';
 import { Link, startPath, subjectPath } from '../shell/router.js';
@@ -21,18 +22,25 @@ interface SubjectHomeProps {
 export function SubjectHome({ subjectId, page, path, modules }: SubjectHomeProps) {
   const { t, language } = useI18n();
   const [outline, setOutline] = useState<{ readonly subjectId: string; readonly fetched: Fetched<SubjectOutline> }>();
+  // Read once per subject from the device; changed by the subject's own picker.
+  const [chosen, setChosen] = useState<{ readonly subjectId: string; readonly language: string | undefined }>({ subjectId, language: contentLanguageOf(subjectId) });
+  const contentLanguage = chosen.subjectId === subjectId ? chosen.language : contentLanguageOf(subjectId);
+  const choose = (picked: string): void => {
+    chooseContentLanguage(subjectId, picked);
+    setChosen({ subjectId, language: picked });
+  };
 
   useEffect(() => {
     const controller = new AbortController();
     const settle = async (): Promise<void> => {
-      const fetched = await fetchOutline(subjectId, controller.signal);
+      const fetched = await fetchOutline(subjectId, controller.signal, contentLanguage);
       if (!controller.signal.aborted) {
         setOutline({ subjectId, fetched });
       }
     };
     void settle();
     return () => controller.abort();
-  }, [subjectId]);
+  }, [subjectId, contentLanguage]);
 
   const current = outline?.subjectId === subjectId ? outline.fetched : undefined;
   const title = current?.kind === 'ok' ? current.value.title : undefined;
@@ -98,7 +106,7 @@ export function SubjectHome({ subjectId, page, path, modules }: SubjectHomeProps
   return (
     <>
       {crumb}
-      <Subject subject={current.value} page={page} path={path} modules={modules} />
+      <Subject subject={current.value} page={page} path={path} modules={modules} onChoose={choose} />
     </>
   );
 }
@@ -108,11 +116,14 @@ function Subject({
   page,
   path,
   modules,
+  onChoose,
 }: {
   readonly subject: SubjectOutline;
   readonly page: string | undefined;
   readonly path: readonly string[];
   readonly modules: readonly WebModule[];
+  /** Reads the subject in another of its languages. */
+  readonly onChoose: (language: string) => void;
 }) {
   const { t, language } = useI18n();
   const pages = modules.flatMap(({ id, page: contributed }) => (contributed === undefined ? [] : [{ id, ...contributed }]));
@@ -125,6 +136,18 @@ function Subject({
           <h1 className="page-title">{subject.title}</h1>
           <p className="lede">{subject.summary}</p>
         </div>
+        {subject.languages.length > 1 ? (
+          <label className="content-language">
+            {t('home.content-language')}
+            <select value={subject.language} onChange={(event) => onChoose(event.target.value)}>
+              {subject.languages.map((code) => (
+                <option key={code} value={code} lang={code}>
+                  {capitalised(languageName(code))}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
       </div>
       <nav className="tabs" aria-label={t('home.tabs')}>
         <Link to={subjectPath(subject.id)} aria-current={page === undefined ? 'page' : undefined}>
@@ -315,3 +338,5 @@ function Legend() {
     </div>
   );
 }
+
+const capitalised = (text: string): string => text.charAt(0).toLocaleUpperCase() + text.slice(1);
