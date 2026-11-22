@@ -64,7 +64,7 @@ export const sv = {
   'not-found.body': 'Adressen leder ingenstans i appen.',
 
   'status.loading': 'Kontaktar servern …',
-  'status.ok': 'Servern svarar. Laddade moduler: {modules}.',
+  'status.ok': 'Servern svarar.',
   'status.unavailable': 'Servern svarar, men databasen går inte att nå.',
   'status.unreachable': 'Servern går inte att nå.',
 } as const;
