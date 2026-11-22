@@ -38,4 +38,7 @@ COPY --from=build /out/server/dist ./dist
 COPY --from=build /src/apps/web/dist ./web
 USER node
 EXPOSE 4747
+# Healthy when the application answers its health endpoint, which also asks the database; node is the only tool the image has for it.
+HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:4747/api/v1/health', { signal: AbortSignal.timeout(2500) }).then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
 CMD ["node", "dist/main.js"]
