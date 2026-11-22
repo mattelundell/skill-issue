@@ -203,6 +203,19 @@ function expectedInWords(question: AskedQuestion, expected: ExpectedAnswer): str
 
 const STOP = new Set(['q', 'quit']);
 
+/**
+ * Text with every control character taken out but the newline and the tab.
+ * Subject material may be written by anyone's assistant, and an escape
+ * sequence printed to a terminal can move the cursor, clear the screen or
+ * rename the window.
+ */
+export const printable = (text: string): string => text.replaceAll(/[^]/gu, (char) => (isControl(char.codePointAt(0) ?? 0) ? '' : char));
+
+/** C0 and C1 controls and DEL, but not the tab (9) or the newline (10). */
+function isControl(code: number): boolean {
+  return (code <= 0x1f && code !== 0x09 && code !== 0x0a) || (code >= 0x7f && code <= 0x9f);
+}
+
 interface Due {
   readonly subjectId: string;
   readonly questionId: string;
@@ -341,7 +354,8 @@ async function readAnswer(question: AskedQuestion, terminal: Terminal): Promise<
  * as it is given, so stopping loses nothing.
  */
 export async function review(command: { readonly subject: string | undefined; readonly url: string }, deps: ReviewDependencies): Promise<Outcome> {
-  const { terminal } = deps;
+  // Everything the session prints passes through here, so no line of subject material reaches the terminal unfiltered.
+  const terminal: Terminal = { write: (text) => deps.terminal.write(printable(text)), read: (prompt) => deps.terminal.read(printable(prompt)) };
   const found = await whatIsDue(command.subject, command.url, deps);
   if (found.kind === 'failed') {
     return found.outcome;
