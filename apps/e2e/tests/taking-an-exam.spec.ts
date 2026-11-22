@@ -78,14 +78,15 @@ test('a lesson exam sat with wrong answers fails, and reviews every answer with 
   await expect(page.locator('.review li .feedback').first()).toContainText('Inte rätt.Rätt svar:');
 });
 
-test('sat again with right answers it passes, and the path marks the lesson passed', async ({ page }) => {
+test('sat again with right answers it passes, and the path marks the lesson mastered, its every question answered within minutes', async ({ page }) => {
   await sit(page, true);
 
   await expect(page.getByRole('heading', { name: 'Godkänt' })).toBeVisible();
   await expect(page.getByText('2 av 2 rätt. Godkänt vid 50 %.')).toBeVisible();
 
   await page.getByRole('link', { name: 'Till ämnet' }).click();
-  await expect(page.locator('li[data-lesson="energi-och-effekt"]')).toHaveAttribute('data-state', 'passed');
+  // Passed, and each of its three questions was answered minutes ago — in the lesson file and here — so what is remembered of them is above the 90 % target.
+  await expect(page.locator('li[data-lesson="energi-och-effekt"]')).toHaveAttribute('data-state', 'mastered');
   const area = page.locator('section[data-area="grunder"]');
   await expect(area.getByRole('link', { name: 'Skriv områdesprovet' })).toHaveAttribute('href', '/subjects/example-subject/assessment/area/grunder');
 });
