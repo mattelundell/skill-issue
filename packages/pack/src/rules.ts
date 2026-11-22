@@ -50,6 +50,7 @@ class RuleCheck {
   /** The questions of each lesson's bank, in the default language. */
   private readonly bank: ReadonlyMap<string, readonly string[]>;
   private readonly questionLesson: ReadonlyMap<string, string>;
+  /** The concepts some lesson teaches. */
   private readonly concepts: ReadonlySet<string>;
 
   constructor(private readonly pack: Pack) {
@@ -111,22 +112,27 @@ class RuleCheck {
   }
 
   private checkSubject(): void {
-    const [first, ...others] = this.pack.subject;
+    const [first] = this.pack.subject;
     if (first === undefined) {
       return;
     }
     if (!this.pack.subject.some((entry) => entry.language === first.defaultLanguage)) {
       this.add('subject', { ...first, language: first.defaultLanguage }, 'missing-original', 'language', `a subject entry in the default language ${describeValue(first.defaultLanguage)}`, 'none');
     }
-    for (const entry of others) {
-      for (const field of ['id', 'defaultLanguage'] as const) {
-        if (entry[field] !== first[field]) {
-          this.add('subject', entry, 'translation-mismatch', field, describeValue(first[field]), describeValue(entry[field]));
-        }
+    // A translation is held to the original — the entry in the default language — whichever entry was read first.
+    const original = this.pack.subject.find((entry) => entry.language === first.defaultLanguage);
+    const same = (entry: (typeof this.pack.subject)[number], field: string, expected: unknown, found: unknown): void => {
+      if (JSON.stringify(found) !== JSON.stringify(expected)) {
+        this.add('subject', entry, 'translation-mismatch', field, `the same as in the default language: ${describeValue(expected)}`, describeValue(found));
       }
-      if (entry.areas.join('\n') !== first.areas.join('\n')) {
-        this.add('subject', entry, 'translation-mismatch', 'areas', describeValue(first.areas), describeValue(entry.areas));
+    };
+    for (const entry of this.pack.subject) {
+      if (original === undefined || entry === original) {
+        continue;
       }
+      same(entry, 'id', original.id, entry.id);
+      same(entry, 'defaultLanguage', original.defaultLanguage, entry.defaultLanguage);
+      same(entry, 'areas', original.areas, entry.areas);
     }
     for (const entry of this.pack.subject) {
       this.references('subject', entry, 'areas', entry.areas, this.areaIds, 'unknown-area', 'an area');
