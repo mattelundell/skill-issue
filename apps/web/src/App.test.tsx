@@ -527,8 +527,8 @@ describe('the module contract for lessons', () => {
     expect(screen.getByRole('region', { name: 'Panelens ämnen' }).textContent).toBe('example-subject statistik');
   });
 
-  it('lists an introduction not yet gone all the way through like any subject, with no line back', async () => {
-    api.subjects = [INTRODUCTION, EXAMPLE];
+  it('lists an introduction not yet gone all the way through first, above the subjects, with no line back', async () => {
+    api.subjects = [EXAMPLE, INTRODUCTION];
     open('/', [taking(['statistik'])]);
 
     await vi.waitFor(() => expect(rows()).toEqual([['kom-igang', 'Börja'], ['example-subject', 'Börja']]));
