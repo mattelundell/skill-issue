@@ -69,6 +69,8 @@ pnpm run test:integration
 pnpm run test:e2e                                        # builds, then drives the app in a browser
 ```
 
+`pnpm install` points git at `.githooks/`, whose pre-commit hook refuses a commit whose staged changes hold something that looks like a secret. It needs [gitleaks](https://github.com/gitleaks/gitleaks#installing) installed, and refuses the commit rather than skipping the check when it is not.
+
 `pnpm run test:e2e` starts the built server, serving the built browser app, on a fresh database in the throwaway PostgreSQL, and drives it with Playwright. The first run needs the browser: `pnpm --filter @skill-issue/e2e exec playwright install chromium`.
 
 `pnpm run lint` does two things. It lints the code, and then it lints the deliberate violations kept in each `lint-fixtures` folder and fails unless every marked line is reported by the rule it names — so a rule that has been switched off, or has stopped working, fails the run instead of passing quietly. A rule worth relying on gets a line in a fixture.
