@@ -78,6 +78,14 @@ for (const width of [1440, 1920]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${LESSON}/1`);
     await expect(page.getByRole('heading', { name: 'Förluster mot tillskott' })).toBeVisible();
+    // The measure is the design's in its own typeface, which the application serves: measured before it has
+    // loaded, a line is set in the fallback font, whose widths differ from machine to machine.
+    const typeface = await page.evaluate(async () => {
+      await document.fonts.ready;
+      // A face the page itself declared and loaded: a font merely installed on the machine does not count.
+      return [...document.fonts].filter((face) => face.status === 'loaded').map((face) => `${face.family.replaceAll('"', '')} ${face.style}`);
+    });
+    expect(typeface, 'the typefaces the application served').toContain('Atkinson Hyperlegible Next normal');
 
     const measured: string[] = [];
     for (const reading of ['bench', 'focus'] as const) {
