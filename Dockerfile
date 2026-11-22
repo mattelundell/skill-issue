@@ -22,8 +22,9 @@ COPY tsconfig.base.json ./
 COPY packages packages
 COPY apps apps
 RUN pnpm run build
-# The server with its production dependencies only, as a self-contained folder.
-RUN pnpm --filter @skill-issue/server deploy --prod --legacy /out/server
+# The server and the command-line tool with their production dependencies only, each a self-contained folder.
+RUN pnpm --filter @skill-issue/server deploy --prod --legacy /out/server \
+ && pnpm --filter @skill-issue/cli deploy --prod --legacy /out/cli
 
 # node:26-alpine
 FROM node@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 AS runtime
@@ -36,6 +37,9 @@ COPY --from=build /out/server/package.json ./
 COPY --from=build /out/server/node_modules ./node_modules
 COPY --from=build /out/server/dist ./dist
 COPY --from=build /src/apps/web/dist ./web
+COPY --from=build /out/cli/package.json ./cli/
+COPY --from=build /out/cli/node_modules ./cli/node_modules
+COPY --from=build /out/cli/dist ./cli/dist
 USER node
 EXPOSE 4747
 # Healthy when the application answers its health endpoint, which also asks the database; node is the only tool the image has for it.

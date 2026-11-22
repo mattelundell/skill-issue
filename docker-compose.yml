@@ -21,6 +21,7 @@ services:
     restart: unless-stopped
 
   app:
+    image: skill-issue:local
     build: .
     depends_on:
       db:
@@ -38,6 +39,28 @@ services:
     security_opt:
       - no-new-privileges:true
     restart: unless-stopped
+
+  # The command-line tool, from the same image: `docker compose run --rm cli <command>`.
+  # It sees this folder as its working directory, so a pack or a backup file is named
+  # relative to it, and it reaches the application over Compose's own network.
+  cli:
+    image: skill-issue:local
+    build: .
+    profiles: [tools]
+    entrypoint: ["node", "/app/cli/dist/main.js"]
+    working_dir: /work
+    volumes:
+      - ./:/work
+    environment:
+      SKILL_ISSUE_URL: http://app:4747
+    depends_on:
+      app:
+        condition: service_healthy
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
 secrets:
   db_password:

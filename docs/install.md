@@ -2,6 +2,8 @@
 
 Skill Issue runs on your own computer, for you alone. It needs nothing but Docker, and it is reachable only from the computer it runs on. It starts with no subjects: you load one, written by you or by an AI assistant from [the authoring guide](authoring-guide.md).
 
+The application comes with a command-line tool, run through Docker as `docker compose run --rm cli <command>` from the application's folder. It sees that folder, so a pack or a backup file is named relative to it.
+
 ## 1. Install Docker
 
 Install **Docker Desktop** (macOS, Windows, Linux) from <https://www.docker.com/products/docker-desktop/> and start it. Any Docker that includes Compose works too, such as colima on a Mac.
@@ -40,36 +42,40 @@ On Windows, run the commands in Git Bash or WSL, which can run the `.sh` script.
 
 ## 4. Load a subject
 
-A subject is a pack: a folder of text files (`docs/content-format.md`). To load one, put the folder in a zip archive and send it:
+A subject is a pack: a folder of text files (`docs/content-format.md`). Put the folder inside the application's folder — `subjects/my-subject/`, say — and load it:
 
 ```sh
-cd my-subject && zip -r ../my-subject.zip . && cd ..
-curl -X POST -H 'content-type: application/zip' --data-binary @my-subject.zip http://127.0.0.1:4747/api/v1/content/packs
+docker compose run --rm cli load subjects/my-subject
 ```
 
-The answer says what was added. If the pack breaks a rule, nothing is stored and the answer lists every fault, each naming the file and field to correct. Add `?dryRun=true` to the address to check a pack without storing it. Loading the same subject again updates it; your history with it is kept.
+It says what will be added, or lists every fault, each naming the file and field to correct; nothing is stored until the pack is right. `docker compose run --rm cli validate subjects/my-subject` checks a pack without the application. Loading the same subject again updates it, after showing what changes; your history with it is kept.
 
-To try the application before writing a subject of your own, load the example: zip `examples/example-subject` the same way.
+To try the application before writing a subject of your own, load the example: `docker compose run --rm cli load examples/example-subject`.
 
-## 5. Keep a backup
+Without the command-line tool, a pack can be sent as a zip archive of its folder: `curl -X POST -H 'content-type: application/zip' --data-binary @my-subject.zip http://127.0.0.1:4747/api/v1/content/packs`.
+
+## 5. Study in the terminal, and keep a backup
+
+The browser is where lessons are read, but questions that are due can be answered in a terminal too:
+
+```sh
+docker compose run --rm cli status    # what is due
+docker compose run --rm cli review    # answer it; q stops
+```
 
 Everything you have done — subjects, answers, notes, where each lesson was left — comes out as one file:
 
 ```sh
-curl -o skill-issue-backup.json http://127.0.0.1:4747/api/v1/backup
+docker compose run --rm cli backup skill-issue-backup.json
 ```
 
-Take one before updating the application. A backup restores into an empty installation of the same version:
-
-```sh
-curl -X POST -H 'content-type: application/json' --data-binary @skill-issue-backup.json http://127.0.0.1:4747/api/v1/backup
-```
+Take one before updating the application. A backup restores into an empty installation of the same version: `docker compose run --rm cli restore skill-issue-backup.json`.
 
 ## Updating
 
 ```sh
-curl -o skill-issue-backup.json http://127.0.0.1:4747/api/v1/backup   # first
-git pull                                                              # or unpack the new zip over the folder
+docker compose run --rm cli backup skill-issue-backup.json   # first
+git pull                                                     # or unpack the new zip over the folder
 docker compose up -d --build --wait
 ```
 
@@ -77,11 +83,11 @@ The database is upgraded on start and keeps your data. A backup taken before an 
 
 ## When something is wrong
 
-- **Nothing at <http://127.0.0.1:4747>**: is Docker running? `docker compose ps` shows the two containers; `docker compose logs app` shows why the application stopped.
+- **Nothing at <http://127.0.0.1:4747>**: is Docker running? `docker compose ps` shows the two containers, and the application's as `healthy` once it answers; `docker compose logs app` shows why it did not start.
 - **`secrets/db_password: no such file`**: run `./scripts/init-secrets.sh`, then start again.
 - **Port 4747 is taken**: something else uses it. Stop that, or change the first `4747` under `ports:` in `docker-compose.yml` and open that port instead.
 - **Starting over**: `docker compose down -v` removes the application *and all your data*. Take a backup first.
 
 ## For developers
 
-Building from source, running the tests and using the command-line tool (which needs Node and pnpm) are in the README, "Working on it".
+Building from source, running the tests and running the command-line tool outside Docker are in the README, "Working on it".
