@@ -1,8 +1,13 @@
 import type { QuestionType } from '@skill-issue/contract';
 import { DefaultScheduler, Rating, type Grade } from 'ts-fsrs';
-import type { RecordedAnswer } from '../../core/record/record.js';
+import type { RecordedAnswer } from '../record/record.js';
 
 /**
+ * What the learner is expected to remember, from the learning record: the
+ * scheduling model and which answers count. It is the core's so that every
+ * module that reads it reads one model, rather than each keeping a copy that
+ * could drift from the one review schedules with.
+ *
  * FSRS through its reference library, with everything that changes a due date
  * pinned. FSRS-6 is the model current Anki schedules with. Fuzz is off so that
  * replaying the record gives exactly the state that was built live, and the
@@ -89,4 +94,35 @@ export function ratingOf(answer: Pick<RecordedAnswer, 'correct' | 'questionType'
 export function dayIn(at: Date, timeZone: string): string {
   // en-CA writes a date as YYYY-MM-DD.
   return new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(at);
+}
+
+/** A question's memory as of the last answer that counted. */
+export interface Remembered {
+  readonly card: Card;
+  /** The last answer that counted: only the first answer of a day, in the learner's time zone, does. */
+  readonly countedAt: Date;
+}
+
+/**
+ * Whether an answer moves the memory. The first answer to a question on a day,
+ * in the learner's own time zone, is the honest measure of what they remember;
+ * a second the same day, such as the round a lesson asks again or a wrong answer
+ * coming back in a review session, is the learning itself and leaves the
+ * memory alone. An answer older than the last one counted — answers written
+ * together share their time — counts no more than one the same day.
+ */
+export function counts(answer: Pick<RecordedAnswer, 'at' | 'timeZone'>, last: Remembered | undefined): boolean {
+  if (last === undefined) {
+    return true;
+  }
+  return answer.at.getTime() > last.countedAt.getTime() && dayIn(answer.at, answer.timeZone) !== dayIn(last.countedAt, answer.timeZone);
+}
+
+/** The memory after an answer, or undefined when the answer does not count and the memory stays as it was. */
+export function remember(scheduler: Scheduler, answer: Pick<RecordedAnswer, 'at' | 'timeZone' | 'correct' | 'questionType' | 'options'>, last: Remembered | undefined): Remembered | undefined {
+  if (!counts(answer, last)) {
+    return undefined;
+  }
+  const card = last?.card ?? scheduler.newCard({ now: answer.at });
+  return { card: scheduler.review({ card, grade: ratingOf(answer), now: answer.at }).card, countedAt: answer.at };
 }

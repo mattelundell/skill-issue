@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { Rating } from 'ts-fsrs';
 import { describe, expect, it } from 'vitest';
-import { dayIn, guessChance, ratingOf, SCHEDULER, SCHEDULER_ID } from './scheduler.js';
+import { dayIn, guessChance, ratingOf, SCHEDULER, SCHEDULER_ID } from './memory.js';
 
 describe('the scheduler', () => {
   it('names the library version that is installed, and the dependency pins exactly that one', () => {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Db } from '../../core/db.js';
 import type { LearningRecord, RecordedAnswer } from '../../core/record/record.js';
-import { dayIn, ratingOf, SCHEDULER_ID, type Card, type Scheduler } from './scheduler.js';
+import { remember, SCHEDULER_ID, type Card, type Remembered, type Scheduler } from '../../core/memory/memory.js';
 
 /**
  * Each question's memory as the scheduler left it, rebuilt from the learning
@@ -40,12 +40,10 @@ CREATE TABLE review.replay (
 ] as const;
 
 /** One question's memory, as the review module keeps it. */
-export interface Memory {
+export interface Memory extends Remembered {
   readonly subjectId: string;
   readonly questionId: string;
-  readonly card: Card;
   readonly dueAt: Date;
-  readonly countedAt: Date;
 }
 
 const BATCH = 500;
@@ -75,34 +73,16 @@ function memoryFrom(row: unknown, scheduler: Scheduler): Memory {
 
 const keyOf = (subjectId: string, questionId: string): string => `${subjectId}\u0000${questionId}`;
 
-/**
- * Whether an answer moves the schedule. The first answer to a question on a day,
- * in the learner's own time zone, is the honest measure of what they remember;
- * a second the same day, such as the round a lesson asks again or a wrong answer
- * coming back in a review session, is the learning itself and leaves the
- * schedule alone. An answer older than the last one counted — answers written
- * together share their time — counts no more than one the same day.
- */
-export function counts(answer: RecordedAnswer, last: Memory | undefined): boolean {
-  if (last === undefined) {
-    return true;
-  }
-  return answer.at.getTime() > last.countedAt.getTime() && dayIn(answer.at, answer.timeZone) !== dayIn(last.countedAt, answer.timeZone);
-}
-
 /** Folds answers, in the order written, into the memories they touch; returns those that changed. */
 export function fold(answers: readonly RecordedAnswer[], known: ReadonlyMap<string, Memory>, scheduler: Scheduler): Map<string, Memory> {
   const changed = new Map<string, Memory>();
   for (const answer of answers) {
     const { subjectId, id: questionId } = answer.question;
     const key = keyOf(subjectId, questionId);
-    const last = changed.get(key) ?? known.get(key);
-    if (!counts(answer, last)) {
-      continue;
+    const next = remember(scheduler, answer, changed.get(key) ?? known.get(key));
+    if (next !== undefined) {
+      changed.set(key, { subjectId, questionId, ...next, dueAt: next.card.dueAt });
     }
-    const card = last?.card ?? scheduler.newCard({ now: answer.at });
-    const { card: next } = scheduler.review({ card, grade: ratingOf(answer), now: answer.at });
-    changed.set(key, { subjectId, questionId, card: next, dueAt: next.dueAt, countedAt: answer.at });
   }
   return changed;
 }

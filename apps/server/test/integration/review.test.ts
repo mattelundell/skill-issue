@@ -5,7 +5,7 @@ import { DefaultScheduler, Rating, type Grade } from 'ts-fsrs';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createLearningRecord, type RecordEvent } from '../../src/core/record/record.js';
 import { rebuild } from '../../src/modules/review/memory.js';
-import { createScheduler } from '../../src/modules/review/scheduler.js';
+import { createScheduler } from '../../src/core/memory/memory.js';
 import { install, type Installation } from './installation.js';
 
 /**
