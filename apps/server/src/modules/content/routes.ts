@@ -2,6 +2,7 @@ import { OpenAPIHono, z } from '@hono/zod-openapi';
 import {
   ASSET_MEDIA_TYPES,
   AssetFileSchema,
+  ItemLoadResultSchema,
   ItemIdSchema,
   LanguageSchema,
   LoadResultSchema,
@@ -9,6 +10,7 @@ import {
   SubjectOutlineSchema,
   SubjectSummarySchema,
   type ContentFault,
+  type ItemKind,
   type Pack,
   type Problem,
   type Result,
@@ -51,6 +53,32 @@ async function packFromRequest(c: Context): Promise<Result<Pack, Problem>> {
     };
   }
   return checked;
+}
+
+/**
+ * The collections one item at a time may be put into, by the name the address
+ * and the pack both use, with the kind each holds. Areas and the subject are
+ * not among them: an area and its new lesson name each other, so neither can
+ * be added alone, and both come with a pack.
+ */
+const SINGLE_ITEMS = { questions: 'question', lessons: 'lesson', sources: 'source', glossary: 'glossary-term' } as const satisfies Record<string, ItemKind>;
+type SingleCollection = keyof typeof SINGLE_ITEMS;
+const isSingleCollection = (name: string): name is SingleCollection => Object.hasOwn(SINGLE_ITEMS, name);
+
+function stringField(value: unknown, field: string): string | undefined {
+  if (typeof value !== 'object' || value === null || !(field in value)) {
+    return undefined;
+  }
+  const found: unknown = Reflect.get(value, field);
+  return typeof found === 'string' ? found : undefined;
+}
+
+/** The subject with `item` in place of the entry of the same id and language, or added after the others; then checked whole. */
+function withItem(current: Pack, collection: SingleCollection, item: unknown, language: string, id: string): Result<Pack, readonly ContentFault[]> {
+  const entries: readonly { readonly id: string; readonly language: string }[] = current[collection];
+  const at = entries.findIndex((entry) => entry.id === id && entry.language === language);
+  const items: unknown[] = at === -1 ? [...entries, item] : entries.map((entry, index) => (index === at ? item : entry));
+  return checkPack({ ...current, [collection]: items });
 }
 
 /** Accepts, validates, versions and exports subject material. */
@@ -99,6 +127,79 @@ export function contentRoutes({ catalogue }: ModuleContext): OpenAPIHono {
       }
       const result = await catalogue.load(pack.value, { dryRun: dryRun.data === 'true' });
       return c.json(result, result.created && result.stored ? 201 : 200);
+    },
+  );
+
+  routes.openAPIRegistry.registerPath({
+    method: 'put',
+    path: '/subjects/{subjectId}/{collection}/{itemId}',
+    summary: 'Put one question, lesson, source or glossary term into an existing subject, or with dryRun=true only check it.',
+    description:
+      'The item replaces the one with the same id in the same language, or is added. The whole subject as it would then stand is checked, so an item that breaks a reference anywhere is refused with every fault found; nothing else is changed or retired. A changed item gets a new revision; the same item sent again changes nothing. A new lesson must be listed by an area, so it comes with a pack.',
+    request: {
+      params: z.object({ subjectId: ItemIdSchema, collection: z.enum(['questions', 'lessons', 'sources', 'glossary']), itemId: ItemIdSchema }),
+      query: z.object({ dryRun: DryRunSchema }),
+      body: { required: true, content: { 'application/json': { schema: z.looseObject({}).openapi({ description: 'A question, lesson, source or glossary term, as it is written in a pack sent as JSON.' }) } } },
+    },
+    responses: {
+      200: { description: 'Checked, and stored unless it was a dry run or nothing differed.', content: { 'application/json': { schema: ItemLoadResultSchema } } },
+      201: { description: 'A new item, stored.', content: { 'application/json': { schema: ItemLoadResultSchema } } },
+      400: { description: 'The body is not JSON, its id is not the address\'s, or the query is wrong.', content: problemContent },
+      404: { description: 'No such subject, or no such collection.', content: problemContent },
+      413: { description: 'The body is larger than a pack may be.', content: problemContent },
+      415: { description: 'Not JSON.', content: problemContent },
+      422: { description: 'The subject would break the format; `faults` lists every fault.', content: problemContent },
+    },
+  });
+  routes.put(
+    '/subjects/:subjectId/:collection/:itemId',
+    bodyLimit({
+      maxSize: MAX_BODY_BYTES,
+      onError: (c) => c.json(problem(413, 'The item is too large', `At most ${MAX_BODY_BYTES} bytes may be sent.`), 413),
+    }),
+    async (c) => {
+      const subjectId = c.req.param('subjectId');
+      const collection = c.req.param('collection');
+      const itemId = c.req.param('itemId');
+      const noSubject = problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`);
+      if (!isSingleCollection(collection)) {
+        return c.json(problem(404, 'No such collection', `One item at a time goes into ${Object.keys(SINGLE_ITEMS).join(', ')}.`), 404);
+      }
+      if (!ItemIdSchema.safeParse(subjectId).success) {
+        return c.json(noSubject, 404);
+      }
+      const dryRun = DryRunSchema.safeParse(c.req.query('dryRun'));
+      if (!dryRun.success) {
+        return c.json(problem(400, 'dryRun must be true or false'), 400);
+      }
+      const type = (c.req.header('content-type') ?? '').split(';')[0]?.trim().toLowerCase();
+      if (type !== 'application/json') {
+        return c.json(problem(415, 'Send the item as application/json', `Content-Type was ${JSON.stringify(type ?? '')}`), 415);
+      }
+      let item: unknown;
+      try {
+        item = JSON.parse(await c.req.text());
+      } catch (thrown) {
+        // Not propagated: the sender learns what was wrong with what they sent.
+        return c.json(problem(400, 'The body is not JSON', thrown instanceof Error ? thrown.message : String(thrown)), 400);
+      }
+      const id = stringField(item, 'id');
+      if (id !== undefined && id !== itemId) {
+        return c.json(problem(400, 'The id in the address is not the item’s', `The address names ${JSON.stringify(itemId)}; the item is ${JSON.stringify(id)}.`), 400);
+      }
+      const language = stringField(item, 'language') ?? '';
+      const kind = SINGLE_ITEMS[collection];
+      const updated = await catalogue.update(subjectId, { kind, id: itemId, language }, (current) => withItem(current, collection, item, language, itemId), { dryRun: dryRun.data === 'true' });
+      if (!updated.ok) {
+        if (updated.error.kind === 'no-subject') {
+          return c.json(noSubject, 404);
+        }
+        const count = updated.error.faults.length;
+        return c.json(problem(422, 'The item was not stored', `${count} ${count === 1 ? 'fault' : 'faults'} in the subject as it would stand; correct each and send the item again.`, [...updated.error.faults]), 422);
+      }
+      const { value } = updated;
+      const added = value.stored && value.added.some((ref) => ref.kind === kind && ref.id === itemId && ref.language === language);
+      return c.json(value, added ? 201 : 200);
     },
   );
 
