@@ -19,7 +19,7 @@ const QUESTIONS_FILE = 'areas/grunder/lessons/energi-och-effekt/questions.yaml';
 const ZONE = 'Europe/Stockholm';
 
 /** Every table a backup holds, as the installation keeps it. */
-const BACKED_UP = ['catalogue.subject', 'catalogue.item', 'catalogue.entry', 'catalogue.revision', 'catalogue.asset', 'record.event', 'lessons.position', 'assessment.sitting', 'notes.note'] as const;
+const BACKED_UP = ['catalogue.subject', 'catalogue.item', 'catalogue.entry', 'catalogue.revision', 'catalogue.asset', 'record.event', 'lessons.position', 'assessment.sitting', 'notes.section', 'notes.image'] as const;
 
 const encode = (text: string): Uint8Array => new TextEncoder().encode(text);
 const decode = (bytes: Uint8Array | undefined): string => new TextDecoder().decode(bytes);
@@ -89,7 +89,8 @@ async function studied(on: Installation): Promise<void> {
   await load(on, reworded(example));
   expect((await answer(on, 'kwh-eller-kw', { type: 'single-choice', option: 'b' }, 'review')).status).toBe(200);
   expect((await call(on, `/lessons/subjects/${SUBJECT}/lessons/energi-och-effekt/position`, { method: 'PUT', body: { step: 1, revision: 1, timeZone: ZONE } })).status).toBe(200);
-  expect((await call(on, `/notes/subjects/${SUBJECT}/lessons/energi-och-effekt/steps/1`, { method: 'PUT', body: { body: 'Effekt × tid = energi.' } })).status).toBe(200);
+  expect((await call(on, `/notes/subjects/${SUBJECT}/notebook/lessons/energi-och-effekt`, { method: 'PUT', body: { body: 'Effekt × tid = energi. ![skärm](bilder/bild-1.png)' } })).status).toBe(200);
+  expect((await call(on, `/notes/subjects/${SUBJECT}/notebook/images`, { method: 'POST', body: { mediaType: 'image/png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==' } })).status).toBe(201);
   const handedIn = SittingSchema.parse((await call(on, `/assessment/subjects/${SUBJECT}/exams`, { method: 'POST', body: { scope: { kind: 'lesson', id: 'energi-och-effekt' } } })).json);
   // A question left unanswered is allowed in a hand-in; the true-or-false ones are answered, so the sitting has answers of both kinds.
   const answers = handedIn.questions.filter((question) => question.type === 'true-false').map((question) => ({ questionId: question.id, answer: { type: 'true-false', value: true }, durationMs: 1000 }));
@@ -119,7 +120,8 @@ async function seen(on: Installation): Promise<unknown> {
     `/content/subjects/${SUBJECT}`,
     `/lessons/subjects/${SUBJECT}/positions`,
     '/lessons/resume',
-    `/notes/subjects/${SUBJECT}/notes`,
+    `/notes/subjects/${SUBJECT}/notebook`,
+    '/notes/notebooks',
     `/assessment/subjects/${SUBJECT}/passed`,
     `/review/subjects/${SUBJECT}/due?timeZone=${ZONE}`,
     `/progress/subjects/${SUBJECT}?timeZone=${ZONE}`,
@@ -168,10 +170,11 @@ describe('backing up', () => {
       'core:record.event',
       'lessons:lessons.position',
       'assessment:assessment.sitting',
-      'notes:notes.note',
+      'notes:notes.section',
+      'notes:notes.image',
     ]);
     expect(Object.keys(backup.migrations)).toEqual(expect.arrayContaining(['core', 'notes', 'lessons', 'assessment', 'review']));
-    expect(backup.migrations['notes']).toEqual(['0001_note']);
+    expect(backup.migrations['notes']).toEqual(['0001_note', '0002_notebook']);
   });
 });
 
@@ -214,7 +217,8 @@ describe('restoring', () => {
     expect(tried.status).toBe(200);
     expect(RestoreResultSchema.parse(tried.json)).toMatchObject({ dryRun: true });
     expect(RestoreResultSchema.parse(tried.json).tables).toEqual(backup.tables.map(({ owner, table, rows }) => ({ owner, table, rows: rows.length })));
-    expect(backup.tables.find((t) => t.table === 'notes.note')?.rows).toHaveLength(1);
+    expect(backup.tables.find((t) => t.table === 'notes.section')?.rows).toHaveLength(1);
+    expect(backup.tables.find((t) => t.table === 'notes.image')?.rows).toHaveLength(1);
     for (const table of BACKED_UP) {
       expect({ table, rows: await rowsOf(target, table) }).toEqual({ table, rows: [] });
     }
@@ -262,7 +266,7 @@ describe('restoring', () => {
     await studied(source);
     const backup = await backupOf(source);
 
-    const refused = await restore(target, { ...backup, migrations: { ...backup.migrations, notes: ['0001_note', '0002_tags'] } });
+    const refused = await restore(target, { ...backup, migrations: { ...backup.migrations, notes: ['0001_note', '0002_notebook', '0003_tags'] } });
 
     expect(refused).toMatchObject({ status: 409, json: { title: 'The backup was written by another version' } });
     expect((refused.json as { detail: string }).detail).toContain('notes');
@@ -272,7 +276,7 @@ describe('restoring', () => {
   it('refuses a table that its owner does not name as its own, so a backup cannot write into any table it likes', async () => {
     await studied(source);
     const backup = await backupOf(source);
-    const notes = backup.tables.find((t) => t.table === 'notes.note');
+    const notes = backup.tables.find((t) => t.table === 'notes.section');
     if (notes === undefined) {
       throw new Error('no notes in the backup');
     }

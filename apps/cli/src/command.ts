@@ -38,7 +38,7 @@ Commands:
   validate <pack>                 Check a pack folder or .zip without loading it
   load <pack>                     Load a pack folder or .zip; shows what changes first
   export <subject> <target>       Write a subject as a pack: a new folder, or a file ending in .zip
-  export-notes <subject> <file>   Write a subject's notes as one Markdown file, filed by area, lesson and step
+  export-notes <subject> <file>   Write a subject's notebook as a zip: Markdown per area, images in bilder/
   backup <file>                   Write everything — subjects, answers, notes, where each lesson was left — to one file
   restore <file>                  Restore a backup into an empty installation of the same version
 
@@ -47,7 +47,7 @@ Options:
   --yes                With load: store an update to an existing subject without asking again
   --dry-run            With restore: check the backup against the installation and write nothing
   --language <code>    With export-notes and exam: the language the subject is given in (default: the subject's own)
-  --interface <en|sv>  With export-notes: the language of the file's own headings (default en)
+  --interface <en|sv>  With export-notes: the language of the files' own headings (default en)
   --help               Show this text
 `;
 

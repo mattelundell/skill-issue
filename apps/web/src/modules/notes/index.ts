@@ -1,15 +1,22 @@
 import type { WebModule } from '../../shell/contract.js';
 import { catalogues } from './messages.js';
-import { NotePane } from './NotePane.js';
+import { NotebookPage } from './NotebookPage.js';
+import { NotebooksLine, NotebooksPage } from './NotebooksPage.js';
+import { NotebookSpread } from './NotebookSpread.js';
 import { NotesBlock } from './NotesBlock.js';
-import { NotesPage } from './NotesPage.js';
 import { NOTE_KEY } from './place.js';
 import './notes.css';
 
-/** Notes written beside a lesson: the note pane, the Notes tab with browsing and search, and a block on the subject home. */
+/**
+ * A notebook per subject: the spread in a lesson, the Notes tab that reads it
+ * as one document, a block on the subject home, and every notebook from the
+ * start screen.
+ */
 export const notesModule: WebModule = {
   id: 'notes',
-  page: { label: { sv: catalogues.sv.tab, en: catalogues.en.tab }, Page: NotesPage },
+  page: { label: { sv: catalogues.sv.tab, en: catalogues.en.tab }, Page: NotebookPage },
+  appPage: { Page: NotebooksPage },
+  StartLine: NotebooksLine,
   homeBlocks: [{ placement: 'side', Block: NotesBlock }],
   lessonSide: {
     label: {
@@ -17,6 +24,7 @@ export const notesModule: WebModule = {
       en: { open: catalogues.en['toggle.open'], close: catalogues.en['toggle.close'], hint: catalogues.en['toggle.hint'] },
     },
     key: NOTE_KEY,
-    Side: NotePane,
+    Side: NotebookSpread,
+    presentation: 'spread',
   },
 };

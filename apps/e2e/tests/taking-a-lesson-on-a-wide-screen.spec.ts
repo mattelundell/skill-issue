@@ -66,15 +66,15 @@ async function setReading(page: Page, reading: 'bench' | 'focus'): Promise<void>
 }
 
 async function setNotes(page: Page, open: boolean): Promise<void> {
-  const pane = page.getByRole('textbox', { name: /Anteckning vid steg/ });
+  const pane = page.getByRole('textbox', { name: /^Anteckning under / });
   if ((await pane.count()) > 0 !== open) {
-    await page.locator('.nav .side-toggle').click();
+    await (open ? page.locator('.spread-button') : page.getByRole('region', { name: 'Anteckningsboken' }).getByRole('button', { name: 'Stäng' })).click();
   }
   await expect(pane).toHaveCount(open ? 1 : 0);
 }
 
 for (const width of [1440, 1920]) {
-  test(`at ${width}px a line holds 55–75 characters on average, and none more, in both ways of reading, with the note pane open and closed`, async ({ page }) => {
+  test(`at ${width}px a line holds 55–75 characters on average, and none more, in both ways of reading, with the notebook open and closed`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${LESSON}/1`);
     await expect(page.getByRole('heading', { name: 'Förluster mot tillskott' })).toBeVisible();
@@ -140,7 +140,7 @@ test('switching the way of reading keeps the step, an open note and the place on
   await expect(page.getByRole('heading', { name: 'En andra sida' })).toBeVisible();
   await setReading(page, 'bench');
   await setNotes(page, true);
-  const note = page.getByRole('textbox', { name: 'Anteckning vid steg 2' });
+  const note = page.getByRole('textbox', { name: /^Anteckning under / });
   await note.fill('Läsläget växlas med F.');
 
   await note.blur();

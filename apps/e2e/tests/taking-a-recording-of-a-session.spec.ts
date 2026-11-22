@@ -21,8 +21,8 @@ test.beforeAll(async ({ request }) => {
   expect([200, 201]).toContain(loaded.status());
 });
 
-/** A note, so the Notes tab has a search to type into; removed again afterwards, since later files read the notes. */
-const NOTE = '/api/v1/notes/subjects/example-subject/lessons/energi-och-effekt/steps/0';
+/** A note, so the notebook has something to search; removed again afterwards, since later files read the notebook. */
+const NOTE = '/api/v1/notes/subjects/example-subject/notebook/lessons/energi-och-effekt';
 
 test.beforeEach(async ({ request }) => {
   expect((await request.put(NOTE, { data: { body: 'En anteckning att söka i.' } })).status()).toBe(200);
@@ -41,10 +41,10 @@ test('a session is recorded from the footer, without what was typed, and exporte
 
   // A whole page load: what was held goes in the beacon as the page leaves, and the new page goes on recording.
   await page.goto('/subjects/example-subject/notes');
-  const search = page.getByRole('searchbox', { name: 'Sök i anteckningarna' });
+  const search = page.getByRole('searchbox', { name: 'Sök i anteckningsboken' });
   await search.fill('hemligt sökord');
   // The search asks the server once typing pauses.
-  await page.waitForResponse((response) => response.url().includes('/api/v1/notes/subjects/example-subject/notes?q='));
+  await page.waitForResponse((response) => response.url().includes('/api/v1/notes/subjects/example-subject/notebook?q='));
   await search.press('Escape');
   await page.getByRole('contentinfo').getByRole('link', { name: 'Spelar in' }).click();
   await page.getByRole('button', { name: 'Sluta spela in' }).click();
@@ -83,7 +83,7 @@ test('a session is recorded from the footer, without what was typed, and exporte
   const inOrder = [
     'interface navigate /diagnostics',
     'interface navigate /subjects/example-subject/notes',
-    'api GET /api/v1/notes/subjects/example-subject/notes?q=…',
+    'api GET /api/v1/notes/subjects/example-subject/notebook?q=…',
     'interface key Escape in a field',
     'interface click Spelar in',
     'interface navigate /diagnostics',

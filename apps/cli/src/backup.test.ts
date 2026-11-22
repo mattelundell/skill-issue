@@ -51,7 +51,7 @@ const BACKUP: Backup = {
   tables: [
     { owner: 'core', table: 'catalogue.subject', rows: [{ id: 'energi' }, { id: 'statistik' }] },
     { owner: 'core', table: 'record.event', rows: [{ seq: 1, kind: 'answer' }, { seq: 2, kind: 'step' }, { seq: 3, kind: 'answer' }] },
-    { owner: 'notes', table: 'notes.note', rows: [{ body: 'En anteckning.' }] },
+    { owner: 'notes', table: 'notes.section', rows: [{ body: 'En anteckning.' }] },
   ],
 };
 
@@ -62,7 +62,7 @@ describe('backup', () => {
 
     const outcome = await backup({ target, url: APP_URL }, app.fetch);
 
-    expect(outcome).toEqual({ text: `Backed up 2 subjects, 3 rows of the learning record and 1 note to ${target}.`, exitCode: 0 });
+    expect(outcome).toEqual({ text: `Backed up 2 subjects, 3 rows of the learning record and 1 notebook section to ${target}.`, exitCode: 0 });
     expect(app.sent.map(({ url, method }) => [method, url])).toEqual([['GET', `${APP_URL}/api/v1/backup`]]);
     expect(JSON.parse(await readFile(target, 'utf8'))).toEqual(BACKUP);
   });
@@ -92,11 +92,11 @@ describe('restore', () => {
   it('sends the file as JSON and says what was restored, table by table', async () => {
     const path = join(scratch, 'b.json');
     await writeFile(path, JSON.stringify(BACKUP));
-    const app = fakeApplication(json({ dryRun: false, tables: [{ owner: 'core', table: 'catalogue.subject', rows: 2 }, { owner: 'notes', table: 'notes.note', rows: 1 }] }));
+    const app = fakeApplication(json({ dryRun: false, tables: [{ owner: 'core', table: 'catalogue.subject', rows: 2 }, { owner: 'notes', table: 'notes.section', rows: 1 }] }));
 
     const outcome = await restore({ path, url: APP_URL, dryRun: false }, app.fetch);
 
-    expect(outcome).toEqual({ text: 'Restored:\n  catalogue.subject  2 rows\n  notes.note         1 row', exitCode: 0 });
+    expect(outcome).toEqual({ text: 'Restored:\n  catalogue.subject  2 rows\n  notes.section      1 row', exitCode: 0 });
     expect(app.sent).toEqual([{ url: `${APP_URL}/api/v1/backup?dryRun=false`, method: 'POST', type: 'application/json', body: JSON.stringify(BACKUP) }]);
   });
 
@@ -130,24 +130,32 @@ describe('restore', () => {
 });
 
 describe('export-notes', () => {
-  it('asks for the notes in the languages given and writes the file', async () => {
-    const markdown = '# Energi — notes\n\n## Grunder\n';
-    const app = fakeApplication(new Response(markdown, { status: 200, headers: { 'content-type': 'text/markdown; charset=utf-8' } }));
-    const target = join(scratch, 'n.md');
+  it('asks for the notebook in the languages given and writes the zip as it came', async () => {
+    const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 1, 2, 3]);
+    const app = fakeApplication(new Response(zip, { status: 200, headers: { 'content-type': 'application/zip' } }));
+    const target = join(scratch, 'n.zip');
 
     const outcome = await exportNotes({ subject: 'energi', target, url: APP_URL, language: 'sv', interfaceLanguage: 'en' }, app.fetch);
 
     expect(outcome).toEqual({ text: `Wrote the notes of energi to ${target}.`, exitCode: 0 });
-    expect(app.sent.map(({ url }) => url)).toEqual([`${APP_URL}/api/v1/notes/subjects/energi/notes.md?interface=en&language=sv`]);
-    expect(await readFile(target, 'utf8')).toBe(markdown);
+    expect(app.sent.map(({ url }) => url)).toEqual([`${APP_URL}/api/v1/notes/subjects/energi/notebook.zip?interface=en&language=sv`]);
+    expect(new Uint8Array(await readFile(target))).toEqual(zip);
   });
 
   it('leaves the content language to the subject when none is given', async () => {
-    const app = fakeApplication(new Response('# x\n', { status: 200, headers: { 'content-type': 'text/markdown; charset=utf-8' } }));
+    const app = fakeApplication(new Response(new Uint8Array([0x50, 0x4b]), { status: 200, headers: { 'content-type': 'application/zip' } }));
 
-    await exportNotes({ subject: 'energi', target: join(scratch, 'n.md'), url: APP_URL, language: undefined, interfaceLanguage: 'sv' }, app.fetch);
+    await exportNotes({ subject: 'energi', target: join(scratch, 'n.zip'), url: APP_URL, language: undefined, interfaceLanguage: 'sv' }, app.fetch);
 
-    expect(app.sent.map(({ url }) => url)).toEqual([`${APP_URL}/api/v1/notes/subjects/energi/notes.md?interface=sv`]);
+    expect(app.sent.map(({ url }) => url)).toEqual([`${APP_URL}/api/v1/notes/subjects/energi/notebook.zip?interface=sv`]);
+  });
+
+  it('writes nothing when what answers is not a zip', async () => {
+    const app = fakeApplication(new Response('<html></html>', { status: 200, headers: { 'content-type': 'text/html' } }));
+    const target = join(scratch, 'n.zip');
+
+    expect(await exportNotes({ subject: 'energi', target, url: APP_URL, language: undefined, interfaceLanguage: 'en' }, app.fetch)).toEqual({ text: `Something answers at ${APP_URL}, but it did not send a zip.`, exitCode: 1 });
+    await expect(readFile(target)).rejects.toThrow(/ENOENT/);
   });
 
   it('says there is no such subject, and writes nothing', async () => {

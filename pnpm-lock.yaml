@@ -264,6 +264,9 @@ importers:
       '@types/pg':
         specifier: ^8.23.0
         version: 8.23.1
+      fflate:
+        specifier: ^0.8.3
+        version: 0.8.3
       typescript:
         specifier: ^7.0.0
         version: 7.0.2

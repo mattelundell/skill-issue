@@ -59,9 +59,9 @@ export async function backup(command: { readonly target: string; readonly url: s
   }
   // Written as it came, so the file is byte for byte what the application wrote.
   await writeFile(command.target, text, { flag: 'wx' });
-  const notes = rowsIn(checked.data, 'notes.note');
+  const notes = rowsIn(checked.data, 'notes.section');
   return {
-    text: `Backed up ${plural(rowsIn(checked.data, 'catalogue.subject'), 'subject', 'subjects')}, ${plural(rowsIn(checked.data, 'record.event'), 'row', 'rows')} of the learning record and ${plural(notes, 'note', 'notes')} to ${command.target}.`,
+    text: `Backed up ${plural(rowsIn(checked.data, 'catalogue.subject'), 'subject', 'subjects')}, ${plural(rowsIn(checked.data, 'record.event'), 'row', 'rows')} of the learning record and ${plural(notes, 'notebook section', 'notebook sections')} to ${command.target}.`,
     exitCode: 0,
   };
 }
@@ -105,7 +105,7 @@ export async function restore(command: { readonly path: string; readonly url: st
   return { text: [heading, ...lines].join('\n'), exitCode: 0 };
 }
 
-/** Writes a subject's notes as one Markdown file. */
+/** Writes a subject's notebook as a zip of Markdown files, one per area, with its images. */
 export async function exportNotes(
   command: { readonly subject: string; readonly target: string; readonly url: string; readonly language: string | undefined; readonly interfaceLanguage: string },
   fetchImpl: Fetch = fetch,
@@ -119,7 +119,7 @@ export async function exportNotes(
   }
   let response: Response;
   try {
-    response = await fetchImpl(new URL(`${API_PREFIX}/notes/subjects/${encodeURIComponent(command.subject)}/notes.md?${search.toString()}`, command.url), {
+    response = await fetchImpl(new URL(`${API_PREFIX}/notes/subjects/${encodeURIComponent(command.subject)}/notebook.zip?${search.toString()}`, command.url), {
       signal: AbortSignal.timeout(60_000),
     });
   } catch {
@@ -132,9 +132,9 @@ export async function exportNotes(
   if (!response.ok) {
     return refusal(response);
   }
-  if (!(response.headers.get('content-type') ?? '').startsWith('text/markdown')) {
-    return failed(`Something answers at ${command.url}, but it did not send Markdown.`);
+  if (!(response.headers.get('content-type') ?? '').startsWith('application/zip')) {
+    return failed(`Something answers at ${command.url}, but it did not send a zip.`);
   }
-  await writeFile(command.target, await response.text(), { flag: 'wx' });
+  await writeFile(command.target, new Uint8Array(await response.arrayBuffer()), { flag: 'wx' });
   return { text: `Wrote the notes of ${command.subject} to ${command.target}.`, exitCode: 0 };
 }

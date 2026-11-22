@@ -80,6 +80,8 @@ markdown.renderer.rules['link_open'] = (tokens, index, options, env, self) => {
 interface Env {
   readonly subjectId: string;
   readonly imageText: (alt: string) => string;
+  /** Where an image in text the learner wrote comes from instead; given, the subject's files are not used. */
+  readonly imageSource?: (src: string) => string | undefined;
 }
 
 const isEnv = (value: unknown): value is Env =>
@@ -98,12 +100,19 @@ markdown.renderer.rules['image'] = (tokens, index, _options, env: unknown) => {
   const token = tokens[index];
   const alt = token?.children?.map((child) => child.content).join('') ?? '';
   const text = isEnv(env) ? env.imageText(alt) : alt;
-  const file = ASSET.exec(String(token?.attrGet('src') ?? ''))?.[1];
-  if (!isEnv(env) || file === undefined) {
+  const given = String(token?.attrGet('src') ?? '');
+  const file = ASSET.exec(given)?.[1];
+  const src = !isEnv(env)
+    ? undefined
+    : env.imageSource !== undefined
+      ? env.imageSource(given)
+      : file === undefined
+        ? undefined
+        : `${API_PREFIX}/content/subjects/${encodeURIComponent(env.subjectId)}/assets/${encodeURIComponent(file)}`;
+  if (src === undefined) {
     return markdown.utils.escapeHtml(text);
   }
   const escape = markdown.utils.escapeHtml;
-  const src = `${API_PREFIX}/content/subjects/${encodeURIComponent(env.subjectId)}/assets/${encodeURIComponent(file)}`;
   const title = String(token?.attrGet('title') ?? '');
   const image = `<img src="${escape(src)}" alt="${escape(alt)}" data-text="${escape(text)}" loading="lazy">`;
   return `<span class="figure">${image}${title === '' ? '' : `<span class="caption">${escape(title)}</span>`}</span>`;
@@ -119,6 +128,7 @@ export function Markdown({
   source,
   subjectId,
   imageText,
+  imageSource,
   className,
   marks,
   beside,
@@ -129,6 +139,8 @@ export function Markdown({
   readonly subjectId: string;
   /** An image's description as words, shown in its place when it cannot be drawn. */
   readonly imageText: (alt: string) => string;
+  /** Where an image comes from when the text is the learner's own, such as a note; undefined for one it does not know. */
+  readonly imageSource?: (src: string) => string | undefined;
   readonly className?: string;
   /** Words to mark, each the first time the text names it, with the card it opens; none, and the text is drawn as written. */
   readonly marks?: readonly TextMark[];
@@ -150,10 +162,11 @@ export function Markdown({
     const rendered = markdown.render(source, {
       subjectId,
       imageText,
+      ...(imageSource === undefined ? {} : { imageSource }),
       ...(matcher === undefined ? {} : { marks: { matcher, marked, cardId, ids, beside: besideText, skip: { depth: 0 } } satisfies MarkEnv }),
     });
     return { html: rendered, found: [...marked].toSorted((a, b) => a - b).flatMap((index) => (ids[index] === undefined ? [] : [ids[index]])) };
-  }, [source, subjectId, imageText, matcher, cardId, ids, besideText]);
+  }, [source, subjectId, imageText, imageSource, matcher, cardId, ids, besideText]);
   const foundKey = found.join('\u0000');
   useEffect(() => {
     onMarks?.(foundKey === '' ? [] : foundKey.split('\u0000'));
