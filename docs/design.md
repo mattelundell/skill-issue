@@ -81,7 +81,7 @@ The source library: every piece of raw material in the subject, searchable, each
 
 ### Notes
 
-All notes, browsable by subject, area and lesson in the order of the path, and searchable as text: a search finds notes in which every word given starts a word. A note links back to the step it was written at, and opens the lesson there. Notes are written in Markdown and can be exported.
+All notes, browsable by subject, area and lesson in the order of the path, and searchable as text: a search finds notes in which every word given starts a word. A note links back to the step it was written at, and opens the lesson there. Notes are written in Markdown, and **Exportera som Markdown** gives a subject's notes as one file, filed by area, lesson and step in the order of the path, the file's own headings in the interface language and the subject's titles in the content language. A heading the learner wrote in a note sits below its step in the file, so it never reads as a new area.
 
 ### Progress
 
@@ -112,9 +112,11 @@ Interface language and content language are separate settings. A subject availab
 
 The command-line tool is a second front end on the same API.
 
-- **Content**: validate a pack, load it, export a subject, back up and restore personal data.
-- **Study**: run a review session and sit a quiz in the terminal.
-- **Status**: what is due, per subject.
+- **Content**: validate a pack, load it, export a subject, export a subject's notes as Markdown, back up the whole installation and restore it into an empty one.
+- **Study**: run a review session in the terminal — across every subject or in one, the questions drawn with numbered options and items, a wrong answer asked again by the same rule as in the browser, `q` to stop — and sit an exam (not built yet).
+- **Status**: whether the application is up, and what is due in each subject with about how long it takes.
+
+Nothing the terminal prints from a subject's material can steer the terminal: control characters are taken out.
 
 Reading lessons is designed for the browser, where figures, the glossary and the note pane have room.
 
