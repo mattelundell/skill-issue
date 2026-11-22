@@ -1,5 +1,5 @@
 import { ModuleIdSchema, type OutlineArea, type SubjectOutline, type SubjectSummary } from '@skill-issue/contract';
-import type { ComponentType } from 'react';
+import type { ComponentType, ReactNode } from 'react';
 import type { Language } from '../i18n/index.js';
 
 /**
@@ -116,6 +116,24 @@ export interface WebModule {
   readonly AreaFooter?: ComponentType<AreaFooterProps>;
   /** Each lesson's state on the path, by lesson id. A lesson it does not name, it says nothing about. */
   readonly lessonMarks?: (subjectId: string, signal: AbortSignal, language: Language) => Promise<ReadonlyMap<string, LessonMark>>;
+  /**
+   * Words to mark in a lesson's text steps, such as the subject's glossary terms,
+   * each with the card it opens. Read in the language the subject is shown in.
+   */
+  readonly textMarks?: (subject: SubjectOutline, signal: AbortSignal) => Promise<readonly TextMark[]>;
+}
+
+/**
+ * A word or phrase marked in a lesson's text. It is found by any of its forms,
+ * from the start of a word and with a Swedish ending allowed after it, the
+ * first time the step names it; pointing at it, focusing it or clicking it
+ * opens its card beside the words.
+ */
+export interface TextMark {
+  readonly id: string;
+  readonly forms: readonly string[];
+  /** What the mark opens, such as a definition and where it comes from. */
+  readonly card: ReactNode;
 }
 
 /**

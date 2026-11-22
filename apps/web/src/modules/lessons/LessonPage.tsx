@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { Language } from '../../i18n/index.js';
 import { languageName } from '../../i18n/index.js';
 import type { CheckStepProps, PageProps } from '../../shell/contract.js';
-import { useCheckStep, useLessonEnds, useLessonSides, useSourceLink } from '../../shell/contributions.js';
+import { useCheckStep, useLessonEnds, useLessonSides, useSourceLink, useTextMarks } from '../../shell/contributions.js';
 import { Markdown } from '../../shell/markdown.js';
 import { Link, subjectPath } from '../../shell/router.js';
 import { WithCode } from '../../shell/text.js';
@@ -470,6 +470,7 @@ function StepCard({
 }) {
   const { t, tc } = useMessages();
   const imageText = useCallback((alt: string) => t('image', { alt }), [t]);
+  const marks = useTextMarks(subject);
   if (step.type === 'check') {
     return (
       <article className="sheet step check">
@@ -494,7 +495,8 @@ function StepCard({
   return (
     <article className={`sheet step ${step.type}`}>
       <p className={`step-kind ${step.type}`}>{t(`kind.${step.type}`)}</p>
-      <Markdown className="prose-step" source={step.body} subjectId={subject.id} imageText={imageText} />
+      {/* Terms are marked in a text step, which teaches the idea; an example applies it, and marks there would only repeat the text's. */}
+      <Markdown className="prose-step" source={step.body} subjectId={subject.id} imageText={imageText} {...(step.type === 'text' && marks !== undefined ? { marks } : {})} />
     </article>
   );
 }
