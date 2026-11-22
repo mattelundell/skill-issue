@@ -266,3 +266,131 @@ describe('searching notes', () => {
     expect(filed(await list('?q=mega&lesson=enhetsprefix'))).toEqual([['enhetsprefix', 0, 'Mega betyder miljon. Återbetalningstid är något annat.']]);
   });
 });
+
+const STEP_TITLED_FILE = 'areas/grunder/lessons/energi-och-effekt/lesson.md';
+
+/** The example with its first step given a heading of its own, as a step's title is written. */
+function withStepTitle(files: PackFiles): PackFiles {
+  const text = new TextDecoder().decode(files.get(STEP_TITLED_FILE));
+  const body = 'type: text\n\n**Effekt** är hur fort';
+  if (!text.includes(body)) {
+    throw new Error(`${STEP_TITLED_FILE} no longer opens its first step as this test expects`);
+  }
+  return new Map(files).set(STEP_TITLED_FILE, new TextEncoder().encode(text.replace(body, 'type: text\n\n## Två storheter\n\n**Effekt** är hur fort')));
+}
+
+/** The example without its second area, so a note written there has no lesson in the subject any longer. */
+function withoutDeepening(files: PackFiles): PackFiles {
+  const without = new Map(files);
+  for (const path of without.keys()) {
+    if (path.startsWith('areas/fordjupning/')) {
+      without.delete(path);
+    }
+  }
+  for (const path of ['subject.yaml', 'subject.en.yaml']) {
+    without.set(path, new TextEncoder().encode(new TextDecoder().decode(without.get(path)).replace('  - fordjupning\n', '')));
+  }
+  return without;
+}
+
+async function exported(query = '', subject = NOTES): Promise<{ status: number; type: string | null; disposition: string | null; text: string }> {
+  const response = await here.app.request(`${subject}/notes.md${query}`);
+  return { status: response.status, type: response.headers.get('content-type'), disposition: response.headers.get('content-disposition'), text: await response.text() };
+}
+
+describe('exporting a subject’s notes as Markdown', () => {
+  it('files every note under its area and lesson, in the order of the path, each under its step', async () => {
+    await load(withStepTitle(example));
+    // Written so that the most recent comes first in neither the path's order nor a lesson's step order: the export must order them itself.
+    await written('energi-och-effekt', 0, 'Effekt × tid = energi.\n\n- kW är takt\n- kWh är mängd');
+    await written('energi-och-effekt', 2, 'Kolla enheten först.');
+    await written('energibalans', 0, 'In = ut.');
+
+    const file = await exported();
+
+    expect(file).toMatchObject({ status: 200, type: 'text/markdown; charset=utf-8', disposition: 'attachment; filename="example-subject-notes.md"' });
+    expect(file.text).toBe(
+      [
+        '# Exempelämne — anteckningar',
+        '',
+        '## Grunder',
+        '',
+        '### Energi och effekt',
+        '',
+        '#### Steg 1 · Två storheter',
+        '',
+        'Effekt × tid = energi.',
+        '',
+        '- kW är takt',
+        '- kWh är mängd',
+        '',
+        '#### Steg 3',
+        '',
+        'Kolla enheten först.',
+        '',
+        '## Fördjupning',
+        '',
+        '### Energibalans',
+        '',
+        '#### Steg 1',
+        '',
+        'In = ut.',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('names its own headings in the interface language and the subject’s material in the content language', async () => {
+    await load(example);
+    await written('energi-och-effekt', 1, 'Ett exempel.');
+
+    const file = await exported('?language=en&interface=en');
+
+    expect(file.text).toBe(['# Example subject — notes', '', '## Grunder', '', '### Energy and power', '', '#### Step 2', '', 'Ett exempel.', ''].join('\n'));
+  });
+
+  it('keeps a note whose lesson the subject no longer holds, under a heading of its own after the path', async () => {
+    await load(example);
+    await written('energibalans', 0, 'Om energibalans.');
+    await written('enhetsprefix', 0, 'Kilo är tusen.');
+    await load(withoutDeepening(example));
+
+    const file = await exported();
+
+    expect(file.text).toBe(
+      [
+        '# Exempelämne — anteckningar',
+        '',
+        '## Grunder',
+        '',
+        '### Enhetsprefix',
+        '',
+        '#### Steg 1',
+        '',
+        'Kilo är tusen.',
+        '',
+        '## Inte längre i ämnet',
+        '',
+        '### Lektionen energibalans',
+        '',
+        '#### Steg 1',
+        '',
+        'Om energibalans.',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('says so when nothing has been written', async () => {
+    await load(example);
+
+    expect((await exported()).text).toBe(['# Exempelämne — anteckningar', '', 'Inga anteckningar än.', ''].join('\n'));
+  });
+
+  it('answers an unknown subject with 404 and an interface language it does not have with 400', async () => {
+    await load(example);
+
+    expect((await exported('', '/api/v1/notes/subjects/finns-inte')).status).toBe(404);
+    expect((await exported('?interface=fi')).status).toBe(400);
+  });
+});

@@ -1,7 +1,8 @@
 import { OpenAPIHono, z } from '@hono/zod-openapi';
-import { ItemIdSchema, NoteListSchema, NoteSchema, NOTE_MAX_LENGTH, SaveNoteSchema } from '@skill-issue/contract';
+import { ItemIdSchema, LanguageSchema, NoteListSchema, NoteSchema, NOTE_MAX_LENGTH, SaveNoteSchema } from '@skill-issue/contract';
 import { problem, problemContent } from '../../core/problem.js';
 import type { ModuleContext } from '../../core/registry.js';
+import { EXPORT_LANGUAGES, isExportLanguage, notesAsMarkdown, type FiledLesson } from './markdown.js';
 import { notesIn, removeNote, saveNote } from './store.js';
 
 const noSubject = (subjectId: string) => problem(404, 'No such subject', `No subject has the id ${JSON.stringify(subjectId)}.`);
@@ -36,6 +37,48 @@ export function notesRoutes({ db, catalogue }: ModuleContext): OpenAPIHono {
     const query = c.req.query('q');
     const notes = await notesIn(db, subjectId, { ...(lessonId === undefined ? {} : { lessonId }), ...(query === undefined ? {} : { query }) });
     return c.json({ subjectId, notes: [...notes] }, 200);
+  });
+
+  routes.openAPIRegistry.registerPath({
+    method: 'get',
+    path: '/subjects/{subjectId}/notes.md',
+    summary: 'A subject’s notes as one Markdown file, filed by area, lesson and step in the order of the path.',
+    description: `\`language\` is the language the subject's titles are given in, the default language where none is translated; \`interface\` is the language of the file's own headings (${EXPORT_LANGUAGES.join(', ')}; sv when none is given). A note on a lesson the subject no longer holds is filed after the path.`,
+    request: {
+      params: z.object({ subjectId: ItemIdSchema }),
+      query: z.object({ language: LanguageSchema.optional(), interface: z.enum(EXPORT_LANGUAGES).optional() }),
+    },
+    responses: {
+      200: { description: 'The notes, as an attachment.', content: { 'text/markdown': { schema: z.string() } } },
+      400: { description: 'The language is not a language code, or the interface language is not one the export has.', content: problemContent },
+      404: { description: 'No such subject.', content: problemContent },
+    },
+  });
+  routes.get('/subjects/:subjectId/notes.md', async (c) => {
+    const subjectId = c.req.param('subjectId');
+    const language = LanguageSchema.optional().safeParse(c.req.query('language'));
+    if (!language.success) {
+      return c.json(problem(400, 'language must be a language code such as sv, en or en-GB'), 400);
+    }
+    const words = c.req.query('interface') ?? 'sv';
+    if (!isExportLanguage(words)) {
+      return c.json(problem(400, 'No such interface language', `The export's headings are written in ${EXPORT_LANGUAGES.join(' and ')}.`), 400);
+    }
+    const outline = ItemIdSchema.safeParse(subjectId).success ? await catalogue.outline(subjectId, language.data) : undefined;
+    if (outline === undefined) {
+      return c.json(noSubject(subjectId), 404);
+    }
+    const notes = await notesIn(db, subjectId);
+    const lessons = new Map<string, FiledLesson>();
+    for (const lessonId of new Set(notes.map((note) => note.lessonId))) {
+      const lesson = await catalogue.lesson(subjectId, lessonId, language.data);
+      if (lesson.ok) {
+        lessons.set(lessonId, lesson.value);
+      }
+    }
+    c.header('content-type', 'text/markdown; charset=utf-8');
+    c.header('content-disposition', `attachment; filename="${subjectId}-notes.md"`);
+    return c.body(notesAsMarkdown(outline, lessons, notes, words), 200);
   });
 
   routes.openAPIRegistry.registerPath({
